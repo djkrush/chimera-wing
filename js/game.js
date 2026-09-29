@@ -20,19 +20,19 @@ const angDiff = (a, b) => {
 const pad6 = n => String(Math.floor(n)).padStart(6, '0');
 
 const FORMS = [
-  { name: 'FIGHTER', short: 'FTR', speed: 2.4, free: false, hit: 3 },
-  { name: 'GUARDIAN', short: 'GRD', speed: 1.8, free: true, hit: 4 },
-  { name: 'BATTLOID', short: 'BTL', speed: 1.3, free: true, hit: 5 },
+  { name: 'FIGHTER', short: 'FTR', speed: 2.4, free: false, hit: 4 },
+  { name: 'GUARDIAN', short: 'GRD', speed: 1.8, free: true, hit: 5 },
+  { name: 'BATTLOID', short: 'BTL', speed: 1.3, free: true, hit: 6 },
 ];
 
 const ENEMY = {
   fighter: { name: 'MIG', hp: 1, pts: [50, 100], hit: 9 },
-  bomber: { name: 'BOMBER', hp: 1, pts: [80, 160], hit: 7 },
-  methyl: { name: 'METHYLATOR', hp: 2, pts: [150, 400], hit: 8 },
-  sam: { name: 'SAM SITE', hp: 2, pts: [200, 200], hit: 7 },
-  splitter: { name: 'SPLITTER', hp: 2, pts: [120, 240], hit: 7 },
-  drone: { name: 'DRONE', hp: 1, pts: [30, 60], hit: 4 },
-  armored: { name: 'ARMORED', hp: 5, pts: [250, 500], hit: 8 },
+  bomber: { name: 'BOMBER', hp: 1, pts: [80, 160], hit: 12 },
+  methyl: { name: 'METHYLATOR', hp: 2, pts: [150, 400], hit: 13 },
+  sam: { name: 'SAM SITE', hp: 2, pts: [200, 200], hit: 10 },
+  splitter: { name: 'SPLITTER', hp: 2, pts: [120, 240], hit: 11 },
+  drone: { name: 'DRONE', hp: 1, pts: [30, 60], hit: 6 },
+  armored: { name: 'ARMORED', hp: 5, pts: [250, 500], hit: 13 },
 };
 
 // Dr. Helena Voss: rogue epigeneticist. Her science is real; her ethics are not.
@@ -102,20 +102,20 @@ function buildNormalWaves() {
   const S = (type, c, r, path, delay) => ({ type, slot: { c, r }, path, delay });
   const waves = [];
   let w = [];
-  [3, 4, 5, 6].forEach((c, i) => { w.push(S('bomber', c, 1, 'top', i * 8)); w.push(S('fighter', c, 3, 'topM', i * 8)); });
+  [3, 4, 5, 6].forEach((c, i) => { w.push(S('bomber', c, 1, 'top', i * 13)); w.push(S('fighter', c, 3, 'topM', i * 13)); });
   waves.push(w);
   w = [];
-  [3, 4, 5, 6].forEach((c, i) => w.push(S('methyl', c, 0, 'side', i * 16)));
-  [1, 2, 7, 8].forEach((c, i) => w.push(S('bomber', c, 1, 'side', i * 16 + 8)));
+  [3, 4, 5, 6].forEach((c, i) => w.push(S('methyl', c, 0, 'side', i * 26)));
+  [1, 2, 7, 8].forEach((c, i) => w.push(S('bomber', c, 1, 'side', i * 26 + 13)));
   waves.push(w);
   w = [];
-  [1, 2, 3, 4, 5, 6, 7, 8].forEach((c, i) => w.push(S('bomber', c, 2, 'sideM', i * 8)));
+  [1, 2, 3, 4, 5, 6, 7, 8].forEach((c, i) => w.push(S('bomber', c, 2, 'sideM', i * 13)));
   waves.push(w);
   w = [];
-  [[0, 3], [1, 3], [2, 3], [7, 3], [8, 3], [9, 3], [4, 4], [5, 4]].forEach(([c, r], i) => w.push(S('fighter', c, r, 'topc', i * 8)));
+  [[0, 3], [1, 3], [2, 3], [7, 3], [8, 3], [9, 3], [4, 4], [5, 4]].forEach(([c, r], i) => w.push(S('fighter', c, r, 'topc', i * 13)));
   waves.push(w);
   w = [];
-  [0, 1, 2, 3, 6, 7, 8, 9].forEach((c, i) => w.push(S('fighter', c, 4, 'topcM', i * 8)));
+  [0, 1, 2, 3, 6, 7, 8, 9].forEach((c, i) => w.push(S('fighter', c, 4, 'topcM', i * 13)));
   waves.push(w);
   return waves.map(list => ({ list, timer: 0, wait: 0 }));
 }
@@ -127,8 +127,8 @@ function buildChallengeWaves(stage) {
     const type = types[(wi + stage) % 3];
     const list = [];
     for (let i = 0; i < 4; i++) {
-      list.push({ type, slot: null, path: a, delay: i * 10 });
-      list.push({ type, slot: null, path: b, delay: i * 10 + 5 });
+      list.push({ type, slot: null, path: a, delay: i * 14 });
+      list.push({ type, slot: null, path: b, delay: i * 14 + 7 });
     }
     return { list, timer: 0, wait: 0 };
   });
@@ -734,7 +734,7 @@ const Game = {
     if (T >= 190) { e.state = 'toSlot'; e.beamExt = 0; return; }
     const p = this.player;
     if (e.beamExt >= 1 && T < 160 && p.alive && p.invuln <= 0 && e.holding < 0) {
-      const y0 = e.y + 6;
+      const y0 = e.y + 11;
       if (p.y > y0) {
         const hw = 3 + (p.y - y0) * 0.28;
         if (Math.abs(p.x - e.x) < hw - 2) this.silenceForm(e);
@@ -775,7 +775,7 @@ const Game = {
     let a = Math.atan2(p.y - e.y, p.x - e.x);
     if (!this.isSide) a = clamp(a, 0.35, Math.PI - 0.35);   // vertical stages: only shoot downward
     const angles = e.acetyl ? [a - 0.15, a + 0.15] : [a];
-    for (const aa of angles) this.eBul.push({ x: e.x, y: e.y + 4, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp });
+    for (const aa of angles) this.eBul.push({ x: e.x, y: e.y + 9, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp });
   },
 
   spreadShot(x, y, n, gap, sp) {
@@ -896,10 +896,10 @@ const Game = {
     if (this.isSide) {
       // Side missions: every form flies freely over the left part of the screen.
       const maxX = this.boss ? W - 10 : 200;   // at a boss base you can fly the whole screen
-      p.x = clamp(p.x + dx * sp, 10, maxX);
-      p.y = clamp(p.y + dy * sp, 18, SIDE_GROUND - 10);
+      p.x = clamp(p.x + dx * sp, 18, maxX);
+      p.y = clamp(p.y + dy * sp, 22, SIDE_GROUND - 14);
     } else {
-      p.x = clamp(p.x + dx * sp, 9, W - 9);
+      p.x = clamp(p.x + dx * sp, 14, W - 14);
       if (F.free) p.y = clamp(p.y + dy * sp, PY_MIN, PY);
       else p.y = Math.min(PY, p.y + 2);   // Fighter drops back to low altitude
     }
@@ -1089,10 +1089,10 @@ const Game = {
     if (p.alive && p.shieldT > 0) {
       // Gene Shield: destroys bullets and rams enemies instead of taking hits.
       for (const b of this.eBul) {
-        if (Math.hypot(b.x - p.x, b.y - p.y) < 13) { b.dead = true; this.spark(b.x, b.y, C.aqua, 2); }
+        if (Math.hypot(b.x - p.x, b.y - p.y) < 18) { b.dead = true; this.spark(b.x, b.y, C.aqua, 2); }
       }
       for (const e of this.enemies) {
-        if (!e.dead && e.state !== 'form' && Math.hypot(e.x - p.x, e.y - p.y) < 14) this.damageEnemy(e, 0.25, -1);
+        if (!e.dead && e.state !== 'form' && Math.hypot(e.x - p.x, e.y - p.y) < 20) this.damageEnemy(e, 0.25, -1);
       }
     } else if (p.alive && p.invuln <= 0) {
       const hb = FORMS[p.form].hit;
@@ -1101,7 +1101,7 @@ const Game = {
       }
       if (p.alive && p.invuln <= 0) {
         for (const e of this.enemies) {
-          if (!e.dead && e.state !== 'form' && Math.abs(e.x - p.x) < hb + 4 && Math.abs(e.y - p.y) < hb + 4) {
+          if (!e.dead && e.state !== 'form' && Math.abs(e.x - p.x) < hb + 8 && Math.abs(e.y - p.y) < hb + 8) {
             this.killEnemy(e, p.form);
             this.hitPlayer();
             break;
@@ -1238,7 +1238,7 @@ const Game = {
     if (e.beamExt > 0 && (e.state === 'beam' || e.state === 'side')) this.drawMethylBeam(ctx, e);
     if (e.holding >= 0) {
       // the silenced form is carried behind the methylator, like Galaga's captured fighter
-      const bx = e.x - Math.sin(e.ang) * 15, by = e.y + Math.cos(e.ang) * 15;
+      const bx = e.x - Math.sin(e.ang) * 26, by = e.y + Math.cos(e.ang) * 26;
       NES.drawRot(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].top.silenced[e.holding], bx, by, e.ang);
     }
     NES.drawRot(ctx, img, e.x, e.y, e.ang);
@@ -1252,7 +1252,7 @@ const Game = {
       : e.type === 'methyl' && e.hp < e.maxHp ? set.dmg[f]
         : e.acetyl ? set.acetyl[f] : set.normal[f];
     if (e.beamExt > 0) this.drawMethylBeam(ctx, e);
-    if (e.holding >= 0) NES.draw(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].side.silenced[e.holding], e.x + 16, e.y);
+    if (e.holding >= 0) NES.draw(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].side.silenced[e.holding], e.x + 34, e.y);
     if (e.type !== 'sam' && e.vx > 0.3 && e.phase !== 'out') NES.drawFlip(ctx, img, e.x, e.y);
     else NES.draw(ctx, img, e.x, e.y);
   },
@@ -1261,7 +1261,7 @@ const Game = {
   drawMethylBeam(ctx, e) {
     const cols = [C.lime, C.green, C.aqua];
     if (e.state === 'side') {
-      const x0 = Math.round(e.x - 6), y = Math.round(e.y);
+      const x0 = Math.round(e.x - 16), y = Math.round(e.y);
       const len = Math.floor(x0 * e.beamExt);
       for (let xx = 0; xx < len; xx += 2) {
         const hw = Math.floor(3 + xx * 0.28);
@@ -1271,7 +1271,7 @@ const Game = {
       if (len > 40 && (this.t >> 3) & 1) NES.text(ctx, 'CH3', x0 - (len >> 1), y - 3, C.white, { align: 'center' });
       return;
     }
-    const x = Math.round(e.x), y0 = Math.round(e.y + 6);
+    const x = Math.round(e.x), y0 = Math.round(e.y + 11);
     const len = Math.floor((PY + 12 - y0) * e.beamExt);
     for (let yy = 0; yy < len; yy += 2) {
       const hw = Math.floor(3 + yy * 0.28);

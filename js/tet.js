@@ -19,7 +19,7 @@ Object.assign(Game, {
       q.x += q.vx;
       q.y += q.vy;
       if (q.x < -8 || q.x > W + 8 || q.y > H + 8) q.dead = true;
-      else if (p.alive && Math.abs(q.x - p.x) < 10 && Math.abs(q.y - p.y) < 10) { q.dead = true; this.collectTet(q); }
+      else if (p.alive && Math.abs(q.x - p.x) < 13 && Math.abs(q.y - p.y) < 13) { q.dead = true; this.collectTet(q); }
     }
     this.pickups = this.pickups.filter(q => !q.dead);
   },

@@ -99,7 +99,7 @@ Object.assign(Game, {
   },
 
   // Where the Wingman drone flies: behind and to one side of the ship.
-  wingOffset() { return this.orient(-18, 8); },
+  wingOffset() { return this.orient(-26, 10); },
 
   drawWingman(ctx) {
     const p = this.player, [wx, wy] = this.wingOffset();

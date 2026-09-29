@@ -34,44 +34,44 @@ Object.assign(Game, {
     const p = this.player;
     switch (kind) {
       case 'migLine': {
-        const y = randi(30, 170), amp = pick([0, 16, 28]);
-        for (let i = 0; i < 5; i++) this.spawnSideEnemy(this.mixType('fighter'), 'sine', W + 12 + i * 18, y, { amp, ph: i * 0.6 });
+        const y = randi(34, 166), amp = pick([0, 16, 28]);
+        for (let i = 0; i < 5; i++) this.spawnSideEnemy(this.mixType('fighter'), 'sine', W + 16 + i * 30, y, { amp, ph: i * 0.6 });
         break;
       }
       case 'migSwoop': {
         const y = pick([30, 170]);
-        for (let i = 0; i < 4; i++) this.spawnSideEnemy(this.mixType('fighter'), 'swoop', W + 12 + i * 16, y + (y < 100 ? i * 6 : -i * 6));
+        for (let i = 0; i < 4; i++) this.spawnSideEnemy(this.mixType('fighter'), 'swoop', W + 16 + i * 28, y + (y < 100 ? i * 8 : -i * 8));
         break;
       }
       case 'migRear': {
         // ambush from behind, with a warning flashed on the left edge first
         for (let i = 0; i < 3; i++) {
-          const y = clamp(p.y + (i - 1) * 24, 24, 180);
-          this.spawnSideEnemy('fighter', 'rear', -40 - i * 22, y);
+          const y = clamp(p.y + (i - 1) * 30, 28, 180);
+          this.spawnSideEnemy('fighter', 'rear', -40 - i * 30, y);
           this.side.warns.push({ y, t: 50 });
         }
         break;
       }
       case 'bomber':
         this.spawnSideEnemy(this.mixType('bomber'), 'bomber', W + 16, randi(40, 150));
-        if (this.stage >= 6) this.spawnSideEnemy(this.mixType('bomber'), 'bomber', W + 60, randi(40, 150));
+        if (this.stage >= 6) this.spawnSideEnemy(this.mixType('bomber'), 'bomber', W + 80, randi(40, 150));
         break;
       case 'splitterLine': {
         const y = randi(40, 160);
-        for (let i = 0; i < 3; i++) this.spawnSideEnemy('splitter', 'sine', W + 12 + i * 24, y, { amp: 20, ph: i * 0.8 });
+        for (let i = 0; i < 3; i++) this.spawnSideEnemy('splitter', 'sine', W + 16 + i * 32, y, { amp: 20, ph: i * 0.8 });
         break;
       }
       case 'droneSwarm': {
         const y = randi(40, 160);
-        for (let i = 0; i < 8; i++) this.spawnSideEnemy('drone', 'swarm', W + 8 + i * 9, y + ((i * 7) % 20) - 10);
+        for (let i = 0; i < 8; i++) this.spawnSideEnemy('drone', 'swarm', W + 10 + i * 14, y + ((i * 9) % 28) - 14);
         break;
       }
       case 'armoredPair':
-        for (let i = 0; i < 2; i++) this.spawnSideEnemy('armored', 'bomber', W + 16 + i * 50, randi(40, 150));
+        for (let i = 0; i < 2; i++) this.spawnSideEnemy('armored', 'bomber', W + 20 + i * 70, randi(40, 150));
         break;
       case 'sam': {
         const n = randi(2, 3);
-        for (let i = 0; i < n; i++) this.spawnSideEnemy('sam', 'ground', W + 10 + i * 36, SIDE_GROUND - 4);
+        for (let i = 0; i < n; i++) this.spawnSideEnemy('sam', 'ground', W + 14 + i * 40, SIDE_GROUND - 8);
         break;
       }
       case 'methyl':
@@ -135,7 +135,7 @@ Object.assign(Game, {
       case 'bomber':
         e.vx = -0.5;
         e.vy = Math.sin(e.st * 0.02) * 0.3;
-        if (e.st % 100 === 50 && e.x < W - 10) this.spreadShot(e.x - 8, e.y, 3, 0.25, 2);
+        if (e.st % 100 === 50 && e.x < W - 10) this.spreadShot(e.x - 14, e.y, 3, 0.25, 2);
         break;
       case 'ground':
         e.vx = this.scrollLock ? 0 : -1.5;   // moves with the ground
@@ -174,7 +174,7 @@ Object.assign(Game, {
       e.beamExt = T < 30 ? T / 30 : T < 150 ? 1 : Math.max(0, 1 - (T - 150) / 25);
       if (T < 150 && p.alive) e.y += clamp((p.y - e.y) * 0.02, -0.3, 0.3);   // slowly tracks you
       if (e.beamExt >= 1 && T < 150 && p.alive && p.invuln <= 0 && e.holding < 0) {
-        const x0 = e.x - 6;
+        const x0 = e.x - 16;
         if (p.x < x0 && Math.abs(p.y - e.y) < 3 + (x0 - p.x) * 0.28 - 2) this.silenceForm(e);
       }
       if (T >= 175) { e.phase = 'out'; e.beamExt = 0; }
