@@ -4,63 +4,65 @@
 //   approach: a vertical Galaga-style stage   assault: a side-scrolling stage that ends in a boss
 // The ship takes off from the carrier before each leg and lands on it after (carrier.js).
 // Clearing every planet in a sector pays a bonus and opens the sectors linked to it.
+// order 'vs' = vertical approach, then a side-scrolling assault that ends in the side boss (bosses.js).
+// order 'sv' = side-scrolling approach, then a vertical flyover of a capital ship (capital.js).
 
 // sky: side-mission background [far mountains, near hills, ground, ground stripes]
 // disc: planet colors [body, band] for the map and cutscenes
+// boss / capital: the sector's side boss and capital ship (a planet can override either)
 // swap: enemy types this sector swaps in, as [new type, chance]
 // sideKinds: extra side-mission patterns (side.js) added to the usual mix
 const SECTORS = [
   { id: 'sol', name: 'SOL', short: 'SOL', base: 'LUNA STATION', x: 30, y: 108, col: C.gold,
-    links: ['acen', 'barn'], boss: 'gunship', hull: -1, acetyl: 0, swap: {}, sideKinds: [],
+    links: ['acen', 'barn'], boss: 'bunker', capital: 'dreadnought', hull: -1, acetyl: 0, swap: {}, sideKinds: [],
     bonus: { money: 1000, xp: 150 },
     planets: [
       { id: 'earth', name: 'EARTH', sky: [C.navy, C.dgreen, C.brown, C.olive], disc: [C.blue, C.green] },
-      { id: 'mars', name: 'MARS', sky: [C.maroon, C.rust, C.darkred, C.orange], disc: [C.rust, C.orange] },
+      { id: 'mars', name: 'MARS', sky: [C.maroon, C.rust, C.darkred, C.orange], disc: [C.rust, C.orange], order: 'sv' },
       { id: 'venus', name: 'VENUS', sky: [C.olive, C.gold, C.brown, C.yellow], disc: [C.gold, C.cream],
         approach: 'challenge' },
     ] },
   { id: 'acen', name: 'ALPHA CENTAURI', short: 'ALPHA CEN', base: 'CENTAURI GATE', x: 92, y: 60, col: C.orange,
-    links: ['sol', 'sirius'], boss: 'copier', hull: 1, acetyl: 0,
+    links: ['sol', 'sirius'], boss: 'copier', capital: 'replicator', hull: 1, acetyl: 0,
     swap: { fighter: [['splitter', 0.35]] }, sideKinds: ['splitterLine', 'splitterLine'],
     bonus: { money: 1500, xp: 200 },
     planets: [
-      { id: 'proxima', name: 'PROXIMA B', sky: [C.darkred, C.maroon, C.brown, C.red], disc: [C.red, C.orange] },
+      { id: 'proxima', name: 'PROXIMA B', sky: [C.darkred, C.maroon, C.brown, C.red], disc: [C.red, C.orange], order: 'sv' },
       { id: 'toliman', name: 'TOLIMAN', sky: [C.teal, C.dgreen, C.olive, C.cyan], disc: [C.teal, C.cyan],
         approach: 'challenge' },
     ] },
   { id: 'barn', name: "BARNARD'S STAR", short: 'BARNARD', base: 'HIVEWATCH', x: 92, y: 156, col: C.red,
-    links: ['sol', 'tau'], boss: 'queen', hull: 2, acetyl: 0.1,
+    links: ['sol', 'tau'], boss: 'queen', capital: 'ark', hull: 2, acetyl: 0.1,
     swap: { fighter: [['drone', 0.5]] }, sideKinds: ['droneSwarm', 'droneSwarm'],
     bonus: { money: 1500, xp: 200 },
     planets: [
       { id: 'hive', name: 'BARNARD B', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.olive, C.gold] },
-      { id: 'nectar', name: 'NECTAR', sky: [C.olive, C.gold, C.brown, C.cream], disc: [C.gold, C.yellow] },
+      { id: 'nectar', name: 'NECTAR', sky: [C.olive, C.gold, C.brown, C.cream], disc: [C.gold, C.yellow], order: 'sv' },
     ] },
   { id: 'sirius', name: 'SIRIUS', short: 'SIRIUS', base: 'DOG STAR DOCK', x: 162, y: 60, col: C.ice,
-    links: ['acen', 'tau', 'eps'], boss: 'xinact', hull: 3, acetyl: 0.2,
+    links: ['acen', 'tau', 'eps'], boss: 'xinact', capital: 'barr', hull: 3, acetyl: 0.2,
     swap: {}, sideKinds: ['bomber', 'bomber'],
     bonus: { money: 2000, xp: 250 },
     planets: [
-      { id: 'agouti', name: 'AGOUTI PRIME', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.gold, C.brown] },
+      { id: 'agouti', name: 'AGOUTI PRIME', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.gold, C.brown], order: 'sv' },
       { id: 'calico', name: 'CALICO', sky: [C.gray, C.rust, C.brown, C.orange], disc: [C.orange, C.lgray],
         approach: 'challenge' },
     ] },
   { id: 'tau', name: 'TAU CETI', short: 'TAU CETI', base: 'CETI ANCHORAGE', x: 162, y: 156, col: C.yellow,
-    links: ['barn', 'sirius', 'eps'], boss: 'twins', hull: 3, acetyl: 0,
+    links: ['barn', 'sirius', 'eps'], boss: 'twins', capital: 'imprint', hull: 3, acetyl: 0,
     swap: { bomber: [['armored', 0.4]] }, sideKinds: ['armoredPair'],
     bonus: { money: 2000, xp: 250 },
     planets: [
       { id: 'taue', name: 'TAU CETI E', sky: [C.navy, C.blue, C.gray, C.lgray], disc: [C.lgray, C.sky] },
-      { id: 'tauf', name: 'TAU CETI F', sky: [C.navy, C.violet, C.purple, C.lavender], disc: [C.violet, C.lavender] },
+      { id: 'tauf', name: 'TAU CETI F', sky: [C.navy, C.violet, C.purple, C.lavender], disc: [C.violet, C.lavender], order: 'sv' },
     ] },
   { id: 'eps', name: 'EPSILON ERIDANI', short: 'EPS ERI', base: 'ERIDANI ROADS', x: 224, y: 108, col: C.pink,
-    links: ['sirius', 'tau'], boss: 'flagship', hull: -1, acetyl: 0.1,
+    links: ['sirius', 'tau'], boss: 'citadel', capital: 'nucleosome', hull: -1, acetyl: 0.1,
     swap: { fighter: [['splitter', 0.2], ['drone', 0.2]], bomber: [['armored', 0.3]] },
     sideKinds: ['splitterLine', 'droneSwarm', 'armoredPair'],
     bonus: { money: 3000, xp: 300 },
     planets: [
-      { id: 'aegir', name: 'AEGIR', sky: [C.purple, C.violet, C.navy, C.lavender], disc: [C.violet, C.pink],
-        approach: 'boss', boss: 'gunship2' },
+      { id: 'aegir', name: 'AEGIR', sky: [C.purple, C.violet, C.navy, C.lavender], disc: [C.violet, C.pink], order: 'sv' },
       { id: 'citadel', name: 'THE CITADEL', sky: [C.maroon, C.purple, C.black, C.magenta], disc: [C.magenta, C.purple] },
     ] },
 ];
@@ -78,6 +80,7 @@ Object.assign(Game, {
   planetDef() { return this.mission ? this.mission.planet : null; },
   planetSky() { const P = this.planetDef(); return P ? P.sky : SECTORS[0].planets[0].sky; },
   missionBoss() { const P = this.planetDef(); return (P && P.boss) || this.sectorDef().boss; },
+  missionCapital() { const P = this.planetDef(); return (P && P.capital) || this.sectorDef().capital; },
   sectorSideKinds() { return this.sectorDef().sideKinds; },
   isFinale() { const M = this.mission; return !!M && M.planet.id === 'citadel' && M.leg === 'assault'; },
 
@@ -205,7 +208,10 @@ Object.assign(Game, {
     M.leg = leg;
     this.inBase = false;
     this.stage = this.difficulty(leg);
-    this.setupStage(leg === 'approach' ? (M.planet.approach || 'normal') : 'side');
+    this.legBoss = leg === 'assault';
+    const vs = (M.planet.order || 'vs') === 'vs';
+    const type = leg === 'approach' ? (vs ? M.planet.approach || 'normal' : 'side') : (vs ? 'side' : 'capital');
+    this.setupStage(type);
     if (Sound.current !== Sound.SONGS.mission) Sound.playSong(Sound.SONGS.mission);   // keep the groove across legs
     this.startTakeoff();
     if (leg === 'assault') this.say('APPROACH CLEAR. REARMED AND REFUELED. NOW THE ASSAULT ON ' + M.planet.name + '.', 'mira');

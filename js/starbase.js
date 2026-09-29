@@ -30,10 +30,11 @@ Object.assign(Game, {
     if (U.page === 'missions') {
       return [...S.planets.map((P, i) => {
         const done = c.cleared[P.id];
-        const boss = BOSSES[P.boss || S.boss].name;
-        const extra = P.approach === 'challenge' ? 'BONUS APPROACH. ' : P.approach === 'boss' ? 'FORTRESS APPROACH. ' : '';
+        const flyover = P.order === 'sv';
+        const boss = flyover ? CAPITALS[P.capital || S.capital].name : BOSSES[P.boss || S.boss].name;
+        const how = flyover ? 'SIDE, THEN FLYOVER: ' : (P.approach === 'challenge' ? 'BONUS ' : '') + 'VERTICAL, THEN SIDE: ';
         return { label: P.name, right: done ? 'CLEAR' : 'NEW', col: done ? C.lime : C.gold,
-          act: () => this.startMission(i), info: extra + 'BOSS: ' + boss + (done ? '. HALF PAY.' : '.') };
+          act: () => this.startMission(i), info: how + boss + (done ? '. HALF PAY.' : '.') };
       }), back];
     }
     if (U.page === 'shop') {

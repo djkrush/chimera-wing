@@ -13,7 +13,7 @@ agouti mice, queen bees, X-inactivation, imprinting, Yamanaka's reprogramming an
 why that planet matters and what its boss is, and Voss answers. Along the way you learn why she's
 doing it, in the same order whichever route you fly.
 
-Beating Voss's flagship at **The Citadel** plays the epilogue. After that the **Echo campaign**
+Destroying Voss's base at **The Citadel** plays the epilogue. After that the **Echo campaign**
 begins: every sector opens again, harder, against the **Voss Echo**, with new science facts, and
 you keep your money, level, specials and ship.
 
@@ -30,23 +30,25 @@ SOL ──<                         │       >── EPSILON ERIDANI (Voss's Ci
 
 - At a starbase you pick a planet **mission**, visit the **shop**, check your **status**, or open
   the **galaxy map** to fly the carrier to another unlocked sector.
-- Every planet mission has two legs. You **take off from the carrier**, fly a vertical
-  **approach** (Galaga-style), **land back on the carrier**, then take off again for a
-  side-scrolling **assault** (U.N. Squadron-style) that ends with the sector's **boss**, and land.
+- Every planet mission has two legs. You **take off from the carrier**, fly the **approach**,
+  **land back on the carrier**, then take off again for the **assault**, which ends in a boss
+  fight, and land. A mission goes one of two ways (each sector has both):
+  - **Vertical approach, then side-scrolling assault** ending at the sector's **ground base**.
+  - **Side-scrolling approach, then a vertical capital-ship flyover** (see below).
 - Clearing every planet in a sector pays a bonus and **opens the sectors linked to it**.
   Epsilon Eridani opens once Sirius *or* Tau Ceti falls, so you choose your route.
 - If your ship goes down, the **mission fails** and the carrier brings you back to the starbase.
   You keep your money, XP and upgrades, and can try again.
 - The game **saves** every time the carrier docks. Pick **CONTINUE** on the title screen.
 
-| Sector | Signature enemy | Boss |
-|---|---|---|
-| SOL | – | Histone Gunship |
-| ALPHA CENTAURI | Splitters: break into two MiGs when shot (DNMT1 copying) | DNMT1 Copier: rebuilds one lost turret |
-| BARNARD'S STAR | Drone swarms | Hive Queen: shields herself while she launches drones |
-| SIRIUS | More gold (acetylated) planes | X-Inactivator: two cores, one shut off at random |
-| TAU CETI | Armored planes | Imprint Twins: only one turret is open at a time |
-| EPSILON ERIDANI | All of them | Nucleosome Fortress, Gunship Mk II, and Voss's Flagship |
+| Sector | Signature enemy | Ground base (side boss) | Capital ship (vertical boss) |
+|---|---|---|---|
+| SOL | – | Histone Bunker | Methyl Dreadnought |
+| ALPHA CENTAURI | Splitters: break into two MiGs when shot (DNMT1 copying) | DNMT1 Copier: rebuilds one lost turret | DNMT1 Replicator |
+| BARNARD'S STAR | Drone swarms | Hive Nest: core shields up while drones launch | Hive Ark: four drone hangars |
+| SIRIUS | More gold (acetylated) planes | X-Inactivator: two cores, one shut off at random | Barr Body |
+| TAU CETI | Armored planes | Imprint Keep: one turret open at a time | Imprint Cruiser |
+| EPSILON ERIDANI | All of them | Voss's Citadel (the finale) | Nucleosome Dreadnought |
 
 Some approaches are **challenging stages** (the planes don't shoot): hit all 40 for a bonus.
 
@@ -70,7 +72,7 @@ Some approaches are **challenging stages** (the planes don't shoot): hit all 40 
 No install or build step. Open `index.html` in Chrome, Edge or Firefox.
 
 - `index.html?stage=N` jumps straight into a mission leg for testing: planet `ceil(N/2)` in map order,
-  odd N = approach, even N = assault (e.g. 2 = Earth assault, 23 = the fortress at Aegir). Test runs don't save.
+  odd N = approach, even N = assault (e.g. 2 = Earth's base, 4 = the flyover at Mars). Test runs don't save.
 - `F` toggles fullscreen and `M` mutes the sound.
 
 ## Controls
@@ -131,11 +133,13 @@ upgrades add to them):
   adapts and takes half damage from it. Keep transforming.
 ## The two kinds of stage
 
-- **Approach** (Galaga-style, top-down, you fly up): 40 planes fly into formation and dive at you.
-  On a challenging stage they don't shoot. At Aegir the approach ends at the **Nucleosome
-  Fortress**: destroy both turrets to drop the shield on the histone core, then dodge its
-  silencing beam.
-- **Assault** (side-scrolling, U.N. Squadron-style): you face right and every form can fly anywhere
+- **Vertical** (Galaga-style, top-down, you fly up): 40 planes fly into formation and dive at you.
+  On a challenging stage they don't shoot.
+- **Capital-ship flyover** (vertical boss): a giant Star Destroyer-style ship scrolls beneath you.
+  Knock out its gun turrets, fighter hangars and histone reactor cores, and the fighters it
+  launches. If you reach the end of the ship with targets left, you come about and fly over it
+  again, and again, until every target is gone. The HUD shows the pass and the targets left.
+- **Side-scrolling** (U.N. Squadron-style): you face right and every form can fly anywhere
   on the left side of the screen. Every ship here, yours and the enemy's, is drawn in side profile.
   Enemies include:
   - MiG squadrons flying in lines or swooping at you
@@ -146,7 +150,10 @@ upgrades add to them):
     carrying your gene, that form stays silenced for the rest of the leg.
   - The sector's own enemies (see the table above)
 
-  Each assault ends with the sector's boss, a flying battleship seen side-on.
+  A side-scrolling assault ends at the sector's **ground base**. It rolls in along the ground and
+  the scroll stops. Destroy every turret, missile launcher, fighter hangar, radar dish and reactor
+  core on it to win. The core stays shielded while the turrets stand (each sector's base has its
+  own twist on this).
 
 ## Special weapons
 
@@ -168,11 +175,12 @@ rearms it with as many uses as your **Special** stat.
 ```
 index.html        page + canvas
 js/nes.js         NES palette, bitmap font, sprite baking, draw helpers
-js/sprites.js     all pixel art (hulls top-down + side profile, aircraft, portraits, boss hulls)
+js/sprites.js     all pixel art (hulls top-down + side profile, aircraft, portraits, boss bases)
 js/audio.js       chiptune synth (pulse/triangle/noise) + music sequencer + sound effects
 js/input.js       keyboard + gamepad (standard, generic, hat-switch) + remapping
 js/game.js        game states, Galaga stages, player, enemies, rendering
-js/bosses.js      data-driven bosses (turrets, cores, shields, beams)
+js/bosses.js      side-mission boss bases (turrets, hardpoints, cores, shields, beams)
+js/capital.js     vertical boss fights: capital-ship flyovers
 js/side.js        side-scrolling assaults: enemy script, behaviors, parallax background
 js/specials.js    hangar screen + special weapons
 js/pilots.js      pilot select, ship hulls, stats, shields

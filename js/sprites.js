@@ -547,93 +547,48 @@ const SPR = (() => {
     S(['..W..', '.WBW.', 'WWWWW', '..W..', '.W.W.'], { W: C.sky, B: C.white }),
   ];
 
-  // ---- Bosses: hulls drawn procedurally ---------------------------------------
-  // Fortress (vertical stages) is purple; the Histone Gunship (side missions) is military green.
-  const FORTRESS_PAL = { top: C.gray, body: C.violet, lines: C.navy, edge: C.lgray, under: C.lavender };
-  const GUNSHIP_PAL = { top: C.gray, body: C.green, lines: C.dgreen, edge: C.lgray, under: C.chartreuse };
+  // ---- Side-mission boss bases, drawn procedurally --------------------------------
   // Keyed by the `pal` field of BOSSES in bosses.js.
   const BOSS_PALS = {
-    fortress: FORTRESS_PAL,
-    gunship: GUNSHIP_PAL,
+    bunker: { top: C.gray, body: C.green, lines: C.dgreen, edge: C.lgray, under: C.chartreuse },
     copier: { top: C.gray, body: C.teal, lines: C.navy, edge: C.ice, under: C.cyan },
     queen: { top: C.olive, body: C.gold, lines: C.brown, edge: C.cream, under: C.yellow },
     xinact: { top: C.gray, body: C.rust, lines: C.maroon, edge: C.cream, under: C.orange },
     twins: { top: C.gray, body: C.blue, lines: C.navy, edge: C.lgray, under: C.periwinkle },
-    flagship: { top: C.lgray, body: C.purple, lines: C.black, edge: C.pink, under: C.magenta },
+    citadel: { top: C.lgray, body: C.purple, lines: C.black, edge: C.pink, under: C.magenta },
   };
-  function buildBossHull(pal) {
-    const w = 128, h = 48;
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const x = c.getContext('2d');
-    for (let py = 0; py < h; py++) {
-      for (let px = 0; px < w; px++) {
-        const dx = Math.abs(px - 63.5);
-        const notch = dx > 18 && Math.floor(dx / 10) % 2 ? 3 : 0;   // stepped trailing edge
-        const top = 4 + dx * 0.22 + notch;
-        const bot = 44 - dx * 0.42;
-        if (py < top || py > bot) continue;
-        let col;
-        if (py < top + 1 || py > bot - 1) col = pal.edge;
-        else if (py > bot - 3) col = pal.under;
-        else if (Math.round(dx) % 12 === 0 || py % 9 === 0) col = pal.lines;
-        else col = py < 18 ? pal.top : pal.body;
-        x.fillStyle = col;
-        x.fillRect(px, py, 1, 1);
-      }
-    }
-    // cockpit windows along the nose
-    x.fillStyle = C.yellow;
-    for (let i = -4; i <= 4; i++) if (i !== 0) x.fillRect(63 + i * 5, 34 - Math.abs(i), 2, 1);
-    // engine nozzles on the trailing edge
-    for (const ox of [-46, -30, 30, 46]) {
-      const dx = Math.abs(ox);
-      const top = Math.floor(4 + dx * 0.22 + (Math.floor(dx / 10) % 2 ? 3 : 0));
-      x.fillStyle = C.gray; x.fillRect(63 + ox - 2, top - 2, 5, 3);
-      x.fillStyle = C.black; x.fillRect(63 + ox - 1, top - 2, 3, 1);
-    }
-    return c;
-  }
 
-  // Side profile of a boss hull for side-scrolling missions: a flying battleship, nose LEFT.
-  // 128x56, centered like the top-down hull so part offsets stay simple.
-  function buildBossSideHull(pal) {
-    const w = 128, h = 56, cy = 28;
+  // Fortified ground base for side-mission bosses (bosses.js), 176 x 112, bottom row on the ground.
+  // A long bunker, a wall, a gun tower and the tall command tower (target spots in bosses.js).
+  function buildBaseHull(pal) {
+    const w = 176, h = 112;
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     const x = c.getContext('2d');
-    const half = px => px < 30 ? 2 + px * 0.4 : px < 110 ? 14 : 14 - (px - 110) * 0.25;
-    const put = (px, py, col) => { x.fillStyle = col; x.fillRect(px, py, 1, 1); };
-    for (let px = 0; px < w; px++) {
-      let top = Math.round(cy - half(px)), bot = Math.round(cy + half(px));
-      if (px >= 60 && px <= 96) top = 6;                    // bridge tower
-      if (px >= 36 && px <= 84) bot = Math.max(bot, 48 - Math.max(0, Math.abs(px - 60) - 18));   // keel pod
-      if (px >= 104 && px <= 124) {                          // tail fins
-        top = Math.min(top, 2 + Math.round((124 - px) * 0.4));
-        bot = Math.max(bot, 54 - Math.round((124 - px) * 0.4));
+    const put = (col, a, b, cw, ch) => { x.fillStyle = col; x.fillRect(a, b, cw, ch); };
+    const block = (bx, by, bw, bh) => {
+      put(pal.body, bx, by, bw, bh);
+      put(pal.top, bx, by, bw, 4);
+      for (let yy = by + 8; yy < by + bh; yy += 8) put(pal.lines, bx, yy, bw, 1);   // seams
+      put(pal.edge, bx, by, bw, 1); put(pal.edge, bx, by, 1, bh);                    // lit edges
+      put(pal.lines, bx + bw - 1, by, 1, bh);                                         // shaded edge
+      for (let yy = by + 5; yy < by + bh - 4; yy += 12) {                             // windows
+        for (let xx = bx + 5; xx < bx + bw - 4; xx += 8) put(C.yellow, xx, yy, 2, 2);
       }
-      for (let py = top; py <= bot; py++) {
-        let col;
-        if (py === top || py === bot) col = pal.edge;
-        else if (py > bot - 3) col = pal.under;
-        else if (px % 12 === 0 || py === cy) col = pal.lines;
-        else col = py < cy - 6 ? pal.top : pal.body;
-        put(px, py, col);
-      }
-    }
-    for (let px = 64; px <= 92; px += 4) put(px, 10, C.yellow);   // bridge windows
-    for (let px = 8; px <= 28; px += 5) put(px, cy - 2, C.yellow);   // nose windows
-    for (const ny of [cy - 7, cy + 6]) {                             // engine nozzles
-      x.fillStyle = C.gray; x.fillRect(124, ny - 1, 4, 3);
-      x.fillStyle = C.black; x.fillRect(127, ny, 1, 1);
-    }
+    };
+    block(0, 72, 176, 40);
+    block(70, 56, 50, 16);
+    block(40, 36, 30, 36);
+    block(120, 2, 30, 70);
+    for (let xx = 2; xx < 174; xx += 12) put(pal.top, xx, 69, 5, 3);                // bunker battlements
+    for (let xx = 0; xx < 176; xx += 8) put(pal.under, xx, 108, 4, 4);             // hazard stripes
+    put(C.gray, 146, 0, 1, 2);                                                       // antenna
     return c;
   }
 
   return {
     hulls,
     enemy, ebullet, missile, life, wing, wingSide, portrait, mira, pilots, shieldPip, shieldPipOff, tet, specialIcons,
-    bossHulls: Object.fromEntries(Object.entries(BOSS_PALS).map(([k, pal]) => [k, buildBossHull(pal)])),
-    bossSideHulls: Object.fromEntries(Object.entries(BOSS_PALS).map(([k, pal]) => [k, buildBossSideHull(pal)])),
+    baseHulls: Object.fromEntries(Object.entries(BOSS_PALS).map(([k, pal]) => [k, buildBaseHull(pal)])),
   };
 })();

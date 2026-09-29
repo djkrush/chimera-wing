@@ -146,7 +146,6 @@ const Sound = (() => {
     return { n, len: parseInt(l, 10) || 1 };
   });
 
-  const rep = (s, n) => Array(n).fill(s).join(' ');
   // ---- Trip II The Moon arrangements ----------------------------------------------------------
   // Built from an analysis of Acen's "Trip II The Moon" (1992): 104 BPM breakbeat, key of F# over an
   // F# drone, an offbeat arp riff on D -> C#, the epic F# -> E -> D -> E climb of the breakdowns,
@@ -213,39 +212,71 @@ const Sound = (() => {
     }),
   ]);
 
-  // Missions: the riff over breakbeats, the climb on a lighter groove with a riser, then the full drop.
-  const BREAK = ['K:1 H:1 R:1 H:1 S:1 H:1 K:1 G:1 H:1 K:1 H:1 R:1 S:1 H:1 G:1 H:1',
-                 'H:1 R:1 K:1 H:1 S:1 H:1 K:1 G:1 H:1 K:1 H:1 G:1 S:1 H:1 R:1 S:1'];
-  const FILL = 'K:1 H:1 R:1 H:1 S:1 H:1 K:1 G:1 S:1 G:1 S:1 S:1 S:1 S:1 S:1 S:1';
-  const LIGHT = 'K:1 R:1 H:1 R:1 S:1 R:1 H:1 R:1 K:1 R:1 H:1 K:1 S:1 R:1 H:1 R:1';
+  // Drums, one bar per call: each lane is 16 characters (k kick, s snare, g ghost, h hat, c crash, . rest).
+  const DRUM = { k: 'K', s: 'S', g: 'G', h: 'H', c: 'C' };
+  const beat = (...lanes) => Array.from({ length: 16 }, (_, t) => {
+    const hits = lanes.map(l => l[t]).filter(ch => ch !== '.').map(ch => DRUM[ch]);
+    return (hits.length ? hits.join('+') : 'R') + ':1';
+  }).join(' ');
+  const HATS = 'h.h.h.h.h.h.h.h.';
+  // The record's two-bar breakbeat, its busier drop variation and the sparse climb groove.
+  const RIFF = [beat('k....k....k...k.', '....s.......s...', HATS), beat('k.........k.....', '....s.......s..g', HATS)];
+  const DROP = [beat('k..k..k...k...k.', '....s.......s...', HATS), beat('k.k.......k..k..', '....s..g....s.g.', HATS)];
+  const CLIMB = [beat('k.........k.....', '....s.......s...'), beat('k.........k..k..', '....s.......s...')];
+  const FILL = beat('k.........k.....', '....s...s.ssssss');
+  const RISER = 'Z:12 S:1 S:1 S:1 S:1';
+  // Pick a section's drum bar: crash on bar 0, a fill (or riser) on its last bar, else alternate the two-bar loop.
+  const crash = bar => bar.replace(/^(\S+):1/, (m, n) => (n === 'R' ? 'C' : 'C+' + n) + ':1');
+  const groove = (loop, n, end = FILL) => b => b.i === n - 1 ? end : b.i === 0 ? crash(loop[0]) : loop[b.i % 2];
+  const shaker = secs => [{ type: 'drums', vol: 0.05 }, b => secs.includes(b.sec) && Array(16).fill('H:1').join(' ')];
+  const stationArp = secs => [{ type: 'pulse12', vol: 0.04, pluck: true },
+    (b, c) => secs.includes(b.sec) && [0, 1, 2, 3, 2, 1, 2, 3].map(k => c.arp[k] + ':2').join(' ')];
+
+  // Missions: the title and station material over the record's breakbeats, in the record's order:
+  // riff with drums, the climb (riser at its end), the drop, then the kaleidoscope section.
   const mission = arrange([
     ['riff', ['D', 'Cs', 'D', 'Cs', 'D', 'Cs', 'D', 'Cs']],
     ['climb', ['Fs', 'E', 'D', 'E', 'Fs', 'E', 'Daug', 'E']],
     ['drop', ['Fs', 'Cs', 'B', 'E', 'Fs', 'Cs', 'B', 'E']],
+    ['kaleido', ['Fs7', 'A', 'Dmaj7', 'E', 'Fs7', 'A', 'Daug', 'E']],
   ], [
-    [{ type: 'drums', vol: 0.15 }, b => {
-      if (b.sec === 'climb') return b.i === 0 ? 'C' + LIGHT.slice(1) : b.i === 7 ? 'Z:12 S:1 S:1 S:1 S:1' : LIGHT;
-      const beat = b.i % 4 === 3 ? FILL : BREAK[b.i % 2];
-      return b.i === 0 ? 'C+' + beat : beat;   // crash on each new section
-    }],
-    [{ type: 'triangle', vol: 0.34 }, (b, c) => {   // rolling sub bass
-      const r = c.b, o = up(r);
-      return b.sec === 'climb' ? `${r}:6 ${r}:2 ${o}:4 ${r}:4` : `${r}:3 ${r}:1 R:2 ${o}:2 ${r}:2 R:1 ${r}:1 ${o}:2 ${r}:2`;
-    }],
-    drone(['riff', 'climb']),
-    riffP(['riff']),
-    padP(['climb', 'drop'], 0.028),
+    [{ type: 'drums', vol: 0.16 }, b => ({ riff: groove(RIFF, 8), climb: groove(CLIMB, 8, RISER),
+      drop: groove(DROP, 8), kaleido: groove(CLIMB, 8) })[b.sec](b)],
+    shaker(['climb', 'kaleido']),
+    drone(['riff', 'climb', 'drop']),
+    padP(['riff', 'climb', 'drop', 'kaleido']),
+    riffP(['riff', 'drop']),
     shimmer(['climb'], 0.035),
-    // Hoover stabs in the drop: two detuned layers that glide up into each chord.
-    ...[-14, 14].map(d => [{ type: d < 0 ? 'pulse50' : 'pulse25', vol: 0.035, detune: d, bend: -5, gate: 0.8 },
-      (b, c) => b.sec === 'drop' && `R:2 ${c.stab}:2 R:2 ${c.stab}:1 R:1 R:2 ${c.stab}:3 R:1 ${c.stab}:2`]),
+    stationArp(['kaleido']),
+    [{ type: 'triangle', vol: 0.32 }, (b, c) => b.sec === 'drop' ? `${c.b}:6 ${c.b}:4 ${up(c.b)}:2 ${c.b}:4`
+      : b.sec === 'kaleido' ? `${c.b}:8 ${up(c.b)}:8` : `${c.b}:12 ${up(c.b)}:4`],
     leadP(0.1, {
-      riff: [null, null, null, null, 'A5:6 F#5:2 D6:8', 'C#6:6 G#5:2 F5:8', 'F#5:4 A5:4 D6:4 F#6:4', 'F6:8 C#6:8'],
-      drop: ['C#6:3 A#5:3 F#5:2 G#5:2 A#5:2 C#6:4', 'F5:3 G#5:3 C#6:4 D#6:2 F6:4',
-             'D#6:3 C#6:3 B5:2 A#5:2 B5:2 F#5:4', 'G#5:6 B5:2 E6:4 D#6:2 B5:2',
-             'A#5:3 C#6:3 F#6:4 F6:2 C#6:4', 'G#5:3 F5:3 C#5:4 F5:2 G#5:4',
-             'F#5:3 B5:3 D#6:4 C#6:2 B5:4', 'B5:4 G#5:2 E5:2 G#5:4 A#5:4'],
+      riff: [null, null, null, null, 'A5:6 F#5:2 D5:8', 'G#5:6 F5:2 C#5:8', 'A5:4 D6:4 C#6:4 A5:4', 'G#5:8 F5:8'],
+      climb: [null, null, null, null, 'C#6:8 A#5:8', 'B5:8 G#5:8', 'A#5:8 F#5:8', 'G#5:12 B5:4'],
+      drop: [null, null, null, null, 'C#6:8 A#5:8', 'G#5:8 F5:8', 'F#5:8 D#5:8', 'G#5:12 B5:4'],
     }),
+    [{ type: 'pulse12', vol: 0.06 }, b => b.sec === 'kaleido' && [   // the station's bells
+      'C#6:4 R:4 E6:4 R:4', 'E6:4 R:4 C#6:4 R:4', 'F#6:6 R:2 C#6:8', 'B5:8 G#5:8',
+      'F#6:4 R:4 E6:4 C#6:4', 'E6:8 C#6:8', 'A#5:4 R:4 F#5:8', 'G#5:12 R:4'][b.i]],
+  ]);
+
+  // Boss fights: everything at once at the record's 104 BPM. Busy drop breakbeat with 16th shakers,
+  // rolling 16th bass, pad plus detuned hoover stabs on every offbeat, the 16th arp and a driving lead
+  // over the dramatic D -> C# of the riff, then F# -> E -> D -> C#.
+  const boss = arrange([['boss', ['D', 'Cs', 'D', 'Cs', 'Fs', 'E', 'D', 'Cs']]], [
+    [{ type: 'drums', vol: 0.17 }, b => b.i === 7 ? FILL : b.i % 4 === 0 ? crash(DROP[0]) : DROP[b.i % 2]],
+    shaker(['boss']),
+    [{ type: 'triangle', vol: 0.34 }, (b, c) => [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1]
+      .map(k => (k ? up(c.b) : c.b) + ':1').join(' ')],
+    padP(['boss'], 0.03),
+    ...[-14, 14].map(d => [{ type: d < 0 ? 'pulse50' : 'pulse25', vol: 0.03, detune: d, bend: -5, gate: 0.8 },
+      (b, c) => `R:2 ${c.stab}:2 R:2 ${c.stab}:2 R:2 ${c.stab}:2 R:2 ${c.stab}:2`]),
+    shimmer(['boss'], 0.03),
+    leadP(0.1, { boss: [
+      'F#5:2 A5:2 D6:2 A5:1 F#5:1 E6:4 D6:2 A5:2', 'F5:2 G#5:2 C#6:2 G#5:1 F5:1 C#6:4 F6:4',
+      'A5:2 D6:2 F#6:2 E6:1 D6:1 C#6:2 D6:2 A5:4', 'G#5:3 F5:3 C#5:2 F5:2 G#5:2 C#6:4',
+      'C#6:3 A#5:3 F#5:2 A#5:2 C#6:2 F#6:4', 'B5:3 G#5:3 E5:2 G#5:2 B5:2 E6:4',
+      'A5:2 F#5:2 D5:2 F#5:2 A5:2 D6:2 F#6:4', 'F6:4 G#6:2 F6:2 C#6:4 G#5:2 F5:2'] }),
   ]);
 
   const SONGS = {
@@ -254,14 +285,7 @@ const Sound = (() => {
       { type: 'pulse25', vol: 0.18, notes: 'E5:2 G5:2 A5:2 E5:2 G5:2 A5:2 C6:4 B5:2 A5:2 G5:2 A5:8' },
       { type: 'triangle', vol: 0.3, notes: 'A2:4 A3:4 C3:4 C4:4 D3:4 E3:4 A2:6' },
     ] },
-    boss: { step: 0.085, loop: true, tracks: [
-      { type: 'pulse25', vol: 0.15, notes:
-        'E5:1 R:1 E5:1 F5:1 E5:2 B4:2 C5:1 R:1 C5:1 D5:1 C5:2 A4:2 ' +
-        'B4:1 R:1 B4:1 C5:1 D5:2 E5:2 F5:2 E5:2 D5:2 B4:2' },
-      { type: 'triangle', vol: 0.3, notes:
-        rep('E2:2 E3:2', 2) + ' ' + rep('A2:2 A3:2', 2) + ' ' + rep('G2:2 G3:2', 2) + ' ' + rep('B2:2 B3:2', 2) },
-      { type: 'drums', vol: 0.12, notes: rep('K:2 H:1 H:1 S:2 H:2', 4) },
-    ] },
+    boss,
     mission,
     base,   // starbase and galaxy map
     gameover: { step: 0.12, loop: false, tracks: [

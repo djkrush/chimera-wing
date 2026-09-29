@@ -1,7 +1,8 @@
 'use strict';
 // Side-scrolling assaults (the second leg of every planet mission), in the style of U.N. Squadron.
 // The ship faces right and flies freely. Enemy squads arrive on a timed script (with extra
-// patterns per sector), and the leg ends with the sector's boss (bosses.js) in side profile.
+// patterns per sector). An assault ends at the sector's boss base (bosses.js); a side approach
+// just ends when its script has played out.
 
 Object.assign(Game, {
   initSide() {
@@ -9,14 +10,15 @@ Object.assign(Game, {
     const s = this.stage;
     const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam', ...this.sectorSideKinds()];
     const events = [{ t: 700, kind: 'methyl' }, { t: 1700, kind: 'methyl' }];
-    const dur = 2400 + Math.min(s, 12) * 60;   // ~45-55 seconds before the boss
+    // ~45-55 seconds before the boss; a side approach (no boss) is a bit shorter
+    const dur = (this.legBoss ? 2400 : 1900) + Math.min(s, 12) * 60;
     for (let t = 90; t < dur; t += randi(80, 140) - Math.min(s * 3, 40)) {
       let kind = pick(kinds);
       if (kind === 'migRear' && s < 4) kind = 'migSwoop';   // no ambushes from behind in the first mission
       events.push({ t, kind });
     }
     events.sort((a, b) => a.t - b.t);
-    events.push({ t: dur + 150, kind: 'boss' });
+    if (this.legBoss) events.push({ t: dur + 150, kind: 'boss' });
     this.side = { events, i: 0, t: 0, warns: [] };
   },
 
@@ -77,9 +79,9 @@ Object.assign(Game, {
         break;
       case 'boss': {
         const id = this.missionBoss();
-        this.boss = this.makeBoss(true, id);
-        if (id === 'gunship') { this.say(VOSS.sideBoss); this.hint('gunship'); }
-        else this.say('BIG CONTACT AHEAD: THE ' + BOSSES[id].name + '!', 'mira');
+        this.boss = this.makeBoss(id);
+        if (id === 'bunker') this.say(VOSS.sideBoss);
+        else this.say('BASE AHEAD: THE ' + BOSSES[id].name + '!', 'mira');
         Sound.playSong(Sound.SONGS.boss);
         break;
       }
@@ -136,7 +138,7 @@ Object.assign(Game, {
         if (e.st % 100 === 50 && e.x < W - 10) this.spreadShot(e.x - 8, e.y, 3, 0.25, 2);
         break;
       case 'ground':
-        e.vx = -1.5;   // moves with the ground
+        e.vx = this.scrollLock ? 0 : -1.5;   // moves with the ground
         e.vy = 0;
         if (e.x < W - 8 && e.x > 30 && e.st % Math.max(70, 110 - this.stage * 4) === 0) this.enemyFire(e);
         break;

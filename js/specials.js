@@ -125,6 +125,7 @@ Object.assign(Game, {
     }
     const B = this.boss;
     if (B && !B.dying && !B.entering) for (const pt of B.parts) if (!pt.dead) this.damageBossPart(pt, 20, -1, pt.x, pt.y);
+    for (const q of this.capitalOnScreen()) this.damageCapTarget(q, 8, -1, q.x, q.y);
   },
 
   // Is (x, y) inside the Thunder Laser beam? r = target radius.
@@ -152,6 +153,7 @@ Object.assign(Game, {
     if (B && !B.dying && !B.entering) {
       for (const pt of B.parts) if (!pt.dead && this.inLaser(pt.x, pt.y, pt.r)) this.damageBossPart(pt, 1, -1, pt.x, pt.y);
     }
+    for (const q of this.capitalOnScreen()) if (this.inLaser(q.x, q.y, q.r)) this.damageCapTarget(q, 1, -1, q.x, q.y);
   },
 
   drawSpecialFx(ctx, layer) {

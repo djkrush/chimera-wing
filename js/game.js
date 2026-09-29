@@ -38,11 +38,11 @@ const ENEMY = {
 // Dr. Helena Voss: rogue epigeneticist. Her science is real; her ethics are not.
 // In-game radio lines. Stage briefings and the rest of the story live in story.js.
 const VOSS = {
-  sideBoss: 'MY HISTONE GUNSHIP. A HISTONE CORE, WRAPPED IN GUNS.',
+  sideBoss: 'MY HISTONE BUNKER. A HISTONE CORE, WRAPPED IN GUNS.',
   silence: ['METHYLATED! THAT GENE STAYS OFF.', 'A LITTLE CH3 ON YOUR PROMOTER. HUSH.', 'NO TRANSCRIPTION FOR YOU!'],
   restore: ['DEMETHYLATED?! THAT MARK WAS SUPPOSED TO BE PERMANENT!', 'TET ENZYMES? HOW... DULL.'],
   locked: 'GENOME FULLY SILENCED. GOODNIGHT, PILOT.',
-  bossShield: 'MY HISTONE CORE IS SHIELDED WHILE BOTH TURRETS STAND. GOOD LUCK.',
+  bossShield: 'MY HISTONE CORE IS SHIELDED WHILE MY TURRETS STAND. GOOD LUCK.',
   bossPhase2: 'MY HISTONE CORE IS EXPOSED... HOW RUDE.',
   bossDown: "A SETBACK! MARKS CAN BE REWRITTEN. I'LL BE BACK!",
   finalDown: "MY TRANSMITTER! MIRA, DON'T YOU DARE...",
@@ -163,6 +163,7 @@ const Game = {
   special: null, lastSpecial: 0, laser: null, crushT: 0,   // mission special weapon
   pickups: [], radioQ: [], hintsSeen: new Set(),           // TET capsules, queued radio, Mira's tips
   camp: null, mission: null, inBase: false, carrier: null, // campaign (campaign.js), carrier (carrier.js)
+  capital: null, legBoss: false, scrollLock: false,        // capital ship (capital.js); leg ends in a boss; base arrived
   wingT: 0, tetT: 0, lastBossName: '',
 
   init() {
@@ -182,7 +183,7 @@ const Game = {
     this.enemies = []; this.pBul = []; this.eBul = []; this.parts = []; this.pops = []; this.booms = [];
     this.boss = null; this.radio = null; this.radioQ = []; this.pickups = []; this.paused = false;
     this.stageType = 'normal'; this.special = null; this.laser = null; this.crushT = 0;
-    this.mission = null; this.carrier = null; this.inBase = false; this.wingT = 0; this.tetT = 0;
+    this.mission = null; this.carrier = null; this.capital = null; this.inBase = false; this.wingT = 0; this.tetT = 0;
     Sound.playSong(Sound.SONGS.title);
   },
 
@@ -201,7 +202,7 @@ const Game = {
 
   get isSide() { return this.stageType === 'side'; },
 
-  // Resets the playfield for one leg of a mission. type: normal | challenge | boss | side.
+  // Resets the playfield for one leg of a mission. type: normal | challenge | side | capital.
   setupStage(type) {
     this.stageType = type;
     this.enemies = []; this.eBul = []; this.pBul = [];
@@ -212,7 +213,7 @@ const Game = {
     this.formationReady = false;
     this.formation = { t: 0, ox: 0, spread: 1, bt: 0 };
     this.attackCd = 90;
-    this.boss = null; this.bossWin = false;
+    this.boss = null; this.capital = null; this.bossWin = false; this.scrollLock = false;
     this.stageHits = 0;
     this.adapt = this.nextAdapt;
     this.formKills = [0, 0, 0];
@@ -228,8 +229,8 @@ const Game = {
 
   beginPlay() {
     this.setState('play');
-    if (this.stageType === 'boss') {
-      this.boss = this.makeBoss(false, 'fortress');
+    if (this.stageType === 'capital') {
+      this.capital = this.makeCapital(this.missionCapital());
       Sound.playSong(Sound.SONGS.boss);
     }
   },
@@ -318,7 +319,7 @@ const Game = {
     if (this.paused) { this.updateGameMenu(); return; }
     const st = this.state;
     this.updateStars(st === 'intro' || st === 'hangar' || st === 'sortie' ? 3 : st === 'takeoff' || st === 'landing' ? 2 : 1);
-    if (this.isSide && !this.inMenu()) this.scroll += 1.5;
+    if (this.isSide && !this.inMenu() && !this.scrollLock) this.scroll += 1.5;   // a boss base stops the scroll
     if (this.radio && --this.radio.t <= 0) this.radio = this.radioQ.shift() || null;
     switch (this.state) {
       case 'title': this.updateTitle(); break;
@@ -467,6 +468,7 @@ const Game = {
     this.updatePlayer(true);
     this.updateEnemies();
     if (this.boss) this.updateBoss();
+    if (this.capital) this.updateCapital();
     this.updateBullets();
     this.updateSpecial();
     this.collide();
@@ -501,7 +503,14 @@ const Game = {
   },
 
   checkStageEnd() {
-    if (this.stageType === 'boss' || this.isSide) return;   // these end when their boss falls
+    if (this.stageType === 'capital') return;   // ends when the capital ship's last target falls
+    if (this.isSide) {                           // side approach: ends when its script has played out
+      if (this.legBoss || this.side.i < this.side.events.length || this.enemies.length) return;
+      this.nextAdapt = this.computeAdapt();
+      this.clearDelay = 90;
+      this.setState('clear');
+      return;
+    }
     if (this.waveI < this.waves.length || this.enemies.length) return;
     this.nextAdapt = this.computeAdapt();
     if (this.stageType === 'challenge') {
@@ -886,7 +895,7 @@ const Game = {
     if (Input.pressed('down')) dy++;
     if (this.isSide) {
       // Side missions: every form flies freely over the left part of the screen.
-      const maxX = this.boss ? Math.min(200, this.boss.x - 64) : 200;   // stay in front of the boss hull
+      const maxX = this.boss ? W - 10 : 200;   // at a boss base you can fly the whole screen
       p.x = clamp(p.x + dx * sp, 10, maxX);
       p.y = clamp(p.y + dy * sp, 18, SIDE_GROUND - 10);
     } else {
@@ -1010,23 +1019,33 @@ const Game = {
   },
 
   // ---- Bullets & collisions -------------------------------------------------------
+  // Can a homing missile chase this? Alive, on screen and hittable right now. Checked every frame,
+  // so a missile lets go of a target that dies, leaves, gets shielded or is removed.
+  targetable(o) {
+    if (o.dead || o.x < -8 || o.x > W + 8 || o.y < -8 || o.y > H + 8) return false;
+    if (this.enemies.includes(o)) return true;
+    const B = this.boss;
+    if (B && B.parts.includes(o)) return !B.dying && !B.entering && !o.shielded;
+    return this.capitalOnScreen().includes(o);
+  },
+
   findTarget(x, y) {
     let best = null, bd = Infinity;
     const side = this.isSide;
-    const consider = (o) => {
+    const all = [...this.enemies, ...(this.boss ? this.boss.parts : []), ...this.capitalOnScreen()];
+    for (const o of all) {
+      if (!this.targetable(o)) continue;
       const behind = side ? o.x < x : o.y > y;   // prefer targets in front of the missile
       const d = (o.x - x) ** 2 + (o.y - y) ** 2 + (behind ? 3 * (side ? (o.x - x) ** 2 : (o.y - y) ** 2) : 0);
       if (d < bd) { bd = d; best = o; }
-    };
-    for (const e of this.enemies) if (!e.dead && e.y > -8) consider(e);
-    if (this.boss && !this.boss.dying) for (const pt of this.boss.parts) if (!pt.dead && !pt.shielded) consider(pt);
+    }
     return best;
   },
 
   updateBullets() {
     for (const b of this.pBul) {
       if (b.kind === 'missile') {
-        if (!b.target || b.target.dead) b.target = this.findTarget(b.x, b.y);
+        if (!b.target || !this.targetable(b.target)) b.target = this.findTarget(b.x, b.y);
         if (b.target) b.hd += clamp(angDiff(b.hd, Math.atan2(b.target.y - b.y, b.target.x - b.x)), -0.12, 0.12);
         b.spd = Math.min(4.5, b.spd + 0.12);
         b.vx = Math.cos(b.hd) * b.spd;
@@ -1062,8 +1081,8 @@ const Game = {
           break;
         }
       }
-      if (!b.dead && this.boss) {
-        this.bossHitTest(b);
+      if (!b.dead && (this.boss || this.capital)) {
+        if (this.boss) this.bossHitTest(b); else this.capitalHitTest(b);
         if (b.dead && b.kind === 'cluster') this.burstCluster(b);
       }
     }
@@ -1146,6 +1165,7 @@ const Game = {
     const p = this.player;
     if (this.isSide) this.drawSideBG(ctx);
     if (this.carrier) this.drawCarrier(ctx);
+    if (this.capital) this.drawCapital(ctx);
     if (this.boss) this.drawBoss(ctx);
     for (const e of this.enemies) this.drawEnemy(ctx, e);
     this.drawPickups(ctx);
@@ -1180,6 +1200,7 @@ const Game = {
       case 'intro': this.drawIntro(ctx); break;
       case 'hangar': this.drawHangar(ctx); break;
       case 'takeoff': case 'landing': this.drawCarrierText(ctx); break;
+      case 'play': this.drawCapitalText(ctx); break;
       case 'clear':
         if (this.bossWin && this.stateT > 30) {
           NES.text(ctx, this.lastBossName, 128, 86, C.gold, { align: 'center', shadow: C.darkred });
@@ -1323,6 +1344,13 @@ const Game = {
       ctx.fillStyle = C.darkred; ctx.fillRect(40, 12, 160, 5);
       ctx.fillStyle = C.pink; ctx.fillRect(40, 12, Math.ceil(160 * cur / tot), 5);
     }
+    if (this.capital && !this.radio) {   // capital ship: targets left, and which pass this is
+      const K = this.capital, left = this.capitalLeft();
+      NES.text(ctx, 'PASS ' + K.pass, 4, 11, C.gold);
+      ctx.fillStyle = C.darkred; ctx.fillRect(56, 12, 144, 5);
+      ctx.fillStyle = C.pink; ctx.fillRect(56, 12, Math.ceil(144 * left / K.targets.length), 5);
+      NES.text(ctx, String(left), 252, 11, C.white, { align: 'right' });
+    }
   },
 
   drawPortrait(ctx, x, y, who) {
@@ -1346,7 +1374,7 @@ const Game = {
     const I = this.intro;
     const who = CAST[I.who];
     if (I.label) NES.text(ctx, I.label, 128, 22, C.white, { align: 'center', scale: 2, shadow: C.navy });
-    NES.text(ctx, I.title, 128, 42, this.stageType === 'boss' ? C.pink : C.aqua, { align: 'center' });
+    NES.text(ctx, I.title, 128, 42, C.aqua, { align: 'center' });
     if (this.adapt >= 0) {
       NES.text(ctx, 'ENEMY ADAPTED TO: ' + FORMS[this.adapt].name, 128, 58, C.red, { align: 'center' });
       NES.text(ctx, 'IT TAKES HALF DAMAGE. MIX IT UP!', 128, 68, C.orange, { align: 'center' });
