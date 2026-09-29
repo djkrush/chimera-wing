@@ -185,32 +185,9 @@ Object.assign(Game, {
     }
   },
 
-  // NES-style parallax: far mountains, near hills, and a striped ground strip.
-  // Colors come from the planet: [far mountains, near hills, ground, ground stripes].
+  // SNES parallax landscape (scenery.js), plus the incoming-enemy warnings.
   drawSideBG(ctx) {
-    const s = this.scroll;
-    const [far, near, ground, stripe] = this.planetSky();
-    ctx.fillStyle = far;
-    for (let x = 0; x < W; x += 2) {
-      const u = x + s * 0.25;
-      const h = Math.floor(150 + Math.sin(u * 0.031) * 12 + Math.sin(u * 0.013 + 1) * 18);
-      ctx.fillRect(x, h, 2, SIDE_GROUND - h);
-    }
-    ctx.fillStyle = near;
-    for (let x = 0; x < W; x += 2) {
-      const u = x + s * 0.6;
-      const h = Math.floor(184 + Math.sin(u * 0.05) * 7 + Math.sin(u * 0.021 + 2) * 9);
-      ctx.fillRect(x, h, 2, SIDE_GROUND - h);
-    }
-    ctx.fillStyle = ground;
-    ctx.fillRect(0, SIDE_GROUND, W, 230 - SIDE_GROUND);
-    ctx.fillStyle = stripe;
-    ctx.fillRect(0, SIDE_GROUND, W, 1);
-    const off = Math.floor(s) % 16;   // same speed as ground units
-    for (let x = -off; x < W; x += 16) {
-      ctx.fillRect(x, SIDE_GROUND + 7, 6, 1);
-      ctx.fillRect(x + 8, SIDE_GROUND + 15, 4, 1);
-    }
+    this.drawSideLayers(ctx);   // scenery.js
     if (this.side && (this.t >> 2) & 1) {
       for (const w of this.side.warns) NES.text(ctx, '!>', 4, w.y - 3, C.red);
     }

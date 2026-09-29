@@ -26,7 +26,7 @@ const FORMS = [
 ];
 
 const ENEMY = {
-  fighter: { name: 'MIG', hp: 1, pts: [50, 100], hit: 6 },
+  fighter: { name: 'MIG', hp: 1, pts: [50, 100], hit: 9 },
   bomber: { name: 'BOMBER', hp: 1, pts: [80, 160], hit: 7 },
   methyl: { name: 'METHYLATOR', hp: 2, pts: [150, 400], hit: 8 },
   sam: { name: 'SAM SITE', hp: 2, pts: [200, 200], hit: 7 },
@@ -536,8 +536,8 @@ const Game = {
   slotPos(slot) {
     const f = this.formation;
     return {
-      x: 128 + f.ox + (slot.c - 4.5) * 16 * f.spread,
-      y: 38 + slot.r * 15 * (1 + (f.spread - 1) * 0.6),
+      x: 128 + f.ox + (slot.c - 4.5) * 22 * f.spread,   // 10 columns of SNES-size planes fit 246px at full spread
+      y: 40 + slot.r * 19 * (1 + (f.spread - 1) * 0.6),
     };
   },
 
@@ -1148,22 +1148,22 @@ const Game = {
     const img = white ? set.white[form] : set.normal[form];
     NES.draw(ctx, img, x, y);
     if (!flame || morphT > 0 || form === 2) return;
-    ctx.fillStyle = (this.t >> 1) & 1 ? C.orange : C.yellow;
-    const len = 2 + ((this.t >> 2) & 1);
+    // Engine glow, blended additively. Flickers between two sizes.
+    const r = 2 + ((this.t >> 1) & 1);
     x = Math.round(x); y = Math.round(y);
-    if (side) {   // one exhaust out of the tail, on the fuselage line
-      const back = x - (img.width >> 1);
-      ctx.fillRect(back - len, y + (form === 0 ? 0 : -2), len, form === 0 ? 1 : 2);
-      return;
-    }
-    // exhaust rects as [dx, width] behind the ship
-    const jets = form === 0 ? [[-2, 1], [2, 1]] : [[-4, 2], [3, 2]];
-    for (const [dx, w] of jets) ctx.fillRect(x + dx, y + 8, w, len);
+    const jets = side ? [[-(img.width >> 1) - 1, form === 0 ? 0 : -2]]
+      : (form === 0 ? [-4, 4] : [-4, 3]).map(dx => [dx, (img.height >> 1) + 1]);
+    SNES.add(ctx, () => {
+      for (const [dx, dy] of jets) {
+        NES.draw(ctx, SNES.glow(r + 2, '#a04810'), x + dx, y + dy);
+        NES.draw(ctx, SNES.glow(r, '#f8c040'), x + dx, y + dy);
+      }
+    });
   },
 
   drawWorld(ctx) {
     const p = this.player;
-    if (this.isSide) this.drawSideBG(ctx);
+    if (this.isSide) this.drawSideBG(ctx); else this.drawTopBG(ctx);
     if (this.carrier) this.drawCarrier(ctx);
     if (this.capital) this.drawCapital(ctx);
     if (this.boss) this.drawBoss(ctx);
@@ -1172,12 +1172,13 @@ const Game = {
     this.drawSpecialFx(ctx, 'under');
     for (const b of this.pBul) {
       const bx = Math.round(b.x), by = Math.round(b.y);
-      if (b.kind === 'shot') {
+      if (b.kind === 'shot') {   // a glowing bolt: additive halo, then a hot core
         const horiz = Math.abs(b.vx) > Math.abs(b.vy);
+        SNES.add(ctx, () => NES.draw(ctx, SNES.glow(3, '#907020'), bx, by));
         ctx.fillStyle = C.yellow;
-        if (horiz) ctx.fillRect(bx - 2, by, 5, 1); else ctx.fillRect(bx, by - 2, 1, 5);
+        if (horiz) ctx.fillRect(bx - 3, by, 7, 1); else ctx.fillRect(bx, by - 3, 1, 7);
         ctx.fillStyle = C.white;
-        if (horiz) ctx.fillRect(bx + 2, by, 1, 1); else ctx.fillRect(bx, by - 2, 1, 1);
+        if (horiz) ctx.fillRect(bx + 1, by, 3, 1); else ctx.fillRect(bx, by - 3, 1, 3);
       } else if (b.kind === 'spread') {
         ctx.fillStyle = C.aqua; ctx.fillRect(bx - 1, by - 1, 2, 2);
       } else if (b.kind === 'cluster') {
@@ -1188,6 +1189,7 @@ const Game = {
         NES.drawRot(ctx, SPR.missile, b.x, b.y, b.hd + Math.PI / 2);
       }
     }
+    SNES.add(ctx, () => { for (const b of this.eBul) NES.draw(ctx, SNES.glow(4, (this.t >> 2) & 1 ? '#c01830' : '#a01050'), b.x, b.y); });
     for (const b of this.eBul) NES.draw(ctx, SPR.ebullet, b.x, b.y);
     if (p.alive && !p.hidden && (p.invuln <= 0 || (this.t >> 2) & 1)) this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide);
     if (p.alive && this.wingT > 0 && (this.wingT > 90 || (this.t >> 2) & 1)) this.drawWingman(ctx);
@@ -1290,8 +1292,9 @@ const Game = {
         continue;
       }
       const cols = q.cols || [C.darkred, C.red, C.orange, C.yellow, C.white];
-      ctx.fillStyle = cols[Math.min(cols.length - 1, Math.floor((q.life / q.max) * cols.length))];
-      ctx.fillRect(Math.round(q.x), Math.round(q.y), q.sz, q.sz);
+      const col = cols[Math.min(cols.length - 1, Math.floor((q.life / q.max) * cols.length))];
+      // explosions glow: each spark adds light, so dense bursts bloom toward white
+      SNES.add(ctx, () => NES.draw(ctx, SNES.glow(q.sz + 1, col), q.x, q.y));
     }
     for (const q of this.pops) NES.text(ctx, q.text, q.x, q.y, q.col, { align: 'center' });
   },

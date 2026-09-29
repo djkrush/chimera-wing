@@ -6,23 +6,39 @@ const SPR = (() => {
   const S = NES.sprite;
 
   // ---- Player: VX-3 Chimera in its three forms --------------------------------
-  const FIGHTER = [
-    '.......W.......',
-    '.......W.......',
-    '......WGW......',
-    '......WBW......',
-    '......WBW......',
-    '.....WWGWW.....',
-    '.....WWWWW.....',
-    '....GWWRWWG....',
-    '...GWWWWWWWG...',
-    '..GWWWWWWWWWG..',
-    '.GWWWWWWWWWWWG.',
-    'GRRWW.WWW.WWRRG',
-    '.....WWWWW.....',
-    '....RWW.WWR....',
-    '.....K...K.....',
-  ];
+  // Top-down art is written as the left half ending on the center column, then mirrored.
+  const FIGHTER = SNES.mirror([
+    '.............W',
+    '.............W',
+    '............WW',
+    '............WW',
+    '............WW',
+    '...........WWB',
+    '...........WBB',
+    '...........WBB',
+    '...........WBB',
+    '..........WWBB',
+    '..........WWWB',
+    '..........GWWW',
+    '.........KGWWW',
+    '.........KGWWW',
+    '........GKGWWW',
+    '.......GWKGWWW',
+    '......GWWKGWWR',
+    '.....GWWWKGWWR',
+    '....GWWWWKGWWR',
+    '...GWWWWWKGWWR',
+    '..GWWWWWWKGWWR',
+    '.GRRWWWWWKGWWR',
+    'GRRWWWWWWKGWWW',
+    'Gggggggg.KGWWW',
+    '.........KGGWW',
+    '......G..KKGWW',
+    '.....GWG.KKGWW',
+    '....GWWG.KKGWW',
+    '....GWG..KK.GW',
+    '..........K...',
+  ]);
   const GUARDIAN = [
     '.......W.......',
     '......WGW......',
@@ -60,14 +76,17 @@ const SPR = (() => {
   ];
   // Side profiles (side-scrolling missions). These point RIGHT and are drawn unrotated.
   const FIGHTER_SIDE = [
-    '..K.............',
-    '..KW............',
-    '..KWW.....BB....',
-    '.KWWWWWWWWBBWW..',
-    'KRWWWWWWWWWWWWWW',
-    '.KGGWWWWWWWWGG..',
-    '....GWWG........',
-    '.....GG.........',
+    '..GG..............................',
+    '..GWG.............................',
+    '..GWWG............BBB.............',
+    '..GWWWG.........BBBBBB............',
+    '.KKWWWWWWWWWWWWWWBBBBBWWW.........',
+    'KKKWWWWWWWWWWWWWWWWWWWWWWWWWWW....',
+    'KKKRRRRRRRRRRRRRRRRRRRRWWWWWWWWWWW',
+    '.KKWWWWWWWWWWWWWWWWWWWWWWWWWW.....',
+    '...GGGGWWWWWWWWWWWGGGG............',
+    '......gGGGGGGGGGGg................',
+    '........KKK.......................',
   ];
   const GUARDIAN_SIDE = [
     '..K.............',
@@ -194,29 +213,42 @@ const SPR = (() => {
   ];
   // How a form looks once Dr. Voss has methylated (silenced) it.
   const silencedMap = { W: C.pink, G: C.purple, B: C.lime, R: C.magenta, K: C.purple };
+  // SNES shading: every palette color becomes a 5-shade ramp (pure white is ramped from a cool gray,
+  // or it would have no room for highlights). E (engine glow) stays flat.
+  const ramps = pal => Object.fromEntries(Object.entries(pal).map(([k, col]) =>
+    [k, k === 'E' ? col : SNES.ramp(col === C.white ? '#c0c8d8' : col)]));
+  const B = (rows, pal) => SNES.bake(rows, ramps(pal));
+  const flash = rows => SNES.bake(rows, {}, { solid: C.white });
   const bakeForms = (list, pal) => ({
-    normal: list.map(r => S(r, pal)),
-    white: list.map(r => S(r, null, C.white)),
-    silenced: list.map(r => S(r, silencedMap)),
+    normal: list.map(r => B(r, pal)),
+    white: list.map(flash),
+    silenced: list.map(r => B(r, silencedMap)),
   });
   const hulls = HULL_ART.map(h => ({ top: bakeForms(h.top, h.pal), side: bakeForms(h.side, h.pal) }));
 
   // ---- Enemy aircraft --------------------------------------------------------
-  const MIG = [
-    '......R......',
-    '......L......',
-    '.....LDL.....',
-    '.....DCD.....',
-    '.....DDD.....',
-    '....LDDDL....',
-    '...LDDRDDL...',
-    '..LDDDDDDDL..',
-    '.LDDDDDDDDDL.',
-    'LDDD.DDD.DDDL',
-    '.....DDD.....',
-    '....LDEDL....',
-    '......E......',
-  ];
+  const MIG = SNES.mirror([
+    '..........R',
+    '..........L',
+    '.........LL',
+    '.........LC',
+    '.........LC',
+    '........DLL',
+    '........DLL',
+    '.......DDLL',
+    '......DLDLL',
+    '.....DLLDLL',
+    '....DLLLDLL',
+    '...DLLLLDLL',
+    '..DLLLLLDLL',
+    '.DLLLLLRDLL',
+    'DdddddddDLL',
+    '.......DDLL',
+    '.....D.DDDL',
+    '....DLD.DD.',
+    '....DD..EE.',
+    '........E..',
+  ]);
   const BOMBER = [
     '.......LL.......',
     '.......DD.......',
@@ -298,12 +330,15 @@ const SPR = (() => {
 
   // Side profiles for side-scrolling missions. These point LEFT (toward the player).
   const MIG_SIDE = [
-    '...........DL',
-    '...CC.....DDL',
-    '.LDCCDDDDDDD.',
-    'RDDDDDDDDDDDE',
-    '..LDDDDDDLL..',
-    '....DDD......',
+    '...................DD.....',
+    '..................DLD.....',
+    '.......CC........DLLD.....',
+    '.....CCCCC......DLLLD.....',
+    '..LLLLLLLLLLLLLLLLLLLLLLDE',
+    'RLLLLLLLLLLLLLLLLLLLLLLLDE',
+    '..DDDLLLLLLLLLLLLLLLLLLLDE',
+    '......DDDDDDRRDDDDDDDDD...',
+    '..........dddd............',
   ];
   const BOMBER_SIDE = [
     '..............D.',
@@ -361,12 +396,12 @@ const SPR = (() => {
     armored: { rows: ARMORED, side: ARMORED_SIDE, normal: { D: C.rust, L: C.cream, K: C.gray, C: C.sky, R: C.red } },
   };
   // Two frames each: engine exhaust alternates orange/yellow.
-  const frames = (rows, pal) => [S(rows, { ...pal, E: C.orange }), S(rows, { ...pal, E: C.yellow })];
+  const frames = (rows, pal) => [B(rows, { ...pal, E: C.orange }), B(rows, { ...pal, E: C.yellow })];
   const bakeEnemy = (rows, d) => ({
     normal: frames(rows, d.normal),
     acetyl: frames(rows, { ...d.normal, ...gold }),
     dmg: frames(rows, d.dmg || d.normal),
-    white: S(rows, null, C.white),
+    white: flash(rows),
   });
   const enemy = {};
   for (const [type, d] of Object.entries(ENEMY_DEFS)) {
