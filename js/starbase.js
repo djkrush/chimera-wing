@@ -107,29 +107,67 @@ Object.assign(Game, {
     const S = this.sectorDef(), t = this.t;
     ctx.save();
     ctx.translate(0, oy);
-    NES.disc(ctx, 228, 24, 9, S.col);                  // the sector's star
-    NES.disc(ctx, 226, 22, 4, C.white);
-    const hx = 84, hy = 62;
-    ctx.fillStyle = C.blue;                            // solar panels
-    for (const s of [-1, 1]) {
-      for (let k = 0; k < 3; k++) ctx.fillRect(hx + s * (48 + k * 9) - (s < 0 ? 8 : 0), hy - 20, 8, 12);
-      ctx.fillStyle = C.gray; ctx.fillRect(hx + (s < 0 ? -76 : 44), hy - 15, 32, 1); ctx.fillStyle = C.blue;
+    SNES.add(ctx, () => {                              // the sector's star: layered glow and a hot core
+      NES.draw(ctx, SNES.glow(28, SNES.mix(S.col, '#000000', 0.6)), 228, 24);
+      NES.draw(ctx, SNES.glow(14, S.col), 228, 24);
+    });
+    NES.draw(ctx, SNES.sphere(6, SNES.mix(S.col, '#ffffff', 0.6)), 228, 24);
+    const P = S.planets[0];                            // one of the sector's planets, turning slowly
+    SNES.add(ctx, () => NES.draw(ctx, SNES.glow(34, SNES.mix(this.scenery(P).haze, '#000000', 0.55)), 30, 104));
+    SNES.globe(ctx, this.scenery(P).floor, 30, 104, 28, t * 0.004);
+    const hx = 84, hy = 62, art = this.stationArt();
+    ctx.drawImage(art.back, hx - 82, hy - 32);         // panels, truss and the far half of the ring
+    NES.draw(ctx, SNES.sphere(12, '#98a0b0'), hx, hy);  // hub
+    ctx.fillStyle = '#58b8f0'; ctx.fillRect(hx - 6, hy - 2, 12, 2);
+    ctx.fillStyle = '#2060a0'; ctx.fillRect(hx - 6, hy, 12, 1);
+    ctx.drawImage(art.front, hx - 82, hy - 32);        // the near half of the ring and the docking arm
+    for (let k = 0; k < 4; k++) {                      // lights running round the near half of the ring
+      const a = ((t * 0.01 + k / 4) % 0.5) * TAU;
+      ctx.fillStyle = C.yellow; ctx.fillRect(Math.round(hx + Math.cos(a) * 42), Math.round(hy + Math.sin(a) * 11) - 1, 2, 1);
     }
-    for (let k = 0; k < 64; k++) {                     // habitat ring
-      const a = k / 64 * TAU;
-      ctx.fillStyle = k % 8 === (t >> 3) % 8 ? C.yellow : C.lgray;
-      ctx.fillRect(Math.round(hx + Math.cos(a) * 42), Math.round(hy + Math.sin(a) * 11), 2, 2);
-    }
-    ctx.fillStyle = C.gray;
-    ctx.fillRect(hx - 42, hy, 84, 1); ctx.fillRect(hx, hy - 11, 1, 22);   // spokes
-    NES.disc(ctx, hx, hy, 12, C.lgray);
-    NES.disc(ctx, hx, hy, 9, C.gray);
-    ctx.fillStyle = C.sky; ctx.fillRect(hx - 6, hy - 2, 12, 3);
     ctx.fillStyle = (t >> 4) & 1 ? C.red : C.darkred; ctx.fillRect(hx - 1, hy - 16, 2, 2);
-    ctx.fillStyle = C.gray; ctx.fillRect(hx + 12, hy + 14, 60, 3);    // docking arm
-    ctx.fillStyle = C.lgray; ctx.fillRect(hx + 12, hy + 14, 60, 1);
     this.drawCarrierSide(ctx, 176, 88, false);
     ctx.restore();
+  },
+
+  // The station, pre-rendered with SNES shading in two layers so the hub sits inside the ring.
+  stationArt() {
+    if (this.stationImg) return this.stationImg;
+    const steel = SNES.ramp('#8890a8'), cell = SNES.ramp('#2858c8');
+    const cx = 82, cy = 32;
+    const P = (g, col, x, y, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+    const ring = (g, front) => {
+      for (let k = 0; k < 512; k++) {
+        const a = k / 512 * TAU, s = Math.sin(a);
+        if ((s >= 0) !== front) continue;
+        const x = Math.round(cx + Math.cos(a) * 42), y = Math.round(cy + s * 11);
+        const r = front ? [steel[4], steel[3], steel[1]] : [steel[2], steel[1], steel[0]];
+        P(g, r[0], x, y - 1); P(g, r[1], x, y); P(g, r[2], x, y + 1);
+        if (front && k % 32 === 0) P(g, '#f8e070', x, y);   // windows
+      }
+    };
+    const back = SNES.layer(164, 56, g => {
+      for (const s of [-1, 1]) {
+        P(g, steel[3], cx + (s < 0 ? -76 : 44), cy - 15, 32, 1); P(g, steel[1], cx + (s < 0 ? -76 : 44), cy - 14, 32, 1);   // truss
+        for (let k = 0; k < 3; k++) {                   // solar panels: lit cells in a dark frame, with a glint
+          const px = cx + s * (48 + k * 9) - (s < 0 ? 8 : 0), py = cy - 20;
+          for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) {
+            const frame = x === 0 || y === 0 || x === 7 || y === 11 || y === 6 || x === 4;
+            P(g, frame ? steel[1] : (x + y) % 9 === 0 ? cell[4] : cell[y < 6 ? 3 : 2], px + x, py + y);
+          }
+        }
+      }
+      P(g, steel[1], cx - 42, cy, 84, 1); P(g, steel[1], cx, cy - 11, 1, 22);   // spokes
+      ring(g, false);
+      SNES.outline(g.canvas);
+    });
+    const front = SNES.layer(164, 56, g => {
+      ring(g, true);
+      P(g, steel[3], cx + 12, cy + 14, 60, 1); P(g, steel[2], cx + 12, cy + 15, 60, 1); P(g, steel[0], cx + 12, cy + 16, 60, 1);
+      for (let x = 20; x < 72; x += 10) P(g, steel[1], cx + x, cy + 14, 1, 3);   // docking arm struts
+      SNES.outline(g.canvas);
+    });
+    return (this.stationImg = { back, front });
   },
 
   drawBase(ctx) {
@@ -141,14 +179,14 @@ Object.assign(Game, {
     NES.text(ctx, c.money + ' CR', 10, 117, C.gold);
     NES.text(ctx, 'LV ' + c.level, 128, 117, C.lime, { align: 'center' });
     NES.text(ctx, PILOTS[c.pilot].name, 246, 117, PILOTS[c.pilot].col, { align: 'right' });
-    ctx.fillStyle = C.navy; ctx.fillRect(5, 126, 246, 1);
+    ctx.fillStyle = SNES.mix(S.col, C.black, 0.5); ctx.fillRect(7, 126, 242, 1);
     if (U.page === 'status') { this.drawStatus(ctx); return; }
     const title = { main: 'STARBASE', missions: 'MISSIONS', shop: 'SHOP' }[U.page];
     NES.text(ctx, title, 128, 130, C.gold, { align: 'center' });
     const step = items.length > 7 ? 9 : 11;
     items.forEach((it, i) => {
       const y = 142 + i * step, sel = i === U.sel;
-      if (sel) { ctx.fillStyle = C.navy; ctx.fillRect(10, y - 2, 236, step - 1); }
+      if (sel) NES.hilite(ctx, 10, y - 2, 236, step - 1);
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 12, y, C.gold);
       NES.text(ctx, it.label, 22, y, sel ? C.white : it.col === C.gray ? C.gray : C.lgray);
       if (it.right) NES.text(ctx, it.right, 242, y, it.col || C.white, { align: 'right' });
@@ -159,27 +197,23 @@ Object.assign(Game, {
 
   drawStatus(ctx) {
     const c = this.camp, pl = PILOTS[c.pilot];
-    ctx.fillStyle = C.navy; ctx.fillRect(10, 132, 26, 26);
-    ctx.drawImage(SPR.pilots[c.pilot], 11, 133);
-    this.drawShip(ctx, 0, 50, 145, 0, false, true);
-    NES.text(ctx, this.hullDef().name, 66, 136, C.white);
-    NES.text(ctx, 'SPEED ' + Math.round(this.speedMul() * 100) + '%', 66, 146, C.lgray);
-    this.drawXpBar(ctx, 10, 162);
+    this.drawFace(ctx, SPR.pilots[c.pilot], 8, 129, pl.col);
+    NES.text(ctx, this.hullDef().name, 56, 132, C.white);
+    NES.text(ctx, 'SPEED ' + Math.round(this.speedMul() * 100) + '%', 56, 142, C.lgray);
+    this.drawShip(ctx, 0, 226, 140, 0, false, true);
+    this.drawXpBar(ctx, 56, 153);
     const stats = [['WEAPONS', 'weapons', C.red], ['SHIELDS', 'shields', C.sky], ['SPECIAL', 'special', C.gold]];
     stats.forEach(([label, key, col], k) => {
-      const y = 175 + k * 10, v = this.statOf(key);
-      NES.text(ctx, label, 10, y, C.white);
-      for (let s = 0; s < STAT_CAP; s++) {
-        ctx.fillStyle = s < v ? col : C.navy;
-        ctx.fillRect(66 + s * 8, y, 7, 7);
-      }
-      NES.text(ctx, String(v), 170, y, C.white);
+      const y = 164 + k * 10, v = this.statOf(key);
+      NES.text(ctx, label, 56, y, C.white);
+      this.drawStatPips(ctx, 114, y, v, STAT_CAP, col);
+      NES.text(ctx, String(v), 216, y, C.white);
     });
-    NES.text(ctx, 'SPECIALS', 10, 207, C.gold);
-    if (!c.learned.length) NES.text(ctx, 'NONE YET. LEARN AT LV 2.', 80, 207, C.gray);
+    NES.text(ctx, 'SPECIALS', 10, 199, C.gold);
+    if (!c.learned.length) NES.text(ctx, 'NONE YET. LEARN AT LV 2.', 80, 199, C.gray);
     c.learned.forEach((idx, i) => {
-      NES.draw(ctx, SPR.specialIcons[idx], 84 + i * 50, 210);
-      NES.text(ctx, SPECIALS[idx].short, 92 + i * 50, 207, SPECIALS[idx].color);
+      NES.draw(ctx, SPR.specialIcons[idx], 84 + i * 50, 202);
+      NES.text(ctx, SPECIALS[idx].short, 92 + i * 50, 199, SPECIALS[idx].color);
     });
     if ((this.t >> 4) & 1) NES.text(ctx, 'B: BACK', 246, 224, C.gray, { align: 'right' });
   },
@@ -211,12 +245,13 @@ Object.assign(Game, {
 
   drawLearn(ctx) {
     const center = { align: 'center' }, L = this.learnable();
+    NES.box(ctx, 2, 2, 252, 236, C.black, C.lime);
     NES.text(ctx, 'LEVEL ' + this.camp.level + '!', 128, 20, C.lime, { align: 'center', scale: 2, shadow: C.dgreen });
     NES.text(ctx, 'LEARN A NEW SPECIAL ATTACK', 128, 44, C.white, center);
     NES.text(ctx, 'YOU KEEP IT FOR GOOD.', 128, 54, C.lgray, center);
     L.forEach((idx, i) => {
       const s = SPECIALS[idx], y = 74 + i * 16, sel = i === this.learnSel;
-      if (sel) { ctx.fillStyle = C.navy; ctx.fillRect(22, y - 4, 212, 15); }
+      if (sel) NES.hilite(ctx, 22, y - 4, 212, 15);
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 24, y, C.gold);
       NES.draw(ctx, SPR.specialIcons[idx], 40, y + 3);
       NES.text(ctx, s.name, 52, y, sel ? s.color : C.gray);

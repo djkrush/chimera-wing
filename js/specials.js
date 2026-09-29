@@ -206,7 +206,7 @@ Object.assign(Game, {
     L.forEach((idx, i) => {
       const s = SPECIALS[idx], y = 80 + i * 17;
       const sel = i === this.hangarSel;
-      if (sel) { ctx.fillStyle = C.navy; ctx.fillRect(22, y - 4, 212, 15); }
+      if (sel) NES.hilite(ctx, 22, y - 4, 212, 15);
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 24, y, C.gold);
       NES.draw(ctx, SPR.specialIcons[idx], 40, y + 3);
       NES.text(ctx, s.name, 52, y, sel ? C.white : C.gray);

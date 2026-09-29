@@ -300,6 +300,7 @@ const Game = {
 
   updateStars(speed) {
     const sideways = (this.isSide && !this.inMenu()) || this.state === 'sortie';
+    this.nebY = (this.nebY || 0) + speed * 0.08;   // the nebula (scenery.js) drifts slower than the stars
     for (const s of this.stars) {
       if (sideways) {
         s.x -= s.s * speed;
@@ -1135,12 +1136,6 @@ const Game = {
     }
   },
 
-  drawStars(ctx) {
-    for (const s of this.stars) {
-      if ((this.t + s.ph) % 60 < 48) { ctx.fillStyle = s.c; ctx.fillRect(s.x | 0, s.y | 0, 1, 1); }
-    }
-  },
-
   // side = true draws the side profile, facing right (side-scrolling missions).
   drawShip(ctx, form, x, y, morphT, flame, side = false, hull = this.camp ? this.camp.hull : 0) {
     const set = SPR.hulls[hull][side ? 'side' : 'top'];
@@ -1299,8 +1294,18 @@ const Game = {
     for (const q of this.pops) NES.text(ctx, q.text, q.x, q.y, q.col, { align: 'center' });
   },
 
+  // A framed gauge: dark socket, then a fill with a lit top and a shadowed bottom.
+  drawBar(ctx, x, y, w, h, frac, col, back = '#200818') {
+    ctx.fillStyle = '#000010'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+    ctx.fillStyle = back; ctx.fillRect(x, y, w, h);
+    const fw = Math.max(0, Math.min(w, Math.ceil(w * frac)));
+    if (fw) SNES.bands(ctx, y, y + h, [SNES.mix(col, '#ffffff', 0.55), col, SNES.mix(col, '#000000', 0.4)], x, fw);
+  },
+
   drawHUD(ctx) {
     const p = this.player;
+    // see-through backing behind the HUD rows (color math), so the readouts float over the playfield
+    SNES.half(ctx, () => { ctx.fillStyle = '#000010'; ctx.fillRect(0, 0, W, 10); ctx.fillRect(0, 229, W, 11); }, 0.6);
     NES.text(ctx, '1UP', 4, 1, C.red);
     NES.text(ctx, pad6(this.score), 32, 1, C.white);
     NES.text(ctx, 'HI', 164, 1, C.red);
@@ -1329,7 +1334,7 @@ const Game = {
       if (p.silenced[f]) col = C.magenta;
       else if (f === 2 && p.battCd > 0) col = C.orange;
       else if (cur) col = C.white;
-      if (cur) { ctx.fillStyle = C.navy; ctx.fillRect(x - 2, y - 1, 25, 9); }
+      if (cur) NES.hilite(ctx, x - 3, y - 2, 27, 11);
       NES.text(ctx, FORMS[f].short, x, y, col);
       if (p.silenced[f]) { ctx.fillStyle = C.magenta; ctx.fillRect(x - 1, y + 3, 23, 1); }
       if (f === 2 && p.battCd > 0 && !p.silenced[f]) {
@@ -1344,33 +1349,45 @@ const Game = {
       const tot = B.parts.reduce((s, q) => s + q.max, 0);
       const cur = B.parts.reduce((s, q) => s + Math.max(0, q.hp), 0);
       NES.text(ctx, this.villain() === 'echo' ? 'ECHO' : 'VOSS', 4, 11, CAST[this.villain()].col);
-      ctx.fillStyle = C.darkred; ctx.fillRect(40, 12, 160, 5);
-      ctx.fillStyle = C.pink; ctx.fillRect(40, 12, Math.ceil(160 * cur / tot), 5);
+      this.drawBar(ctx, 40, 12, 160, 5, cur / tot, C.pink);
     }
     if (this.capital && !this.radio) {   // capital ship: targets left, and which pass this is
       const K = this.capital, left = this.capitalLeft();
       NES.text(ctx, 'PASS ' + K.pass, 4, 11, C.gold);
-      ctx.fillStyle = C.darkred; ctx.fillRect(56, 12, 144, 5);
-      ctx.fillStyle = C.pink; ctx.fillRect(56, 12, Math.ceil(144 * left / K.targets.length), 5);
+      this.drawBar(ctx, 56, 12, 144, 5, left / K.targets.length, C.pink);
       NES.text(ctx, String(left), 252, 11, C.white, { align: 'right' });
     }
   },
 
+  // A 41 x 46 SNES portrait frame: beveled border in the speaker's color, a dark gradient behind the face.
+  drawFace(ctx, img, x, y, col) {
+    NES.box(ctx, x, y, 41, 46, SNES.mix(col, '#000000', 0.72), col);
+    ctx.drawImage(img, x + 2, y + 2);
+  },
+
   drawPortrait(ctx, x, y, who) {
-    ctx.fillStyle = who === 'mira' ? C.dgreen : C.navy;
-    ctx.fillRect(x, y, 26, 26);
-    ctx.drawImage(CAST[who].portrait(), x + 1, y + 1);
+    this.drawFace(ctx, CAST[who].portrait(), x, y, CAST[who].col);
     if (who === 'echo' && (this.t >> 2) & 1) {   // the Echo is a broadcast: add scanlines
       ctx.fillStyle = C.black;
-      for (let j = 2; j < 26; j += 3) ctx.fillRect(x + 1, y + j, 24, 1);
+      for (let j = 4; j < 43; j += 3) ctx.fillRect(x + 3, y + j, 35, 1);
+    }
+  },
+
+  // Stat pips as little shaded gems (lit top, dark bottom); empty ones are dark sockets.
+  drawStatPips(ctx, x, y, v, max, col) {
+    for (let s = 0; s < max; s++) {
+      const px = x + s * 8;
+      ctx.fillStyle = '#000010'; ctx.fillRect(px, y, 7, 7);
+      if (s < v) SNES.bands(ctx, y + 1, y + 6, [SNES.mix(col, '#ffffff', 0.5), col, SNES.mix(col, '#000000', 0.45)], px + 1, 5);
+      else { ctx.fillStyle = '#182040'; ctx.fillRect(px + 1, y + 1, 5, 5); }
     }
   },
 
   drawRadio(ctx) {
     const r = this.radio;
-    NES.box(ctx, 2, 10, 252, 30, C.black, CAST[r.who].col);
-    this.drawPortrait(ctx, 4, 12, r.who);
-    r.lines.forEach((l, i) => NES.text(ctx, l, 34, 13 + i * 9, C.white));
+    NES.box(ctx, 2, 10, 252, 52, C.black, CAST[r.who].col);   // below the HUD's top row
+    this.drawPortrait(ctx, 5, 13, r.who);
+    r.lines.forEach((l, i) => NES.text(ctx, l, 50, 21 + i * 11, C.white));
   },
 
   drawIntro(ctx) {
@@ -1385,12 +1402,12 @@ const Game = {
     // Dialogue box sits above the player's ship so it stays visible during the intro.
     const by = 90;
     NES.box(ctx, 4, by, 248, 84, C.black, who.col);
-    this.drawPortrait(ctx, 10, by + 6, I.who);
-    NES.text(ctx, who.name, 42, by + 6, who.col);
+    this.drawPortrait(ctx, 7, by + 5, I.who);
+    NES.text(ctx, who.name, 51, by + 7, who.col);
     let left = I.full ? Infinity : Math.floor(I.t / 1.5);
     I.lines.forEach((l, i) => {
       if (left <= 0) return;
-      NES.text(ctx, l.slice(0, left), 42, by + 20 + i * 10, C.white);
+      NES.text(ctx, l.slice(0, left), 51, by + 20 + i * 10, C.white);
       left -= l.length;
     });
     if (I.pages.length > 1) NES.text(ctx, (I.page + 1) + '/' + I.pages.length, 10, by + 74, C.gray);
@@ -1402,6 +1419,7 @@ const Game = {
 
   drawResult(ctx) {
     const perfect = this.stageHits >= 40;
+    if (this.stateT > 20) NES.box(ctx, 44, 56, 168, 70, C.black, C.sky);
     if (this.stateT > 20) NES.text(ctx, 'NUMBER OF HITS', 60, 88, C.aqua);
     if (this.stateT > 50) NES.text(ctx, String(this.stageHits), 196, 88, C.white, { align: 'right' });
     if (this.stateT > 90) {
@@ -1418,6 +1436,7 @@ const Game = {
   drawGameOver(ctx) {
     NES.text(ctx, 'MISSION FAILED', 128, 60, C.red, { align: 'center', scale: 2, shadow: C.darkred });
     if (this.stateT > 60) {
+      NES.box(ctx, 30, 82, 196, 62, C.black, C.red);
       const ratio = this.shots ? (this.hitsTotal / this.shots * 100).toFixed(1) : '0.0';
       NES.text(ctx, '- RESULTS -', 128, 90, C.red, { align: 'center' });
       NES.text(ctx, 'SHOTS FIRED', 40, 106, C.gold);
@@ -1429,62 +1448,102 @@ const Game = {
     }
     if (this.stateT > 90) {
       const who = CAST[this.villain()];
-      NES.box(ctx, 4, 170, 248, 36, C.black, who.col);
-      this.drawPortrait(ctx, 10, 175, this.villain());
-      NES.text(ctx, who.name, 42, 175, who.col);
-      NES.wrap(VOSS.gameover, 25).forEach((l, i) => NES.text(ctx, l, 42, 187 + i * 9, C.white));
+      NES.box(ctx, 4, 160, 248, 54, C.black, who.col);
+      this.drawPortrait(ctx, 7, 164, this.villain());
+      NES.text(ctx, who.name, 52, 167, who.col);
+      NES.wrap(VOSS.gameover, 25).forEach((l, i) => NES.text(ctx, l, 52, 180 + i * 10, C.white));
     }
   },
 
   // ---- Menus -----------------------------------------------------------------------
+  // A DNA double helix: shaded backbone beads (the near strand brighter), base pairs in four colors,
+  // and methyl marks (magenta) sitting on some of the C bases.
   drawHelix(ctx, x, phase) {
-    for (let y = 12; y < 228; y++) {
-      const s = Math.sin((y + phase) * 0.08) * 6;
-      if (y % 2 === 0) {
-        ctx.fillStyle = C.teal; ctx.fillRect(Math.round(x + s), y, 1, 1);
-        ctx.fillStyle = C.dgreen; ctx.fillRect(Math.round(x - s), y, 1, 1);
+    const BASES = [['#e83838', '#f8d040'], ['#3868f0', '#40c858'], ['#f8d040', '#e83838'], ['#40c858', '#3868f0']];
+    for (let y = 14; y < 226; y += 2) {
+      const a = (y + phase) * 0.08, s = Math.sin(a) * 6, front = Math.cos(a) > 0;
+      if (y % 8 === 0) {   // a base pair between the strands
+        const l = Math.round(Math.min(x + s, x - s)), r = Math.round(Math.max(x + s, x - s)), m = (l + r) >> 1;
+        const [c1, c2] = BASES[((y + phase * 0) >> 3) % 4];
+        ctx.fillStyle = SNES.mix(c1, '#000000', 0.3); ctx.fillRect(l, y, m - l, 1);
+        ctx.fillStyle = SNES.mix(c2, '#000000', 0.3); ctx.fillRect(m, y, r - m, 1);
+        if ((y >> 3) % 5 === 2) { ctx.fillStyle = C.magenta; ctx.fillRect(m - 1, y - 2, 2, 2); }   // CH3
       }
-      if (y % 8 === 0) {
-        ctx.fillStyle = C.gray;
-        const a = Math.round(Math.min(x + s, x - s)), b = Math.round(Math.max(x + s, x - s));
-        ctx.fillRect(a, y, b - a, 1);
-      }
+      NES.draw(ctx, SNES.sphere(1, front ? '#40d8c8' : '#207060'), x + s, y);
+      NES.draw(ctx, SNES.sphere(1, front ? '#206050' : '#40b880'), x - s, y);
     }
+  },
+
+  // The title logo, pre-rendered in chrome (a bright band across the middle row) over a blue extrusion.
+  titleLogo() {
+    if (this.logoImg) return this.logoImg;
+    const chrome = ['#fff8e0', '#f8d860', '#f0a828', '#fff4c8', '#e87018', '#b83010', '#701808'];
+    this.logoImg = SNES.layer(256, 66, g => {
+      for (const [txt, y] of [['CHIMERA', 4], ['WING', 34]]) {
+        for (let d = 3; d >= 1; d--) NES.text(g, txt, 128 + d, y + d, '#2040a0', { scale: 3, align: 'center' });
+        NES.text(g, txt, 128, y, C.gold, { scale: 3, align: 'center', rows: chrome });
+      }
+    });
+    return this.logoImg;
   },
 
   drawTitle(ctx) {
     const t = this.t;
+    // Earth rising at the bottom: a rotating globe with a glowing rim of atmosphere (additive).
+    const cx = 128, cy = 376, r = 186;
+    SNES.add(ctx, () => {
+      const glowCols = ['#081430', '#102858', '#1c4490', '#3068d0'];
+      for (let x = 0; x < W; x++) {
+        const top = cy - Math.sqrt(Math.max(0, r * r - (x - cx) * (x - cx)));
+        glowCols.forEach((col, i) => { ctx.fillStyle = col; ctx.fillRect(x, Math.round(top) - 8 + i * 2, 1, 2); });
+      }
+    });
+    SNES.globe(ctx, this.scenery(SECTORS[0].planets[0]).floor, cx, cy, r, t * 0.0015);
     this.drawHelix(ctx, 12, t * 0.5);
     this.drawHelix(ctx, W - 13, t * 0.5 + 40);
-    const logo = [C.yellow, C.yellow, C.gold, C.gold, C.orange, C.rust, C.red];
-    NES.text(ctx, 'CHIMERA', 128, 18, C.gold, { scale: 3, align: 'center', rows: logo, shadow: C.navy });
-    NES.text(ctx, 'WING', 128, 44, C.gold, { scale: 3, align: 'center', rows: logo, shadow: C.navy });
-    NES.text(ctx, 'THE EPIGENOME WAR', 128, 72, C.aqua, { align: 'center' });
+
+    // logo, with a glint sweeping across it every few seconds
+    const logo = this.titleLogo();
+    ctx.drawImage(logo, 0, 14);
+    const gx = (t % 240) * 3 - 60;
+    if (gx < 300) {
+      const g = this.glintCanvas || (this.glintCanvas = SNES.layer(256, 66, () => {}));
+      const gc = g.getContext('2d');
+      gc.globalCompositeOperation = 'source-over'; gc.clearRect(0, 0, 256, 66); gc.drawImage(logo, 0, 0);
+      gc.globalCompositeOperation = 'source-atop'; gc.fillStyle = '#ffffff';
+      gc.beginPath(); gc.moveTo(gx, 0); gc.lineTo(gx + 10, 0); gc.lineTo(gx - 12, 66); gc.lineTo(gx - 22, 66); gc.fill();
+      SNES.add(ctx, () => ctx.drawImage(g, 0, 14));
+    }
+    NES.text(ctx, 'THE EPIGENOME WAR', 128, 84, C.aqua, { align: 'center' });
 
     // ship demo: cycles through all three forms
     const cyc = t % 100;
     const form = Math.floor(t / 100) % 3;
     const morph = cyc < 14 ? 14 - cyc : 0;
-    this.drawShip(ctx, form, 128, 98, morph, true);
-    NES.text(ctx, FORMS[form].name, 128, 112, C.lgray, { align: 'center' });
+    this.drawShip(ctx, form, 128, 112, morph, true);
+    NES.text(ctx, FORMS[form].name, 128, 130, C.lgray, { align: 'center' });
 
-    this.titleItems().forEach((m, i) => {
-      const y = 128 + i * 12;
-      NES.text(ctx, m, 84, y, i === this.menu ? C.white : C.gray);
-      if (i === this.menu) NES.draw(ctx, SPR.life, 72, y + 3);
+    const items = this.titleItems();
+    NES.box(ctx, 44, 139, 168, items.length * 12 + 8, C.black, C.sky);   // fits CONTROLLER SETUP
+    items.forEach((m, i) => {
+      const y = 144 + i * 12;
+      if (i === this.menu) { NES.hilite(ctx, 48, y - 2, 160, 11); NES.draw(ctx, SPR.life, 60, y + 3); }
+      NES.text(ctx, m, 72, y, i === this.menu ? C.white : C.lgray);
     });
 
-    NES.text(ctx, 'HI-SCORE ' + pad6(this.hi), 128, 180, C.red, { align: 'center' });
+    NES.text(ctx, 'HI-SCORE ' + pad6(this.hi), 128, 199, C.red, { align: 'center' });
     const pad = Input.padName();
-    if (pad) NES.text(ctx, ('PAD: ' + pad).slice(0, 28), 128, 196, C.lime, { align: 'center' });
-    else NES.text(ctx, 'PAD: PRESS ANY BUTTON', 128, 196, C.gray, { align: 'center' });
-    if (Sound.locked && (t >> 5) & 1) NES.text(ctx, 'PRESS A KEY FOR SOUND', 128, 208, C.gray, { align: 'center' });
-    NES.text(ctx, 'Z FIRE  C SPECIAL  X MORPH', 128, 224, C.lgray, { align: 'center' });
+    if (Sound.locked && (t >> 5) & 1) NES.text(ctx, 'PRESS A KEY FOR SOUND', 128, 210, C.white, { align: 'center' });
+    else if (pad) NES.text(ctx, ('PAD: ' + pad).slice(0, 28), 128, 210, C.lime, { align: 'center' });
+    else NES.text(ctx, 'PAD: PRESS ANY BUTTON', 128, 210, C.lgray, { align: 'center' });
+    NES.text(ctx, 'Z FIRE  C SPECIAL  X MORPH', 128, 225, C.white, { align: 'center' });
   },
 
   drawHowto(ctx) {
-    const T = (s, x, y, c = C.white, o) => NES.text(ctx, s, x, y, c, o);
+    // lines up to 31 characters: a full-screen window, with the left margin pulled in to fit
+    const T = (s, x, y, c = C.white, o) => NES.text(ctx, s, x === 8 ? 5 : x === 16 ? 13 : x, y, c, o);
     const pg = this.howPage;
+    NES.box(ctx, 0, 0, 256, 240, C.black, C.gold);
     if (pg === 0) {
       T('MISSION BRIEFING', 128, 10, C.gold, { align: 'center' });
       ['DR. HELENA VOSS, A ROGUE', 'EPIGENETICIST, HAS TAKEN OVER',
@@ -1560,6 +1619,7 @@ const Game = {
 
   drawSetup(ctx) {
     const S = this.setup;
+    NES.box(ctx, 2, 2, 252, 236, C.black, C.sky);
     NES.text(ctx, 'CONTROLLER SETUP', 128, 14, C.gold, { align: 'center' });
     const pad = Input.padName();
     if (!pad) {

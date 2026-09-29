@@ -42,21 +42,24 @@ const SNES = (() => {
   // Bake ASCII rows into a shaded sprite. `mats` maps a letter to a 5-shade ramp (auto-lit) or to a
   // single color (flat, e.g. glows). Lowercase letters use the same material in shadow (panel lines).
   // Each material region is beveled on its own, lit from the top-left, then the whole sprite gets a
-  // dark outline. opt: { solid: color (flash silhouette), outline: false, light: [dx, dy] }.
+  // dark outline. opt: { solid: color (flash silhouette), outline: false, light: [dx, dy],
+  // volume: true (shade the whole silhouette as one rounded form: faces, where beveling every
+  // feature separately would ring the eyes and mouth with dark pixels) }.
   function bake(rows, mats, opt = {}) {
     const h = rows.length, w = Math.max(...rows.map(r => r.length)), pad = opt.outline === false ? 0 : 1;
     const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? '.' : rows[y][x] || '.');
     const matOf = ch => (ch === '.' || ch === ' ' ? null : ch.toUpperCase());
+    const region = opt.volume ? ch => (matOf(ch) ? 'X' : null) : matOf;   // what counts as "the same surface"
     // distance (in pixels, capped) from each pixel to the edge of its own material region
     const dist = new Float32Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const m = matOf(at(x, y));
+      const m = region(at(x, y));
       if (!m) continue;
       let d = 4;
       for (let r = 1; r < 4 && d === 4; r++) {
         for (let k = -r; k <= r && d === 4; k++) {
-          if (matOf(at(x + k, y - r)) !== m || matOf(at(x + k, y + r)) !== m ||
-              matOf(at(x - r, y + k)) !== m || matOf(at(x + r, y + k)) !== m) d = r;
+          if (region(at(x + k, y - r)) !== m || region(at(x + k, y + r)) !== m ||
+              region(at(x - r, y + k)) !== m || region(at(x + r, y + k)) !== m) d = r;
         }
       }
       dist[y * w + x] = d;
@@ -74,8 +77,8 @@ const SNES = (() => {
       const mat = mats[m];
       if (!mat) continue;
       if (typeof mat === 'string') { put(x, y, mat); continue; }
-      if (ch !== m) { put(x, y, mat[1]); continue; }   // lowercase = shadowed panel line
-      const same = (dx, dy) => (matOf(at(x + dx, y + dy)) === m ? D(x + dx, y + dy) : 0);
+      if (ch !== m) { put(x, y, mat[opt.volume ? 2 : 1]); continue; }   // lowercase = shadowed panel line (softer on faces)
+      const surf = region(ch), same = (dx, dy) => (region(at(x + dx, y + dy)) === surf ? D(x + dx, y + dy) : 0);
       const nx = same(-1, 0) - same(1, 0), ny = same(0, -1) - same(0, 1);
       const len = Math.hypot(nx, ny);
       const lit = len ? (nx * -lx + ny * -ly) / len : 0;
@@ -83,23 +86,29 @@ const SNES = (() => {
       const idx = lit > 0.5 && d <= 1 ? 4 : lit > 0.1 ? 3 : lit < -0.45 ? 1 : d >= 3 ? 3 : 2;
       put(x, y, mat[idx]);
     }
-    if (pad && !opt.solid) {   // dark outline around the silhouette, tinted by the neighboring material
-      const img = g.getImageData(0, 0, c.width, c.height), px = img.data, W2 = c.width;
-      const alpha = (x, y) => (x < 0 || y < 0 || x >= W2 || y >= c.height ? 0 : px[(y * W2 + x) * 4 + 3]);
-      const out = [];
-      for (let y = 0; y < c.height; y++) for (let x = 0; x < W2; x++) {
-        if (alpha(x, y)) continue;
-        const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => alpha(x + dx, y + dy));
-        if (!n) continue;
-        const i = ((y + n[1]) * W2 + x + n[0]) * 4;
-        out.push([x, y, rgb(px[i] * 0.22, px[i + 1] * 0.2, px[i + 2] * 0.3 + 12)]);
-      }
-      for (const [x, y, col] of out) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
-    } else if (pad && opt.solid) {
+    if (pad && !opt.solid) outline(c);
+    else if (pad && opt.solid) {
       g.globalCompositeOperation = 'destination-over';
       g.fillStyle = opt.solid;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.drawImage(c, dx, dy);
     }
+    return c;
+  }
+
+  // Dark outline around everything opaque on a canvas, tinted by the neighboring color. Leave a 1px
+  // transparent margin for it. Used by bake() and by procedurally drawn art (carrier, station).
+  function outline(c) {
+    const g = c.getContext('2d'), img = g.getImageData(0, 0, c.width, c.height), px = img.data, W2 = c.width;
+    const alpha = (x, y) => (x < 0 || y < 0 || x >= W2 || y >= c.height ? 0 : px[(y * W2 + x) * 4 + 3]);
+    const out = [];
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < W2; x++) {
+      if (alpha(x, y)) continue;
+      const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].find(([dx, dy]) => alpha(x + dx, y + dy));
+      if (!n) continue;
+      const i = ((y + n[1]) * W2 + x + n[0]) * 4;
+      out.push([x, y, rgb(px[i] * 0.22, px[i + 1] * 0.2, px[i + 2] * 0.3 + 12)]);
+    }
+    for (const [x, y, col] of out) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
     return c;
   }
 
@@ -120,6 +129,59 @@ const SNES = (() => {
     }
     glowCache.set(key, c);
     return c;
+  }
+
+  // A shaded ball lit from the top-left, in the five shades of `color`'s ramp (banded, not smooth).
+  const sphereCache = new Map();
+  function sphere(r, color) {
+    const key = r + color;
+    if (sphereCache.has(key)) return sphereCache.get(key);
+    const R = ramp(color), c = document.createElement('canvas');
+    c.width = c.height = r * 2 + 1;
+    const g = c.getContext('2d');
+    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+      const d2 = (x * x + y * y) / (r * r);
+      if (d2 > 1) continue;
+      const lit = (-x * 0.55 - y * 0.6) / r + Math.sqrt(1 - d2) * 0.58;
+      g.fillStyle = R[lit > 0.95 ? 4 : lit > 0.6 ? 3 : lit > 0.25 ? 2 : lit > -0.1 ? 1 : 0];
+      g.fillRect(x + r, y + r, 1, 1);
+    }
+    sphereCache.set(key, c);
+    return c;
+  }
+
+  // A rotating planet: the Mode 7 texture wrapped onto a sphere, with banded day/night shading.
+  // Only the part on screen is computed, so a huge globe rising from the bottom stays cheap.
+  const gl = { canvas: null };
+  function globe(ctx, tex, cx, cy, r, rot) {
+    const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(NES.W, Math.ceil(cx + r + 1));
+    const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(NES.H, Math.ceil(cy + r + 1));
+    if (x1 <= x0 || y1 <= y0) return;
+    const w = x1 - x0, h = y1 - y0;
+    if (!gl.canvas || gl.canvas.width < w || gl.canvas.height < h) {
+      gl.canvas = document.createElement('canvas');
+      gl.canvas.width = NES.W; gl.canvas.height = NES.H;
+      gl.ctx = gl.canvas.getContext('2d');
+    }
+    const img = gl.ctx.createImageData(w, h), buf = new Uint32Array(img.data.buffer);
+    const px = tex.px, size = tex.size, TAU = Math.PI * 2;
+    for (let y = 0; y < h; y++) {
+      const dy = (y + y0 - cy) / r;
+      for (let x = 0; x < w; x++) {
+        const dx = (x + x0 - cx) / r, d2 = dx * dx + dy * dy;
+        if (d2 > 1) continue;
+        const nz = Math.sqrt(1 - d2);
+        const u = (((Math.atan2(dx, nz) + rot) / TAU) % 1 + 1) % 1, v = Math.asin(dy) / Math.PI + 0.5;
+        const c = px[Math.min(size - 1, (v * size) | 0) * size + ((u * size) | 0)];
+        const lit = -dx * 0.55 - dy * 0.45 + nz * 0.7;
+        const k = lit > 0.7 ? 1.5 : lit > 0.35 ? 1.25 : lit > 0.05 ? 0.95 : lit > -0.25 ? 0.55 : 0.25;
+        const R = Math.min(255, (c & 255) * k), G = Math.min(255, ((c >> 8) & 255) * k), B = Math.min(255, ((c >> 16) & 255) * k);
+        buf[y * w + x] = 0xff000000 | (B << 16) | (G << 8) | R;
+      }
+    }
+    gl.ctx.clearRect(0, 0, w, h);
+    gl.ctx.putImageData(img, 0, 0);
+    ctx.drawImage(gl.canvas, 0, 0, w, h, x0, y0, w, h);
   }
 
   // ---- Drawing ----------------------------------------------------------------------------------
@@ -226,5 +288,5 @@ const SNES = (() => {
     ctx.drawImage(m7.canvas, 0, top, W0, rows, 0, top, W0, rows);
   }
 
-  return { rgb, mix, ramp, mirror, bake, glow, drawRot, add, half, bands, layer, scrollX, scrollY, texture, mode7 };
+  return { rgb, mix, ramp, mirror, bake, outline, glow, sphere, globe, drawRot, add, half, bands, layer, scrollX, scrollY, texture, mode7 };
 })();

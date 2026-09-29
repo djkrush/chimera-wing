@@ -45,18 +45,28 @@ const NES = (() => {
     '[': [0x0E, 0x08, 0x08, 0x08, 0x08, 0x08, 0x0E], ']': [0x0E, 0x02, 0x02, 0x02, 0x02, 0x02, 0x0E],
   };
 
+  // SNES-style glyphs: each row shaded (light top, dark bottom) and a dark outline all round, so text
+  // reads on any background. The glyph canvas is 7x9 (the 5x7 letter plus the outline); the advance
+  // stays 8px so layouts don't change. `rows` gives each of the 7 rows its own color (logos).
   const glyphCache = new Map();
-  function glyph(ch, color) {
-    const key = ch + color;
+  function glyph(ch, color, rows) {
+    const key = ch + (rows ? rows.join() : color);
     if (glyphCache.has(key)) return glyphCache.get(key);
-    const rows = FONT[ch];
+    const bits = FONT[ch];
     let g = null;
-    if (rows) {
+    if (bits) {
+      const shade = rows || [0.45, 0.2, 0, 0, 0, -0.18, -0.34].map(k =>
+        k > 0 ? SNES.mix(color, '#ffffff', k) : k < 0 ? SNES.mix(color, '#000000', -k) : color);
       g = document.createElement('canvas');
-      g.width = 5; g.height = 7;
+      g.width = 7; g.height = 9;
       const x = g.getContext('2d');
-      x.fillStyle = color;
-      rows.forEach((bits, r) => { for (let c = 0; c < 5; c++) if (bits & (16 >> c)) x.fillRect(c, r, 1, 1); });
+      const on = (c, r) => r >= 0 && r < 7 && c >= 0 && c < 5 && (bits[r] & (16 >> c));
+      x.fillStyle = '#000010';
+      for (let r = -1; r <= 7; r++) for (let c = -1; c <= 5; c++) {
+        if (on(c, r)) continue;
+        if (on(c - 1, r) || on(c + 1, r) || on(c, r - 1) || on(c, r + 1) || on(c - 1, r - 1)) x.fillRect(c + 1, r + 1, 1, 1);
+      }
+      bits.forEach((b, r) => { x.fillStyle = shade[r]; for (let c = 0; c < 5; c++) if (b & (16 >> c)) x.fillRect(c + 1, r + 1, 1, 1); });
     }
     glyphCache.set(key, g);
     return g;
@@ -68,20 +78,12 @@ const NES = (() => {
     for (let i = 0; i < str.length; i++) {
       const ch = str[i];
       if (ch === ' ') continue;
-      const dx = x + i * 8 * scale;
-      if (rows) {
-        for (let r = 0; r < 7; r++) {
-          const g = glyph(ch, rows[r]);
-          if (g) ctx.drawImage(g, 0, r, 5, 1, dx, y + r * scale, 5 * scale, scale);
-        }
-      } else {
-        const g = glyph(ch, color);
-        if (g) ctx.drawImage(g, dx, y, 5 * scale, 7 * scale);
-      }
+      const g = glyph(ch, color, rows);
+      if (g) ctx.drawImage(g, x + i * 8 * scale - scale, y - scale, 7 * scale, 9 * scale);
     }
   }
 
-  // opt: { scale, align: 'center'|'right', rows: [7 colors for a vertical gradient], shadow: color }
+  // opt: { scale, align: 'center'|'right', rows: [7 row colors] (default: shaded; chrome at scale 2+), shadow: color }
   function text(ctx, str, x, y, color = C.white, opt = {}) {
     str = String(str).toUpperCase();
     const scale = opt.scale || 1;
@@ -89,7 +91,7 @@ const NES = (() => {
     else if (opt.align === 'right') x -= textWidth(str, scale);
     x = Math.round(x); y = Math.round(y);
     if (opt.shadow) run(ctx, str, x + scale, y + scale, opt.shadow, scale, null);
-    run(ctx, str, x, y, color, scale, opt.rows);
+    run(ctx, str, x, y, color, scale, opt.rows || (scale >= 2 ? chrome(color) : null));   // big titles are chrome
   }
 
   // Bake a sprite from rows of characters. '.' is transparent; other chars look up `map`.
@@ -147,9 +149,28 @@ const NES = (() => {
     }
   }
 
+  // SNES window: a vertical gradient panel (black asks for the classic deep-blue RPG window) inside a
+  // rounded, beveled frame in the border color: light top-left edge, darker bottom-right, dark outline.
   function box(ctx, x, y, w, h, fill = C.black, border = C.white) {
-    ctx.fillStyle = border; ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = fill; ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+    const stops = fill === C.black ? ['#182c70', '#0c1848', '#050a24']
+      : [SNES.mix(fill, '#ffffff', 0.18), fill, SNES.mix(fill, '#000000', 0.45)];
+    const hi = SNES.mix(border, '#ffffff', 0.45), lo = SNES.mix(border, '#000000', 0.35);
+    const r = (col, a, b, cw, ch) => { ctx.fillStyle = col; ctx.fillRect(a, b, cw, ch); };
+    r('#000010', x + 1, y, w - 2, h); r('#000010', x, y + 1, w, h - 2);        // outline, corners cut
+    r(lo, x + 1, y + 1, w - 2, h - 2);
+    r(hi, x + 2, y + 1, w - 4, 1); r(hi, x + 1, y + 2, 1, h - 4);              // lit edges
+    r(border, x + 2, y + 2, w - 4, h - 4);
+    SNES.bands(ctx, y + 3, y + h - 3, stops, x + 3, w - 6);
+  }
+
+  // Chrome rows for big titles (pass as `rows`): bright top, a light band across the middle, dark base.
+  const chrome = col => [SNES.mix(col, '#ffffff', 0.8), SNES.mix(col, '#ffffff', 0.45), col,
+    SNES.mix(col, '#ffffff', 0.6), SNES.mix(col, '#000000', 0.1), SNES.mix(col, '#000000', 0.35), SNES.mix(col, '#000000', 0.55)];
+
+  // Highlight bar behind a selected menu line: a blue gradient with a bright top edge.
+  function hilite(ctx, x, y, w, h, col = '#2850c8') {
+    SNES.bands(ctx, y, y + h, [SNES.mix(col, '#ffffff', 0.25), col, SNES.mix(col, '#000000', 0.5)], x, w);
+    ctx.fillStyle = SNES.mix(col, '#ffffff', 0.55); ctx.fillRect(x + 1, y, w - 2, 1);
   }
 
   function wrap(str, n) {
@@ -163,5 +184,5 @@ const NES = (() => {
     return lines;
   }
 
-  return { W, H, C, text, textWidth, sprite, draw, drawRot, drawFlip, disc, box, wrap };
+  return { W, H, C, text, textWidth, sprite, draw, drawRot, drawFlip, disc, box, hilite, chrome, wrap };
 })();

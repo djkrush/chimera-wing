@@ -78,23 +78,18 @@ Object.assign(Game, {
     const stats = [['WEAPONS', 'weapons', C.red], ['SHIELDS', 'shields', C.sky], ['SPECIAL', 'special', C.gold]];
     PILOTS.forEach((pl, i) => {
       const y = 26 + i * 64, sel = i === this.pilotSel;
-      NES.box(ctx, 8, y, 240, 58, sel ? C.navy : C.black, sel ? pl.col : C.gray);
-      ctx.fillStyle = sel ? C.black : C.navy;
-      ctx.fillRect(16, y + 8, 26, 26);
-      ctx.drawImage(SPR.pilots[i], 17, y + 9);
-      if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 18, y + 40, C.gold);
-      NES.text(ctx, pl.name, 50, y + 5, sel ? pl.col : C.lgray);
-      NES.text(ctx, pl.tag, 240, y + 5, sel ? C.white : C.gray, { align: 'right' });
+      NES.box(ctx, 8, y, 240, 58, sel ? '#203890' : C.black, sel ? pl.col : C.gray);
+      this.drawFace(ctx, SPR.pilots[i], 12, y + 6, sel ? pl.col : C.gray);
+      if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 2, y + 25, C.gold);
+      NES.text(ctx, pl.name, 56, y + 6, sel ? pl.col : C.lgray);
+      NES.text(ctx, pl.tag, 240, y + 6, sel ? C.white : C.gray, { align: 'right' });
       stats.forEach(([label, key, col], k) => {
         const sy = y + 17 + k * 9, v = pl[key];
-        NES.text(ctx, label, 50, sy, sel ? C.white : C.gray);
-        for (let s = 0; s < STAT_MAX; s++) {
-          ctx.fillStyle = s < v ? (sel ? col : C.lgray) : C.black;
-          ctx.fillRect(108 + s * 8, sy, 7, 7);
-        }
-        NES.text(ctx, String(v), 178, sy, sel ? C.white : C.gray);
+        NES.text(ctx, label, 56, sy, sel ? C.white : C.gray);
+        this.drawStatPips(ctx, 114, sy, v, STAT_MAX, sel ? col : C.lgray);
+        NES.text(ctx, String(v), 184, sy, sel ? C.white : C.gray);
       });
-      NES.text(ctx, pl.perk, 50, y + 45, sel ? C.aqua : C.gray);
+      NES.text(ctx, pl.perk, 56, y + 46, sel ? C.aqua : C.gray);
     });
     if ((this.t >> 4) & 1) NES.text(ctx, 'UP/DOWN: CHOOSE   A: FLY', 128, 222, C.white, center);
     NES.text(ctx, 'B: BACK', 128, 231, C.gray, center);

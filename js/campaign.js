@@ -9,6 +9,7 @@
 
 // sky: side-mission background [far mountains, near hills, ground, ground stripes]
 // disc: planet colors [body, band] for the map and cutscenes
+// terrain: scenery style (scenery.js): ocean, desert, clouds, hive, fields, ice or tech
 // boss / capital: the sector's side boss and capital ship (a planet can override either)
 // swap: enemy types this sector swaps in, as [new type, chance]
 // sideKinds: extra side-mission patterns (side.js) added to the usual mix
@@ -17,9 +18,9 @@ const SECTORS = [
     links: ['acen', 'barn'], boss: 'bunker', capital: 'dreadnought', hull: -1, acetyl: 0, swap: {}, sideKinds: [],
     bonus: { money: 1000, xp: 150 },
     planets: [
-      { id: 'earth', name: 'EARTH', sky: [C.navy, C.dgreen, C.brown, C.olive], disc: [C.blue, C.green] },
-      { id: 'mars', name: 'MARS', sky: [C.maroon, C.rust, C.darkred, C.orange], disc: [C.rust, C.orange], order: 'sv' },
-      { id: 'venus', name: 'VENUS', sky: [C.olive, C.gold, C.brown, C.yellow], disc: [C.gold, C.cream],
+      { id: 'earth', name: 'EARTH', sky: [C.navy, C.dgreen, C.brown, C.olive], disc: [C.blue, C.green], terrain: 'ocean' },
+      { id: 'mars', name: 'MARS', sky: [C.maroon, C.rust, C.darkred, C.orange], disc: [C.rust, C.orange], terrain: 'desert', order: 'sv' },
+      { id: 'venus', name: 'VENUS', sky: [C.olive, C.gold, C.brown, C.yellow], disc: [C.gold, C.cream], terrain: 'clouds',
         approach: 'challenge' },
     ] },
   { id: 'acen', name: 'ALPHA CENTAURI', short: 'ALPHA CEN', base: 'CENTAURI GATE', x: 92, y: 60, col: C.orange,
@@ -27,8 +28,8 @@ const SECTORS = [
     swap: { fighter: [['splitter', 0.35]] }, sideKinds: ['splitterLine', 'splitterLine'],
     bonus: { money: 1500, xp: 200 },
     planets: [
-      { id: 'proxima', name: 'PROXIMA B', sky: [C.darkred, C.maroon, C.brown, C.red], disc: [C.red, C.orange], order: 'sv' },
-      { id: 'toliman', name: 'TOLIMAN', sky: [C.teal, C.dgreen, C.olive, C.cyan], disc: [C.teal, C.cyan],
+      { id: 'proxima', name: 'PROXIMA B', sky: [C.darkred, C.maroon, C.brown, C.red], disc: [C.red, C.orange], terrain: 'desert', order: 'sv' },
+      { id: 'toliman', name: 'TOLIMAN', sky: [C.teal, C.dgreen, C.olive, C.cyan], disc: [C.teal, C.cyan], terrain: 'ocean',
         approach: 'challenge' },
     ] },
   { id: 'barn', name: "BARNARD'S STAR", short: 'BARNARD', base: 'HIVEWATCH', x: 92, y: 156, col: C.red,
@@ -36,16 +37,16 @@ const SECTORS = [
     swap: { fighter: [['drone', 0.5]] }, sideKinds: ['droneSwarm', 'droneSwarm'],
     bonus: { money: 1500, xp: 200 },
     planets: [
-      { id: 'hive', name: 'BARNARD B', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.olive, C.gold] },
-      { id: 'nectar', name: 'NECTAR', sky: [C.olive, C.gold, C.brown, C.cream], disc: [C.gold, C.yellow], order: 'sv' },
+      { id: 'hive', name: 'BARNARD B', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.olive, C.gold], terrain: 'hive' },
+      { id: 'nectar', name: 'NECTAR', sky: [C.olive, C.gold, C.brown, C.cream], disc: [C.gold, C.yellow], terrain: 'hive', order: 'sv' },
     ] },
   { id: 'sirius', name: 'SIRIUS', short: 'SIRIUS', base: 'DOG STAR DOCK', x: 162, y: 60, col: C.ice,
     links: ['acen', 'tau', 'eps'], boss: 'xinact', capital: 'barr', hull: 3, acetyl: 0.2,
     swap: {}, sideKinds: ['bomber', 'bomber'],
     bonus: { money: 2000, xp: 250 },
     planets: [
-      { id: 'agouti', name: 'AGOUTI PRIME', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.gold, C.brown], order: 'sv' },
-      { id: 'calico', name: 'CALICO', sky: [C.gray, C.rust, C.brown, C.orange], disc: [C.orange, C.lgray],
+      { id: 'agouti', name: 'AGOUTI PRIME', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.gold, C.brown], terrain: 'fields', order: 'sv' },
+      { id: 'calico', name: 'CALICO', sky: [C.gray, C.rust, C.brown, C.orange], disc: [C.orange, C.lgray], terrain: 'fields',
         approach: 'challenge' },
     ] },
   { id: 'tau', name: 'TAU CETI', short: 'TAU CETI', base: 'CETI ANCHORAGE', x: 162, y: 156, col: C.yellow,
@@ -53,8 +54,8 @@ const SECTORS = [
     swap: { bomber: [['armored', 0.4]] }, sideKinds: ['armoredPair'],
     bonus: { money: 2000, xp: 250 },
     planets: [
-      { id: 'taue', name: 'TAU CETI E', sky: [C.navy, C.blue, C.gray, C.lgray], disc: [C.lgray, C.sky] },
-      { id: 'tauf', name: 'TAU CETI F', sky: [C.navy, C.violet, C.purple, C.lavender], disc: [C.violet, C.lavender], order: 'sv' },
+      { id: 'taue', name: 'TAU CETI E', sky: [C.navy, C.blue, C.gray, C.lgray], disc: [C.lgray, C.sky], terrain: 'ice' },
+      { id: 'tauf', name: 'TAU CETI F', sky: [C.navy, C.violet, C.purple, C.lavender], disc: [C.violet, C.lavender], terrain: 'ice', order: 'sv' },
     ] },
   { id: 'eps', name: 'EPSILON ERIDANI', short: 'EPS ERI', base: 'ERIDANI ROADS', x: 224, y: 108, col: C.pink,
     links: ['sirius', 'tau'], boss: 'citadel', capital: 'nucleosome', hull: -1, acetyl: 0.1,
@@ -62,8 +63,8 @@ const SECTORS = [
     sideKinds: ['splitterLine', 'droneSwarm', 'armoredPair'],
     bonus: { money: 3000, xp: 300 },
     planets: [
-      { id: 'aegir', name: 'AEGIR', sky: [C.purple, C.violet, C.navy, C.lavender], disc: [C.violet, C.pink], order: 'sv' },
-      { id: 'citadel', name: 'THE CITADEL', sky: [C.maroon, C.purple, C.black, C.magenta], disc: [C.magenta, C.purple] },
+      { id: 'aegir', name: 'AEGIR', sky: [C.purple, C.violet, C.navy, C.lavender], disc: [C.violet, C.pink], terrain: 'ocean', order: 'sv' },
+      { id: 'citadel', name: 'THE CITADEL', sky: [C.maroon, C.purple, C.black, C.magenta], disc: [C.magenta, C.purple], terrain: 'tech' },
     ] },
 ];
 const SECTOR_BY_ID = Object.fromEntries(SECTORS.map(S => [S.id, S]));
@@ -284,6 +285,7 @@ Object.assign(Game, {
 
   drawDebrief(ctx) {
     const D = this.debrief, c = this.camp, center = { align: 'center' };
+    NES.box(ctx, 2, 2, 252, 236, C.black, C.gold);
     NES.text(ctx, D.planet, 128, 14, C.gold, { align: 'center', scale: 2, shadow: C.navy });
     NES.text(ctx, 'MISSION COMPLETE', 128, 36, C.white, center);
     D.lines.forEach(([a, b], i) => {
@@ -316,9 +318,8 @@ Object.assign(Game, {
     const c = this.camp;
     NES.text(ctx, 'LV ' + c.level, x, y, C.lime);
     const lo = LEVELS[c.level - 1], hi = LEVELS[c.level];
-    ctx.fillStyle = C.dgreen; ctx.fillRect(x + 40, y + 1, 120, 5);
-    if (hi === undefined) { ctx.fillStyle = C.lime; ctx.fillRect(x + 40, y + 1, 120, 5); NES.text(ctx, 'MAX', x + 192, y, C.lime, { align: 'right' }); return; }
-    ctx.fillStyle = C.lime; ctx.fillRect(x + 40, y + 1, Math.floor(120 * (c.xp - lo) / (hi - lo)), 5);
+    if (hi === undefined) { this.drawBar(ctx, x + 40, y + 1, 120, 5, 1, C.lime, '#082008'); NES.text(ctx, 'MAX', x + 192, y, C.lime, { align: 'right' }); return; }
+    this.drawBar(ctx, x + 40, y + 1, 120, 5, (c.xp - lo) / (hi - lo), C.lime, '#082008');
     NES.text(ctx, String(c.xp), x + 192, y, C.white, { align: 'right' });
   },
 
@@ -381,32 +382,43 @@ Object.assign(Game, {
     }
   },
 
+  // The galaxy map as a holographic chart: a see-through grid, glowing routes (pulses run along the
+  // open ones), each sector a shaded star with a colored halo, and a reticle on the selection.
   drawMap(ctx, carrierAt) {
-    const c = this.camp, center = { align: 'center' };
-    NES.text(ctx, 'GALAXY MAP', 128, 8, C.gold, center);
-    // routes
+    const c = this.camp, center = { align: 'center' }, t = this.t;
+    SNES.half(ctx, () => {
+      ctx.fillStyle = '#2048c0';
+      for (let x = 8; x < W; x += 16) ctx.fillRect(x, 26, 1, 150);
+      for (let y = 26; y < 180; y += 16) ctx.fillRect(0, y, W, 1);
+    }, 0.3);
+    NES.text(ctx, 'GALAXY MAP', 128, 6, C.gold, { align: 'center', scale: 2 });
     for (const S of SECTORS) {
       for (const id of S.links) {
         const O = SECTOR_BY_ID[id];
         if (O.x < S.x || (O.x === S.x && O.y < S.y)) continue;   // draw each link once
         const open = this.isUnlocked(S.id) && this.isUnlocked(O.id);
-        ctx.fillStyle = open ? C.navy : C.black;
-        const n = Math.ceil(Math.hypot(O.x - S.x, O.y - S.y) / 4);
+        const n = Math.ceil(Math.hypot(O.x - S.x, O.y - S.y) / 3);
         for (let k = 1; k < n; k++) {
-          ctx.fillStyle = open ? ((k + (this.t >> 3)) % 3 ? C.blue : C.sky) : C.gray;
-          if (open || k % 2) ctx.fillRect(Math.round(S.x + (O.x - S.x) * k / n), Math.round(S.y + (O.y - S.y) * k / n), 1, 1);
+          const x = Math.round(S.x + (O.x - S.x) * k / n), y = Math.round(S.y + (O.y - S.y) * k / n);
+          if (!open) { if (k % 2) { ctx.fillStyle = '#404858'; ctx.fillRect(x, y, 1, 1); } continue; }
+          const pulse = (k + (t >> 2)) % 12 === 0;
+          SNES.add(ctx, () => NES.draw(ctx, SNES.glow(pulse ? 3 : 1, pulse ? '#60c0f8' : '#2050b0'), x, y));
         }
       }
     }
     SECTORS.forEach((S, i) => {
       const open = this.isUnlocked(S.id), done = this.sectorCleared(S.id);
-      NES.disc(ctx, S.x, S.y, 5, open ? S.col : C.gray);
-      NES.disc(ctx, S.x - 1, S.y - 1, 2, open ? C.white : C.lgray);
+      if (open) SNES.add(ctx, () => NES.draw(ctx, SNES.glow(12 + ((t >> 4) & 1), SNES.mix(S.col, '#000000', 0.55)), S.x, S.y));
+      NES.draw(ctx, SNES.sphere(open ? 5 : 4, open ? S.col : '#505868'), S.x, S.y);
       NES.text(ctx, open ? S.short : '???', S.x, S.y + 10, open ? (done ? C.lime : C.white) : C.gray, center);
       if (done) NES.text(ctx, 'CLEAR', S.x, S.y + 19, C.lime, center);
-      if (i === this.mapSel && this.state === 'map' && (this.t >> 3) & 1) {
-        NES.text(ctx, '[', S.x - 13, S.y - 3, C.gold);
-        NES.text(ctx, ']', S.x + 9, S.y - 3, C.gold);
+      if (i === this.mapSel && this.state === 'map') {   // reticle: four corner ticks, breathing
+        const d = 9 + ((t >> 3) & 1);
+        ctx.fillStyle = C.gold;
+        for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          ctx.fillRect(S.x + sx * d - (sx > 0 ? 3 : 0), S.y + sy * d, 4, 1);
+          ctx.fillRect(S.x + sx * d, S.y + sy * d - (sy > 0 ? 3 : 0), 1, 4);
+        }
       }
     });
     const at = carrierAt || SECTOR_BY_ID[c.sector];
@@ -464,14 +476,13 @@ Object.assign(Game, {
 
   drawSortie(ctx) {
     const P = this.mission.planet, T = this.stateT;
-    const r = Math.min(70, 8 + T * 0.4);
-    const px = 256 - Math.min(40, T * 0.3);
-    NES.disc(ctx, px, 120, r, P.disc[0]);
-    for (let j = -r + 4; j <= r; j += 11) {   // cloud bands
-      const w = Math.floor(Math.sqrt(Math.max(0, r * r - j * j)));
-      ctx.fillStyle = P.disc[1];
-      ctx.fillRect(Math.round(px - w), Math.round(120 + j), w * 2, 4);
-    }
+    const r = Math.round(Math.min(70, 8 + T * 0.4));
+    const px = 256 - Math.min(40, T * 0.3), sc = this.scenery(P);
+    SNES.add(ctx, () => {   // atmosphere: a glow a little larger than the planet
+      const g = SNES.glow(40, SNES.mix(sc.haze, '#000000', 0.45)), d = (r + 8) * 2 + 1;
+      ctx.drawImage(g, Math.round(px - d / 2), Math.round(120 - d / 2), d, d);
+    });
+    SNES.globe(ctx, sc.floor, px, 120, r, T * 0.004);
     this.drawCarrierSide(ctx, 90 + Math.sin(T * 0.05) * 4, 124 + Math.sin(T * 0.03) * 3, true);
     NES.text(ctx, 'EN ROUTE TO ' + P.name, 128, 20, C.white, { align: 'center' });
     if (T > 20 && (this.t >> 4) & 1) NES.text(ctx, 'A: SKIP', 128, 222, C.gray, { align: 'center' });
