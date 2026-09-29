@@ -30,9 +30,9 @@
   window.addEventListener('gamepaddisconnected', () => Game.toast('CONTROLLER DISCONNECTED'));
 
   Game.init();
-  // Dev shortcut: index.html?stage=5 jumps straight into a stage.
+  // Dev shortcut: index.html?stage=N jumps into a mission leg (see testLeg in campaign.js).
   const q = new URLSearchParams(location.search);
-  if (q.has('stage')) Game.startGame(Math.max(1, parseInt(q.get('stage'), 10) || 1));
+  if (q.has('stage')) Game.testLeg(Math.max(1, parseInt(q.get('stage'), 10) || 1));
 
   const STEP = 1000 / 60;
   let last = performance.now(), acc = 0;

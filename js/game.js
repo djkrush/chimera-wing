@@ -30,21 +30,15 @@ const ENEMY = {
   bomber: { name: 'BOMBER', hp: 1, pts: [80, 160], hit: 7 },
   methyl: { name: 'METHYLATOR', hp: 2, pts: [150, 400], hit: 8 },
   sam: { name: 'SAM SITE', hp: 2, pts: [200, 200], hit: 7 },
+  splitter: { name: 'SPLITTER', hp: 2, pts: [120, 240], hit: 7 },
+  drone: { name: 'DRONE', hp: 1, pts: [30, 60], hit: 4 },
+  armored: { name: 'ARMORED', hp: 5, pts: [250, 500], hit: 8 },
 };
-
-// Even stages are side-scrolling missions. Odd stages are Galaga-style:
-// challenging stages at 3, 7, 11... and the Nucleosome Fortress at 5, 15, 25...
-function stageTypeOf(n) {
-  if (n % 2 === 0) return 'side';
-  if (n % 10 === 5) return 'boss';
-  if (n % 4 === 3) return 'challenge';
-  return 'normal';
-}
 
 // Dr. Helena Voss: rogue epigeneticist. Her science is real; her ethics are not.
 // In-game radio lines. Stage briefings and the rest of the story live in story.js.
 const VOSS = {
-  sideBoss: 'MY HISTONE GUNSHIP. SAME CORE DESIGN, NOW WITH MORE GUNS.',
+  sideBoss: 'MY HISTONE GUNSHIP. A HISTONE CORE, WRAPPED IN GUNS.',
   silence: ['METHYLATED! THAT GENE STAYS OFF.', 'A LITTLE CH3 ON YOUR PROMOTER. HUSH.', 'NO TRANSCRIPTION FOR YOU!'],
   restore: ['DEMETHYLATED?! THAT MARK WAS SUPPOSED TO BE PERMANENT!', 'TET ENZYMES? HOW... DULL.'],
   locked: 'GENOME FULLY SILENCED. GOODNIGHT, PILOT.',
@@ -141,7 +135,6 @@ function buildChallengeWaves(stage) {
 }
 
 const HOWTO_PAGES = 5;
-const MENU = ['START GAME', 'CONTROLLER SETUP', 'HOW TO PLAY'];
 const SETUP_STEPS = [
   { key: 'fire', label: 'FIRE' },
   { key: 'special', label: 'SPECIAL WEAPON' },
@@ -169,6 +162,8 @@ const Game = {
   scroll: 0, side: null,                                   // side-scrolling mission state
   special: null, lastSpecial: 0, laser: null, crushT: 0,   // mission special weapon
   pickups: [], radioQ: [], hintsSeen: new Set(),           // TET capsules, queued radio, Mira's tips
+  camp: null, mission: null, inBase: false, carrier: null, // campaign (campaign.js), carrier (carrier.js)
+  wingT: 0, tetT: 0, lastBossName: '',
 
   init() {
     this.hi = loadHi();
@@ -187,6 +182,7 @@ const Game = {
     this.enemies = []; this.pBul = []; this.eBul = []; this.parts = []; this.pops = []; this.booms = [];
     this.boss = null; this.radio = null; this.radioQ = []; this.pickups = []; this.paused = false;
     this.stageType = 'normal'; this.special = null; this.laser = null; this.crushT = 0;
+    this.mission = null; this.carrier = null; this.inBase = false; this.wingT = 0; this.tetT = 0;
     Sound.playSong(Sound.SONGS.title);
   },
 
@@ -203,25 +199,15 @@ const Game = {
       invuln: 60, battCd: 0, silenced: [false, false, false], silenceT: [0, 0, 0], moving: false, shieldT: 0 };
   },
 
-  startGame(stage = 1) {
-    this.score = 0; this.shields = this.pilotDef().shields; this.nextExtra = 20000;
-    this.nextAdapt = -1; this.shots = 0; this.hitsTotal = 0;
-    this.hintsSeen = new Set();
-    this.player = this.newPlayer();
-    this.startStage(stage);
-  },
-
   get isSide() { return this.stageType === 'side'; },
 
-  startStage(n) {
-    this.stage = n;
-    this.stageType = stageTypeOf(n);
+  // Resets the playfield for one leg of a mission. type: normal | challenge | boss | side.
+  setupStage(type) {
+    this.stageType = type;
     this.enemies = []; this.eBul = []; this.pBul = [];
-    this.laser = null; this.crushT = 0;
-    this.special = null;   // chosen fresh in the hangar; leftover ammo never carries over
+    this.laser = null; this.crushT = 0; this.wingT = 0; this.tetT = 0;
     if (this.isSide) this.initSide();
-    this.waves = this.stageType === 'normal' ? buildNormalWaves()
-      : this.stageType === 'challenge' ? buildChallengeWaves(n) : [];
+    this.waves = type === 'normal' ? buildNormalWaves() : type === 'challenge' ? buildChallengeWaves(this.stage) : [];
     this.waveI = 0;
     this.formationReady = false;
     this.formation = { t: 0, ox: 0, spread: 1, bt: 0 };
@@ -233,20 +219,17 @@ const Game = {
     const p = this.player;
     p.silenced = [false, false, false];
     p.silenceT = [0, 0, 0];
-    p.shieldT = 0;
-    this.shields = this.pilotDef().shields;   // repaired between stages
+    p.shieldT = 0; p.alive = true; p.hidden = false; p.morphT = 0; p.invuln = 0;
+    this.shields = this.statOf('shields');   // repaired on the carrier before every takeoff
+    if (this.special) this.special.ammo = this.statOf('special');   // and rearmed
     this.placePlayer();
-
-    this.pickups = []; this.radioQ = [];
-    const B = this.briefingFor(n);
-    this.startBriefing(this.stageType === 'challenge' ? '' : 'STAGE ' + n, B.title, B.pages, () => this.openHangar());
-    Sound.playSong(Sound.SONGS.stage);
+    this.pickups = []; this.radioQ = []; this.radio = null;
   },
 
   beginPlay() {
     this.setState('play');
     if (this.stageType === 'boss') {
-      this.boss = this.makeBoss(false);
+      this.boss = this.makeBoss(false, 'fortress');
       Sound.playSong(Sound.SONGS.boss);
     }
   },
@@ -276,7 +259,7 @@ const Game = {
     if (this.score >= this.nextExtra) {
       // Score bonus: repair one shield (instead of an extra ship).
       this.nextExtra = this.nextExtra === 20000 ? 70000 : this.nextExtra + 70000;
-      if (this.shields < this.pilotDef().shields) {
+      if (this.shields < this.statOf('shields')) {
         this.shields++;
         this.popup(this.player.x, this.player.y - 20, 'SHIELD +1', C.lime);
         Sound.sfx('oneup');
@@ -315,7 +298,7 @@ const Game = {
   },
 
   updateStars(speed) {
-    const sideways = this.isSide && !['title', 'howto', 'setup', 'pilot'].includes(this.state);
+    const sideways = (this.isSide && !this.inMenu()) || this.state === 'sortie';
     for (const s of this.stars) {
       if (sideways) {
         s.x -= s.s * speed;
@@ -333,8 +316,9 @@ const Game = {
     Sound.update();
     if (this.toastMsg && --this.toastMsg.t <= 0) this.toastMsg = null;
     if (this.paused) { this.updateGameMenu(); return; }
-    this.updateStars(this.state === 'intro' || this.state === 'hangar' ? 3 : 1);
-    if (this.isSide && this.state !== 'title') this.scroll += 1.5;
+    const st = this.state;
+    this.updateStars(st === 'intro' || st === 'hangar' || st === 'sortie' ? 3 : st === 'takeoff' || st === 'landing' ? 2 : 1);
+    if (this.isSide && !this.inMenu()) this.scroll += 1.5;
     if (this.radio && --this.radio.t <= 0) this.radio = this.radioQ.shift() || null;
     switch (this.state) {
       case 'title': this.updateTitle(); break;
@@ -347,8 +331,21 @@ const Game = {
       case 'clear': this.updateClear(); break;
       case 'result': this.updateResult(); break;
       case 'gameover': this.updateGameOver(); break;
+      case 'base': this.updateBase(); break;
+      case 'map': this.updateMap(); break;
+      case 'travel': this.updateTravel(); break;
+      case 'sortie': this.updateSortie(); break;
+      case 'takeoff': this.updateTakeoff(); break;
+      case 'landing': this.updateLanding(); break;
+      case 'debrief': this.updateDebrief(); break;
+      case 'learn': this.updateLearn(); break;
     }
     this.updateParticles();
+  },
+
+  // Full-screen menu screens (no playfield behind them).
+  inMenu() {
+    return ['title', 'howto', 'setup', 'pilot', 'base', 'map', 'travel', 'sortie', 'debrief', 'learn'].includes(this.state);
   },
 
   // ---- In-game menu (Start) ---------------------------------------------------------
@@ -360,7 +357,9 @@ const Game = {
   },
 
   gameMenuItems() {
-    return ['RESUME', 'SOUND: ' + (Sound.muted ? 'OFF' : 'ON'), 'QUIT TO TITLE'];
+    const items = ['RESUME', 'SOUND: ' + (Sound.muted ? 'OFF' : 'ON')];
+    if (this.mission && !this.inBase) items.push('ABORT MISSION');
+    return [...items, 'QUIT TO TITLE'];
   },
 
   updateGameMenu() {
@@ -370,8 +369,10 @@ const Game = {
     if (Input.just('start') || Input.just('back') || Input.just('special')) { this.paused = false; Sound.sfx('select'); return; }
     if (!Input.just('fire')) return;
     Sound.sfx('select');
-    if (this.gameMenuSel === 0) this.paused = false;
-    else if (this.gameMenuSel === 1) Sound.toggleMute();
+    const item = this.gameMenuItems()[this.gameMenuSel];
+    if (item === 'RESUME') this.paused = false;
+    else if (item.startsWith('SOUND')) Sound.toggleMute();
+    else if (item === 'ABORT MISSION') { this.paused = false; this.missionFailed(); }
     else { saveHi(this.hi); this.toTitle(); }
   },
 
@@ -379,14 +380,22 @@ const Game = {
     this.stateT++;
     const anyPress = Input.just('fire') || Input.just('start') || Input.just('transform');
     if (anyPress) Sound.unlock();
-    if (Input.just('up')) { this.menu = (this.menu + MENU.length - 1) % MENU.length; Sound.sfx('move'); }
-    if (Input.just('down')) { this.menu = (this.menu + 1) % MENU.length; Sound.sfx('move'); }
+    const items = this.titleItems(), n = items.length;
+    this.menu = Math.min(this.menu, n - 1);
+    if (Input.just('up')) { this.menu = (this.menu + n - 1) % n; Sound.sfx('move'); }
+    if (Input.just('down')) { this.menu = (this.menu + 1) % n; Sound.sfx('move'); }
     if (this.stateT > 20 && (Input.just('fire') || Input.just('start'))) {
       Sound.sfx('select');
-      if (this.menu === 0) this.openPilotSelect();
-      else if (this.menu === 1) this.openSetup();
+      const item = items[this.menu];
+      if (item === 'CONTINUE') this.continueCampaign();
+      else if (item === 'NEW GAME') this.openPilotSelect();
+      else if (item === 'CONTROLLER SETUP') this.openSetup();
       else { this.howPage = 0; this.setState('howto'); }
     }
+  },
+
+  titleItems() {
+    return [...(this.hasSave() ? ['CONTINUE'] : []), 'NEW GAME', 'CONTROLLER SETUP', 'HOW TO PLAY'];
   },
 
   updateHowto() {
@@ -437,8 +446,7 @@ const Game = {
     const shown = Math.floor(I.t / 1.5);
     if (!I.full && shown < I.total && I.t % 3 === 0) Sound.sfx('blip');
     if (shown >= I.total) I.full = true;
-    this.updatePlayer(false);
-    this.updateBullets();
+    if (!this.inBase) { this.updatePlayer(false); this.updateBullets(); }
     // The briefing waits for fire (Space / pad A). A press finishes the typing, the next one
     // turns the page, and after the last page it moves on. Start skips the rest of the briefing.
     if (this.stateT <= 20) return;
@@ -474,14 +482,13 @@ const Game = {
     this.updateSpecial();
     this.updatePickups();
     if (this.state !== 'clear' || this.stateT <= this.clearDelay) return;
-    if (this.bossWin && this.stage === FINALE) this.startEnding();
-    else this.startStage(this.stage + 1);
+    this.legDone();
   },
 
   updateResult() {
     this.stateT++;
     this.updatePlayer(false);
-    if (this.stateT > 240) this.startStage(this.stage + 1);
+    if (this.stateT > 240) this.legDone();
   },
 
   updateGameOver() {
@@ -490,7 +497,7 @@ const Game = {
     this.updateEnemies();
     if (this.boss) { this.boss.t++; }
     this.updateBullets();
-    if ((this.stateT > 120 && (Input.just('fire') || Input.just('start'))) || this.stateT > 1200) this.toTitle();
+    if ((this.stateT > 120 && (Input.just('fire') || Input.just('start'))) || this.stateT > 1200) this.missionFailed();
   },
 
   checkStageEnd() {
@@ -501,6 +508,7 @@ const Game = {
       this.setState('result');
       this.resultBonus = this.stageHits >= 40 ? 10000 : this.stageHits * 100;
       this.addScore(this.resultBonus);
+      if (this.mission) this.mission.bonusCr += this.stageHits * 10 + (this.stageHits >= 40 ? 500 : 0);
       Sound.playSong(this.stageHits >= 40 ? Sound.SONGS.victory : Sound.SONGS.stage);
     } else {
       this.clearDelay = 90;
@@ -561,13 +569,14 @@ const Game = {
   spawnEnemy(s, wave) {
     const path = PATHS[s.path];
     const chall = this.stageType === 'challenge';
-    const hp = chall ? 1 : ENEMY[s.type].hp;
+    const type = this.mixType(s.type);
+    const hp = chall ? 1 : ENEMY[type].hp;
     const e = {
-      type: s.type, hp, maxHp: hp, x: path[0].x, y: path[0].y, vx: 0, vy: 1,
+      type, hp, maxHp: hp, x: path[0].x, y: path[0].y, vx: 0, vy: 1,
       ang: Math.atan2(path[4].y - path[0].y, path[4].x - path[0].x) + Math.PI / 2,
       state: 'enter', path, pd: 0, slot: s.slot, wave,
       speed: Math.min(2 + this.stage * 0.04, 3),
-      acetyl: !chall && this.stage >= 2 && Math.random() < Math.min(0.08 + this.stage * 0.02, 0.35),
+      acetyl: !chall && this.stage >= 2 && Math.random() < this.acetylChance(),
       holding: -1, flash: 0, fireYs: [], t: randi(0, 60), dead: false, enterFireAt: 0,
     };
     if (!chall && this.stage >= 2 && Math.random() < Math.min(0.15 + this.stage * 0.04, 0.6)) {
@@ -576,9 +585,10 @@ const Game = {
     this.enemies.push(e);
   },
 
-  spawnKamikaze(x, y, side) {
+  spawnKamikaze(x, y, side, type = 'fighter') {
+    const hp = ENEMY[type].hp;
     this.enemies.push({
-      type: 'fighter', hp: 1, maxHp: 1, x, y, vx: 0, vy: 1, ang: Math.PI, state: 'dive',
+      type, hp, maxHp: hp, x, y, vx: 0, vy: 1, ang: Math.PI, state: 'dive',
       phase: 1, pt: 0, hd: Math.PI / 2 + side * 0.4, spd: 1.5, maxSpd: 2.6, turn: side,
       slot: null, wave: -1, acetyl: false, holding: -1, flash: 0, fireYs: [110], t: 0, dead: false, wob: 0,
     });
@@ -798,6 +808,18 @@ const Game = {
     Sound.sfx('explode');
     if (form >= 0) this.formKills[form]++;
     this.stageHits++;
+    if (e.type === 'splitter') this.splitEnemy(e);
+  },
+
+  // Chance a new plane is acetylated (gold). Some sectors field more of them.
+  acetylChance() { return Math.min(0.08 + this.stage * 0.02, 0.35) + this.sectorDef().acetyl; },
+
+  // DNMT1 copies a methylation pattern onto both new DNA strands: a Splitter breaks into two MiGs.
+  splitEnemy(e) {
+    for (const s of [-1, 1]) {
+      if (this.isSide) this.spawnSideEnemy('fighter', 'swoop', e.x, e.y + s * 8);
+      else this.spawnKamikaze(e.x + s * 6, e.y, s);
+    }
   },
 
   // ---- Player --------------------------------------------------------------------
@@ -856,7 +878,7 @@ const Game = {
     if (p.morphT > 0) { p.morphT--; if (p.morphT === 7) p.form = p.nextForm; }
 
     const F = FORMS[p.form];
-    const sp = F.speed * (p.morphT > 0 ? 0.6 : 1);
+    const sp = F.speed * this.speedMul() * (p.morphT > 0 ? 0.6 : 1);
     let dx = 0, dy = 0;
     if (Input.pressed('left')) dx--;
     if (Input.pressed('right')) dx++;
@@ -864,7 +886,8 @@ const Game = {
     if (Input.pressed('down')) dy++;
     if (this.isSide) {
       // Side missions: every form flies freely over the left part of the screen.
-      p.x = clamp(p.x + dx * sp, 10, 200);
+      const maxX = this.boss ? Math.min(200, this.boss.x - 64) : 200;   // stay in front of the boss hull
+      p.x = clamp(p.x + dx * sp, 10, maxX);
       p.y = clamp(p.y + dy * sp, 18, SIDE_GROUND - 10);
     } else {
       p.x = clamp(p.x + dx * sp, 9, W - 9);
@@ -886,6 +909,10 @@ const Game = {
     const b = { x: p.x + dx, y: p.y + dy, vx: bvx, vy: bvy, ...extra };
     if (b.hd !== undefined && this.isSide) b.hd += Math.PI / 2;
     this.pBul.push(b);
+    if (this.wingT > 0 && extra.form >= 0) {   // WINGMAN special: the drone copies every shot
+      const [wx, wy] = this.wingOffset();
+      this.pBul.push({ ...b, x: b.x + wx, y: b.y + wy });
+    }
   },
 
   fireWeapon() {
@@ -1068,197 +1095,6 @@ const Game = {
     this.enemies = this.enemies.filter(e => !e.dead);
   },
 
-  // ---- Bosses ---------------------------------------------------------------------
-  // Vertical stages: the Nucleosome Fortress faces down from the top of the screen.
-  // Side missions: the Histone Gunship uses the same layout turned to face left, from the right edge.
-  // Part offsets are written for the vertical layout; orient() turns them for side missions.
-  makeBoss(side) {
-    let m = 1 + Math.max(0, Math.floor(this.stage / 5) - 1) * 0.5;
-    if (side) m *= 0.6;   // gunship is a mission-ending mid-boss, a bit lighter than the fortress
-    const part = (id, ox, oy, r, hp) => ({ id, ox, oy, r, hp: Math.round(hp * m), max: Math.round(hp * m),
-      dead: false, x: 0, y: 0, cd: randi(50, 90), flash: 0, shielded: false });
-    return {
-      side, hull: side ? SPR.gunshipHull : SPR.bossHull,
-      x: side ? W + 70 : 128, y: side ? 110 : -30, baseY: 58, t: 0, mt: 0, entering: true, dying: 0,
-      parts: [part('L', -38, 2, 8, 60), part('R', 38, 2, 8, 60), part('C', 0, 6, 11, 150)],
-      ringCd: 150, launchCd: 200, beamCd: 90, beamT: 0, beamAng: 0, beamDir: 1, phase2: false,
-    };
-  },
-
-  // Beam origin and direction for the boss's sweeping silencer beam.
-  bossBeamRay() {
-    const B = this.boss, core = B.parts[2];
-    const [ox, oy] = this.orient(0, 8);
-    const [dx, dy] = this.orient(Math.sin(B.beamAng), Math.cos(B.beamAng));
-    return { x: core.x + ox, y: core.y + oy, dx, dy };
-  },
-
-  updateBoss() {
-    const B = this.boss, p = this.player;
-    B.t++;
-    for (const pt of B.parts) if (pt.flash > 0) pt.flash--;
-    if (B.dying > 0) {
-      if (B.dying % 5 === 0) {
-        const [ex, ey] = this.orient(rand(-50, 50), rand(-14, 14));
-        this.explode(B.x + ex, B.y + ey, 10);
-        Sound.sfx('explode');
-      }
-      if (--B.dying === 0) this.bossDefeated();
-      return;
-    }
-    if (B.entering) {
-      if (B.side) { B.x -= 0.6; if (B.x <= 196) { B.x = 196; B.entering = false; } }
-      else { B.y += 0.5; if (B.y >= B.baseY) { B.y = B.baseY; B.entering = false; } }
-      if (!B.entering) this.say(VOSS.bossShield);
-    } else {
-      if (B.beamT <= 0) B.mt++;   // hover in place while firing the beam
-      if (B.side) {
-        B.y = 110 + Math.sin(B.mt * 0.012) * 45;
-        B.x = 196 + Math.sin(B.t * 0.03) * 3;
-      } else {
-        B.x = 128 + Math.sin(B.mt * 0.012) * 60;
-        B.y = B.baseY + Math.sin(B.t * 0.03) * 3;
-      }
-    }
-    for (const pt of B.parts) {
-      const [ox, oy] = this.orient(pt.ox, pt.oy);
-      pt.x = B.x + ox; pt.y = B.y + oy;
-    }
-    const [L, R, core] = B.parts;
-    core.shielded = !L.dead || !R.dead;
-    if (B.entering) return;
-
-    const lvl = Math.min(this.stage / 5, 4);
-    for (const tt of [L, R]) {
-      if (!tt.dead && --tt.cd <= 0) {
-        tt.cd = Math.max(40, 85 - lvl * 10);
-        const [mx, my] = this.orient(0, 6);
-        this.spreadShot(tt.x + mx, tt.y + my, 3, 0.28, 2.2 + lvl * 0.2);
-      }
-    }
-    if (--B.ringCd <= 0) {
-      B.ringCd = core.shielded ? 170 : 120;
-      this.ringShot(core.x, core.y, core.shielded ? 10 : 14, 1.5 + lvl * 0.15, B.t * 0.05);
-    }
-    if (--B.launchCd <= 0) {
-      B.launchCd = 320;
-      for (const s of [-1, 1]) {
-        const [ox, oy] = this.orient(s * 52, 2);
-        if (B.side) this.spawnSideEnemy('fighter', 'swoop', B.x + ox, B.y + oy);
-        else this.spawnKamikaze(B.x + ox, B.y + oy, s);
-      }
-    }
-    if (!core.shielded) {
-      if (!B.phase2) { B.phase2 = true; B.beamCd = 100; this.say(VOSS.bossPhase2); }
-      if (B.beamT > 0) {
-        B.beamT--;
-        if (B.beamT < 140) {
-          const k = 1 - B.beamT / 140;
-          B.beamAng = B.beamDir * (-0.7 + 1.4 * k);
-          if (B.beamT % 10 === 0) Sound.sfx('beam');
-          this.checkBossBeam();
-        }
-      } else if (--B.beamCd <= 0) {
-        B.beamCd = 300;
-        B.beamT = 180;
-        // sweep starts away from the player and crosses them
-        const across = B.side ? p.y > B.y : p.x < B.x;
-        B.beamDir = across ? -1 : 1;
-        B.beamAng = -0.7 * B.beamDir;
-        Sound.sfx('charge');
-      }
-    }
-  },
-
-  checkBossBeam() {
-    const p = this.player;
-    if (!p.alive || p.invuln > 0) return;
-    const r = this.bossBeamRay();
-    const vx = p.x - r.x, vy = p.y - r.y;
-    if (vx * r.dx + vy * r.dy <= 0) return;   // player is behind the emitter
-    if (Math.abs(vx * r.dy - vy * r.dx) < 7) this.silenceForm('boss');
-  },
-
-  bossHitTest(b) {
-    const B = this.boss;
-    if (B.dying || (B.entering && (B.y < 0 || B.x > W))) return;
-    for (const pt of B.parts) {
-      if (pt.dead || Math.hypot(b.x - pt.x, b.y - pt.y) >= pt.r + 2) continue;
-      b.dead = true;
-      this.damageBossPart(pt, b.dmg, b.form, b.x, b.y);
-      return;
-    }
-    // Hull check in the boss's own (vertical) frame.
-    const rx = b.x - B.x, ry = b.y - B.y;
-    const lx = B.side ? ry : rx, ly = B.side ? -rx : ry;
-    const dx = Math.abs(lx);
-    if (dx < 56 && ly > -18 + dx * 0.22 && ly < 14 - dx * 0.42) {
-      b.dead = true;
-      this.spark(b.x, b.y, C.lgray, 2);
-    }
-  },
-
-  damageBossPart(pt, d, form, hx, hy) {
-    const B = this.boss;
-    if (form >= 0 && this.adapt === form) { d *= 0.5; this.spark(hx, hy, C.lgray); }
-    this.hitsTotal++;
-    if (pt.shielded) {
-      // The shield soaks most of the damage, and the core can't fall until the turrets do.
-      this.spark(hx, hy, C.aqua);
-      Sound.sfx('tink');
-      pt.hp = Math.max(pt.max * 0.5, pt.hp - d * 0.25);
-      pt.flash = 2;
-      if (this.t - (B.hintT || -999) > 150) {
-        B.hintT = this.t;
-        const [ox, oy] = this.orient(0, 22);
-        this.popup(clamp(pt.x + ox, 104, W - 104), clamp(pt.y + oy, 20, 200), 'SHIELDED! HIT THE TURRETS', C.aqua);
-      }
-      return;
-    }
-    pt.hp -= d;
-    pt.flash = 4;
-    Sound.sfx('bossHit');
-    if (pt.hp <= 0) this.destroyPart(pt);
-  },
-
-  destroyPart(pt) {
-    const B = this.boss;
-    if (pt.dead) return;
-    pt.dead = true;
-    this.explode(pt.x, pt.y, 24);
-    Sound.sfx('boom');
-    if (pt.id === 'C') {
-      B.dying = 120;
-      B.beamT = 0;
-      this.eBul = [];
-    } else {
-      this.addScore(3000);
-      this.popup(pt.x, pt.y, '3000', C.gold);
-    }
-  },
-
-  bossDefeated() {
-    const B = this.boss, p = this.player;
-    this.addScore(20000);
-    this.popup(B.x, B.y, '20000', C.gold);
-    for (let i = 0; i < 6; i++) {
-      const [ox, oy] = this.orient(rand(-56, 56), rand(-16, 16));
-      this.booms.push({ x: B.x + ox, y: B.y + oy, n: 16, delay: i * 6 });
-    }
-    for (const e of this.enemies) { e.dead = true; this.explode(e.x, e.y, 8); }
-    this.enemies = [];
-    this.eBul = [];
-    this.boss = null;
-    this.say(this.stage === FINALE ? VOSS.finalDown : VOSS.bossDown);
-    p.silenced = [false, false, false];
-    p.silenceT = [0, 0, 0];
-    this.nextAdapt = this.computeAdapt();
-    this.bossWin = true;
-    this.clearDelay = 300;
-    this.setState('clear');
-    Sound.playSong(Sound.SONGS.victory);
-  },
-
   // ================================================================================
   // Rendering
   // ================================================================================
@@ -1270,6 +1106,8 @@ const Game = {
     else if (this.state === 'howto') this.drawHowto(ctx);
     else if (this.state === 'pilot') this.drawPilotSelect(ctx);
     else if (this.state === 'setup') this.drawSetup(ctx);
+    else if (this.inMenu()) this.drawMenuScreen(ctx);
+    else if (this.inBase) this.drawInBase(ctx);
     else this.drawWorld(ctx);
     if (this.toastMsg && (this.toastMsg.t > 30 || this.toastMsg.t % 8 < 5)) {
       const w = NES.textWidth(this.toastMsg.text) + 12;
@@ -1284,25 +1122,30 @@ const Game = {
     }
   },
 
-  // side = true draws the ship facing right (side-scrolling missions).
-  drawShip(ctx, form, x, y, morphT, flame, side = false) {
+  // side = true draws the side profile, facing right (side-scrolling missions).
+  drawShip(ctx, form, x, y, morphT, flame, side = false, hull = this.camp ? this.camp.hull : 0) {
+    const set = SPR.hulls[hull][side ? 'side' : 'top'];
     const white = morphT > 0 && ((morphT >> 1) & 1);
-    NES.drawRot(ctx, white ? SPR.playerWhite[form] : SPR.player[form], x, y, side ? Math.PI / 2 : 0);
+    const img = white ? set.white[form] : set.normal[form];
+    NES.draw(ctx, img, x, y);
     if (!flame || morphT > 0 || form === 2) return;
     ctx.fillStyle = (this.t >> 1) & 1 ? C.orange : C.yellow;
     const len = 2 + ((this.t >> 2) & 1);
     x = Math.round(x); y = Math.round(y);
+    if (side) {   // one exhaust out of the tail, on the fuselage line
+      const back = x - (img.width >> 1);
+      ctx.fillRect(back - len, y + (form === 0 ? 0 : -2), len, form === 0 ? 1 : 2);
+      return;
+    }
     // exhaust rects as [dx, width] behind the ship
     const jets = form === 0 ? [[-2, 1], [2, 1]] : [[-4, 2], [3, 2]];
-    for (const [dx, w] of jets) {
-      if (side) ctx.fillRect(x - 8 - len + 1, y + dx, len, w);
-      else ctx.fillRect(x + dx, y + 8, w, len);
-    }
+    for (const [dx, w] of jets) ctx.fillRect(x + dx, y + 8, w, len);
   },
 
   drawWorld(ctx) {
     const p = this.player;
     if (this.isSide) this.drawSideBG(ctx);
+    if (this.carrier) this.drawCarrier(ctx);
     if (this.boss) this.drawBoss(ctx);
     for (const e of this.enemies) this.drawEnemy(ctx, e);
     this.drawPickups(ctx);
@@ -1326,7 +1169,8 @@ const Game = {
       }
     }
     for (const b of this.eBul) NES.draw(ctx, SPR.ebullet, b.x, b.y);
-    if (p.alive && (p.invuln <= 0 || (this.t >> 2) & 1)) this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide);
+    if (p.alive && !p.hidden && (p.invuln <= 0 || (this.t >> 2) & 1)) this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide);
+    if (p.alive && this.wingT > 0 && (this.wingT > 90 || (this.t >> 2) & 1)) this.drawWingman(ctx);
     this.drawSpecialFx(ctx, 'over');
     this.drawParticles(ctx);
     this.drawHUD(ctx);
@@ -1335,9 +1179,11 @@ const Game = {
     switch (this.state) {
       case 'intro': this.drawIntro(ctx); break;
       case 'hangar': this.drawHangar(ctx); break;
+      case 'takeoff': case 'landing': this.drawCarrierText(ctx); break;
       case 'clear':
         if (this.bossWin && this.stateT > 30) {
-          NES.text(ctx, this.isSide ? 'GUNSHIP DESTROYED!' : 'FORTRESS DESTROYED!', 128, 96, C.gold, { align: 'center', shadow: C.darkred });
+          NES.text(ctx, this.lastBossName, 128, 86, C.gold, { align: 'center', shadow: C.darkred });
+          NES.text(ctx, 'DESTROYED!', 128, 96, C.gold, { align: 'center', shadow: C.darkred });
           NES.text(ctx, 'BONUS 20000', 128, 110, C.white, { align: 'center' });
         }
         break;
@@ -1360,6 +1206,7 @@ const Game = {
   },
 
   drawEnemy(ctx, e) {
+    if (e.state === 'side') { this.drawSideEnemy(ctx, e); return; }
     const set = SPR.enemy[e.type];
     const f = (e.t >> 3) & 1;
     const img = e.flash > 0 ? set.white
@@ -1369,9 +1216,22 @@ const Game = {
     if (e.holding >= 0) {
       // the silenced form is carried behind the methylator, like Galaga's captured fighter
       const bx = e.x - Math.sin(e.ang) * 15, by = e.y + Math.cos(e.ang) * 15;
-      NES.drawRot(ctx, SPR.silenced[e.holding], bx, by, e.ang);
+      NES.drawRot(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].top.silenced[e.holding], bx, by, e.ang);
     }
     NES.drawRot(ctx, img, e.x, e.y, e.ang);
+  },
+
+  // Side missions: unrotated side profiles. They face left, and flip when flying right.
+  drawSideEnemy(ctx, e) {
+    const set = SPR.enemy[e.type].side;
+    const f = (e.t >> 3) & 1;
+    const img = e.flash > 0 ? set.white
+      : e.type === 'methyl' && e.hp < e.maxHp ? set.dmg[f]
+        : e.acetyl ? set.acetyl[f] : set.normal[f];
+    if (e.beamExt > 0) this.drawMethylBeam(ctx, e);
+    if (e.holding >= 0) NES.draw(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].side.silenced[e.holding], e.x + 16, e.y);
+    if (e.type !== 'sam' && e.vx > 0.3 && e.phase !== 'out') NES.drawFlip(ctx, img, e.x, e.y);
+    else NES.draw(ctx, img, e.x, e.y);
   },
 
   // Cone-shaped methylation beam: points down in vertical stages, left in side missions.
@@ -1433,9 +1293,9 @@ const Game = {
     }
 
     // shield pips; with none left the next hit is fatal
-    const maxSh = this.pilotDef().shields;
+    const maxSh = this.statOf('shields');
     if (!this.shields && p.alive) { if ((this.t >> 3) & 1) NES.text(ctx, 'DANGER', 4, 231, C.red); }
-    else for (let i = 0; i < maxSh; i++) NES.draw(ctx, i < this.shields ? SPR.shieldPip : SPR.shieldPipOff, 7 + i * 8, 234);
+    else for (let i = 0; i < maxSh; i++) NES.draw(ctx, i < this.shields ? SPR.shieldPip : SPR.shieldPipOff, 7 + i * 6, 234);
 
     // form status
     for (let f = 0; f < 3; f++) {
@@ -1452,8 +1312,8 @@ const Game = {
         ctx.fillStyle = C.orange; ctx.fillRect(x, y + 8, Math.ceil(21 * (1 - p.battCd / 600)), 1);
       }
     }
-    NES.text(ctx, 'ST', 214, 231, C.red);
-    NES.text(ctx, String(this.stage).padStart(2, '0'), 234, 231, C.white);
+    NES.text(ctx, 'LV', 214, 231, C.red);
+    NES.text(ctx, String(this.camp ? this.camp.level : 1).padStart(2, '0'), 234, 231, C.white);
 
     if (this.boss && !this.radio) {
       const B = this.boss;
@@ -1525,7 +1385,7 @@ const Game = {
   },
 
   drawGameOver(ctx) {
-    NES.text(ctx, 'GAME OVER', 128, 60, C.red, { align: 'center', scale: 2, shadow: C.darkred });
+    NES.text(ctx, 'MISSION FAILED', 128, 60, C.red, { align: 'center', scale: 2, shadow: C.darkred });
     if (this.stateT > 60) {
       const ratio = this.shots ? (this.hitsTotal / this.shots * 100).toFixed(1) : '0.0';
       NES.text(ctx, '- RESULTS -', 128, 90, C.red, { align: 'center' });
@@ -1542,76 +1402,6 @@ const Game = {
       this.drawPortrait(ctx, 10, 175, this.villain());
       NES.text(ctx, who.name, 42, 175, who.col);
       NES.wrap(VOSS.gameover, 25).forEach((l, i) => NES.text(ctx, l, 42, 187 + i * 9, C.white));
-    }
-  },
-
-  drawBoss(ctx) {
-    const B = this.boss;
-    const x = Math.round(B.x), y = Math.round(B.y);
-    const [L, R, core] = B.parts;
-    if (B.side) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(Math.PI / 2);   // nose points left
-      ctx.drawImage(B.hull, -64, -24);
-      ctx.restore();
-    } else {
-      ctx.drawImage(B.hull, x - 64, y - 24);
-    }
-    const [barX, barY] = this.orient(0, 7);   // gun barrel direction
-
-    for (const tt of [L, R]) {
-      const tx = Math.round(tt.x), ty = Math.round(tt.y);
-      if (tt.dead) {
-        NES.disc(ctx, tx, ty, 6, C.black);
-        if ((this.t >> 2) & 1) { ctx.fillStyle = C.red; ctx.fillRect(tx - 1, ty, 2, 1); }
-        if (this.t % 12 === 0) this.parts.push({ x: tx + rand(-3, 3), y: ty, vx: 0, vy: -0.4, life: 20, max: 20, cols: [C.gray, C.lgray], sz: 2 });
-        continue;
-      }
-      NES.disc(ctx, tx, ty, 8, tt.flash ? C.white : C.lgray);
-      NES.disc(ctx, tx, ty, 6, tt.flash ? C.white : C.gray);
-      NES.disc(ctx, tx, ty + 1, 3, (this.t >> 3) & 1 ? C.red : C.darkred);
-      ctx.fillStyle = C.black;
-      ctx.fillRect(tx + barX - 1, ty + barY - 1, 3, 3);   // gun barrel
-      ctx.fillRect(tx + Math.round(barX * 0.7) - 1, ty + Math.round(barY * 0.7) - 1, 3, 3);
-    }
-
-    // The histone core, with DNA wrapped around it.
-    const cx = Math.round(core.x), cy = Math.round(core.y);
-    if (!core.dead) {
-      if (B.beamT >= 140 && (B.beamT >> 1) & 1) NES.disc(ctx, cx, cy, 14, C.lime);
-      NES.disc(ctx, cx, cy, 11, core.flash ? C.white : C.purple);
-      NES.disc(ctx, cx - 3, cy - 3, 5, core.flash ? C.white : C.magenta);
-      ctx.fillStyle = C.pink; ctx.fillRect(cx - 5, cy - 6, 2, 2);
-      for (let i = -14; i <= 14; i++) {
-        const s = Math.sin(i * 0.45 + B.t * 0.12) * 7;
-        ctx.fillStyle = C.aqua; ctx.fillRect(cx + i, Math.round(cy + s), 1, 1);
-        ctx.fillStyle = C.lime; ctx.fillRect(cx + i, Math.round(cy - s), 1, 1);
-        if ((i + 14) % 4 === 0) {
-          ctx.fillStyle = C.lgray;
-          const a = Math.round(Math.min(cy + s, cy - s)), b = Math.round(Math.max(cy + s, cy - s));
-          ctx.fillRect(cx + i, a + 1, 1, Math.max(0, b - a - 1));
-        }
-      }
-      if (core.shielded) {
-        ctx.fillStyle = C.aqua;
-        for (let k = 0; k < 24; k++) {
-          if ((k + (this.t >> 2)) % 3 === 0) continue;
-          const a = k / 24 * TAU;
-          ctx.fillRect(Math.round(cx + Math.cos(a) * 15), Math.round(cy + Math.sin(a) * 15), 1, 1);
-        }
-      }
-    }
-
-    if (B.beamT > 0 && B.beamT < 140 && !core.dead) {
-      const r = this.bossBeamRay();
-      const cols = [C.lime, C.aqua, C.white];
-      for (let s = 0; s < 300; s++) {
-        const bx = r.x + r.dx * s, by = r.y + r.dy * s;
-        if (by > H || by < -4 || bx < -4 || bx > W + 4) break;
-        ctx.fillStyle = cols[((s + this.t * 3) >> 2) % 3];
-        ctx.fillRect(Math.round(bx) - 2, Math.round(by) - 2, 5, 5);
-      }
     }
   },
 
@@ -1647,8 +1437,8 @@ const Game = {
     this.drawShip(ctx, form, 128, 98, morph, true);
     NES.text(ctx, FORMS[form].name, 128, 112, C.lgray, { align: 'center' });
 
-    MENU.forEach((m, i) => {
-      const y = 134 + i * 13;
+    this.titleItems().forEach((m, i) => {
+      const y = 128 + i * 12;
       NES.text(ctx, m, 84, y, i === this.menu ? C.white : C.gray);
       if (i === this.menu) NES.draw(ctx, SPR.life, 72, y + 3);
     });
@@ -1690,20 +1480,19 @@ const Game = {
           T(term, 8, y, C.aqua); T(a, 16, y + 10); T(b, 16, y + 19, C.lgray);
         });
     } else if (pg === 3) {
-      T('MISSIONS', 128, 10, C.gold, { align: 'center' });
-      this.drawShip(ctx, 0, 24, 34, 0, true, true);
-      ['EVEN-NUMBERED STAGES ARE', 'SIDE-SCROLLING MISSIONS. YOU', 'FLY RIGHT AND MOVE FREELY.',
-        'WATCH FOR SAM SITES ON THE', 'GROUND, AMBUSHES FROM BEHIND', '(!>) AND THE GUNSHIP AT THE END.']
-        .forEach((l, i) => T(l, i < 3 ? 40 : 8, 26 + i * 10));
-      T('SPECIAL WEAPONS', 128, 96, C.gold, { align: 'center' });
-      T('BEFORE EACH STAGE, PICK ONE:', 8, 110, C.lgray);
+      T('THE CAMPAIGN', 128, 10, C.gold, { align: 'center' });
+      ['YOUR CARRIER FLIES FROM STAR', 'TO STAR. EVERY PLANET HAS TWO', 'LEGS: A VERTICAL APPROACH,',
+        'THEN A SIDE ASSAULT AND BOSS.', 'CLEAR A SECTOR TO OPEN MORE.', 'SPEND CREDITS AT STARBASES.']
+        .forEach((l, i) => T(l, 8, 24 + i * 10, i < 4 ? C.white : C.lgray));
+      T('SPECIAL WEAPONS', 128, 90, C.gold, { align: 'center' });
+      T('LEARN ONE AT LV 2, 5 AND 8:', 8, 102, C.lgray);
       SPECIALS.forEach((s, i) => {
-        const y = 124 + i * 14;
+        const y = 116 + i * 11;
         NES.draw(ctx, SPR.specialIcons[i], 14, y + 3);
         T(s.name, 26, y, s.color);
       });
-      T("AMMO = YOUR PILOT'S SPECIAL", 128, 184, C.pink, { align: 'center' });
-      T('STAT, FOR ONE MISSION ONLY.', 128, 194, C.pink, { align: 'center' });
+      T('AMMO = YOUR SPECIAL STAT,', 128, 186, C.pink, { align: 'center' });
+      T('REFILLED AT EVERY TAKEOFF.', 128, 196, C.pink, { align: 'center' });
     } else if (pg === 1) {
       T('THE VX-3 CHIMERA', 128, 10, C.gold, { align: 'center' });
       const rows = [

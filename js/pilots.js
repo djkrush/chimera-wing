@@ -1,5 +1,5 @@
 'use strict';
-// Pilots. The player picks one before stage 1. Each pilot has three stats (max 8):
+// Pilots and ship hulls. The player picks a pilot for a new campaign. Each pilot has three stats (max 8):
 //   weapons: shot strength. 4 is normal damage and 8 is double.
 //   shields: hits the ship can take. With none left, the next hit destroys it and ends the game.
 //   special: uses of the hangar's special weapon in each mission.
@@ -13,12 +13,33 @@ const PILOTS = [
     perk: 'DOUBLE SPECIAL AMMO.' },
 ];
 const STAT_MAX = 8;
+const STAT_CAP = 12;   // pilot + hull + starbase upgrades never go past this
+
+// Ship hulls. The pilot flies one hull at a time. Its modifiers add to the pilot's stats, and speed
+// scales every form. Starbases sell the others (see `hull` in SECTORS, campaign.js).
+const HULLS = [
+  { name: 'VX-3 CHIMERA', weapons: 0, shields: 0, special: 0, speed: 1, price: 0,
+    desc: 'THE ORIGINAL. BALANCED.' },
+  { name: 'VX-5 MANTICORE', weapons: 2, shields: -1, special: 0, speed: 1.05, price: 4000,
+    desc: 'FORWARD-SWEPT STRIKER.' },
+  { name: 'VX-6 GRIFFIN', weapons: 0, shields: 3, special: -1, speed: 0.9, price: 4000,
+    desc: 'HEAVY ARMOR, THREE ENGINES.' },
+  { name: 'VX-9 HYDRA', weapons: 1, shields: 1, special: 1, speed: 1.1, price: 9000,
+    desc: 'BEST AT EVERYTHING.' },
+];
 
 Object.assign(Game, {
   pilot: 0, pilotSel: 0,
 
   pilotDef() { return PILOTS[this.pilot]; },
-  gunPower() { return this.pilotDef().weapons / 4; },
+  hullDef() { return HULLS[this.camp ? this.camp.hull : 0]; },
+  // Effective stat: pilot + hull + upgrades bought at starbases.
+  statOf(key) {
+    const up = this.camp ? this.camp.up[key] : 0;
+    return clamp(this.pilotDef()[key] + this.hullDef()[key] + up, 1, STAT_CAP);
+  },
+  gunPower() { return this.statOf('weapons') / 4; },
+  speedMul() { return this.hullDef().speed; },
 
   openPilotSelect() {
     this.setState('pilot');
@@ -34,8 +55,7 @@ Object.assign(Game, {
     if (this.stateT > 12 && (Input.just('fire') || Input.just('start'))) {
       this.pilot = this.pilotSel;
       Sound.sfx('select');
-      Sound.stopSong();
-      this.startGame(1);
+      this.newCampaign(this.pilot);
     }
   },
 

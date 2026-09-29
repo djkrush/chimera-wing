@@ -1,5 +1,6 @@
 'use strict';
-// All pixel art. Sprites point UP; the game rotates them to face their heading.
+// All pixel art. Top-down sprites point UP and the game rotates them to face their heading.
+// Side-mission sprites are side profiles, drawn unrotated (player facing right, enemies facing left).
 const SPR = (() => {
   const C = NES.C;
   const S = NES.sprite;
@@ -57,10 +58,148 @@ const SPR = (() => {
     '...GWW...WWG...',
     '...KKK...KKK...',
   ];
-  const FORMS = [FIGHTER, GUARDIAN, BATTLOID];
-  const playerMap = { W: C.white, G: C.lgray, B: C.sky, R: C.red, K: C.gray };
+  // Side profiles (side-scrolling missions). These point RIGHT and are drawn unrotated.
+  const FIGHTER_SIDE = [
+    '..K.............',
+    '..KW............',
+    '..KWW.....BB....',
+    '.KWWWWWWWWBBWW..',
+    'KRWWWWWWWWWWWWWW',
+    '.KGGWWWWWWWWGG..',
+    '....GWWG........',
+    '.....GG.........',
+  ];
+  const GUARDIAN_SIDE = [
+    '..K.............',
+    '..KW......BB....',
+    '.KWWWWWWWWBBWW..',
+    'KRWWWWWWWWWWWWWW',
+    '.KGGWWWWWWWWGG..',
+    '...GWWWG........',
+    '....GWG.........',
+    '....GWW.........',
+    '....WWG.........',
+    '...GWW..........',
+    '...KKK..........',
+  ];
+  const BATTLOID_SIDE = [
+    '....GWWG.....',
+    '....WWBB.....',
+    '....GWWG.....',
+    '..RRWWWWR....',
+    '.GWWWWWWGKKKK',
+    '.GWWWRWWG....',
+    '.KWWWWWW.....',
+    '.KKWWWWW.....',
+    '..GWWWWG.....',
+    '..GWW.WW.....',
+    '..WW...WW....',
+    '..WW...GWG...',
+    '.GWW....WW...',
+    '.WWW....WW...',
+    '.KKK....KKK..',
+  ];
+
+  // ---- Other hulls (sold at starbases). Each has its own Fighter shape and colors. ----
+  const MANTICORE_FIGHTER = [   // forward-swept wings
+    '.......W.......',
+    '......WBW......',
+    '.R....WBW....R.',
+    '.GR...WWW...RG.',
+    '..GW.WWWWW.WG..',
+    '...GWWWRWWWG...',
+    '....GWWWWWG....',
+    '.....WWWWW.....',
+    '.....WWWWW.....',
+    '....GWWWWWG....',
+    '...GWWWRWWWG...',
+    '..RWW.WWW.WWR..',
+    '.....RW.WR.....',
+    '......K.K......',
+  ];
+  const MANTICORE_FIGHTER_SIDE = [
+    '.K...............',
+    '.KW..............',
+    '.KWW.......BB....',
+    'KWWWWWWWWWWBBWWR.',
+    'RWWWWWWWWWWWWWWWW',
+    '.KGGWWWWWWWWWWG..',
+    '..........GWWG...',
+    '...........GG....',
+  ];
+  const GRIFFIN_FIGHTER = [   // heavy, three engines
+    '.......W.......',
+    '......WBW......',
+    '.....WWBWW.....',
+    '....GWWWWWG....',
+    '...GWWWWWWWG...',
+    '..GWWWWRWWWWG..',
+    '.GWWWWWWWWWWWG.',
+    'GWWWWWWWWWWWWWG',
+    'GWWWWWWWWWWWWWG',
+    'GRRWWWWWWWWWRRG',
+    '.GG.WWWWWWW.GG.',
+    '....GWWWWWG....',
+    '...RWWW.WWWR...',
+    '....K..K..K....',
+  ];
+  const GRIFFIN_FIGHTER_SIDE = [
+    '..KK............',
+    '..KWW...........',
+    '..KWWW....BBB...',
+    '.KWWWWWWWWBBBWW.',
+    'KRWWWWWWWWWWWWWW',
+    'KRWWWWWWWWWWWWW.',
+    '.KGGWWWWWWWWGG..',
+    '...GWWWWG.......',
+    '....GGGG........',
+  ];
+  const HYDRA_FIGHTER = [   // canards and a triple tail
+    '.......W.......',
+    '.......W.......',
+    '......WBW......',
+    '....G.WBW.G....',
+    '....GWWWWWG....',
+    '......WWW......',
+    '.....WWRWW.....',
+    '...GWWWWWWWG...',
+    '.GWWWWWWWWWWWG.',
+    'GWWWWWWWWWWWWWG',
+    '.R...WWWWW...R.',
+    '.....WWWWW.....',
+    '...G.WWWWW.G...',
+    '...WG.WWW.GW...',
+    '.......K.......',
+  ];
+  const HYDRA_FIGHTER_SIDE = [
+    '.K...............',
+    '.KW..K...........',
+    '.KWW.KW....BB....',
+    '.KWWWWWWWWWBBWW..',
+    'KRWWWWWWWWWWWWWWW',
+    '.KGGWWWWWWWWWGG..',
+    '.....GWWG...GG...',
+    '......GG.........',
+  ];
+  // Same order as HULLS in pilots.js.
+  const HULL_ART = [
+    { top: [FIGHTER, GUARDIAN, BATTLOID], side: [FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.white, G: C.lgray, B: C.sky, R: C.red, K: C.gray } },
+    { top: [MANTICORE_FIGHTER, GUARDIAN, BATTLOID], side: [MANTICORE_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.orange, G: C.rust, B: C.yellow, R: C.darkred, K: C.brown } },
+    { top: [GRIFFIN_FIGHTER, GUARDIAN, BATTLOID], side: [GRIFFIN_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.cream, G: C.olive, B: C.aqua, R: C.green, K: C.gray } },
+    { top: [HYDRA_FIGHTER, GUARDIAN, BATTLOID], side: [HYDRA_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.ice, G: C.teal, B: C.gold, R: C.cyan, K: C.teal } },
+  ];
   // How a form looks once Dr. Voss has methylated (silenced) it.
   const silencedMap = { W: C.pink, G: C.purple, B: C.lime, R: C.magenta, K: C.purple };
+  const bakeForms = (list, pal) => ({
+    normal: list.map(r => S(r, pal)),
+    white: list.map(r => S(r, null, C.white)),
+    silenced: list.map(r => S(r, silencedMap)),
+  });
+  const hulls = HULL_ART.map(h => ({ top: bakeForms(h.top, h.pal), side: bakeForms(h.side, h.pal) }));
 
   // ---- Enemy aircraft --------------------------------------------------------
   const MIG = [
@@ -118,24 +257,120 @@ const SPR = (() => {
     '.K.K.K.K.K..',
   ];
 
+  // Splitter (Alpha Centauri): a twin-hulled MiG that breaks in two when shot down.
+  const SPLITTER = [
+    '..R.......R..',
+    '..L.......L..',
+    '.LDL.....LDL.',
+    '.DCD.....DCD.',
+    '.DDD..L..DDD.',
+    'LDDDLLDLLDDDL',
+    'DDDDDDDDDDDDD',
+    'LDDDLDDDLDDDL',
+    '.DDD..D..DDD.',
+    '.LEL.....LEL.',
+    '..E.......E..',
+  ];
+  // Drone (Barnard's Star): tiny swarm craft.
+  const DRONE = [
+    'L.....L',
+    '.LDDDL.',
+    '.DCCCD.',
+    '.DCRCD.',
+    '.DDDDD.',
+    'L..E..L',
+  ];
+  // Armored gunship (Tau Ceti): slow and tough.
+  const ARMORED = [
+    '......RRR......',
+    '.....LDDDL.....',
+    '....LDDCDDL....',
+    '.LLLDDDDDDDLLL.',
+    'LDDDDDDDDDDDDDL',
+    'DDKDDDDDDDDDKDD',
+    'DDKDDDDDDDDDKDD',
+    'LDDDDDDDDDDDDDL',
+    '.LLDDDDDDDDDLL.',
+    '....DDDDDDD....',
+    '....LEDDDEL....',
+    '.....E...E.....',
+  ];
+
+  // Side profiles for side-scrolling missions. These point LEFT (toward the player).
+  const MIG_SIDE = [
+    '...........DL',
+    '...CC.....DDL',
+    '.LDCCDDDDDDD.',
+    'RDDDDDDDDDDDE',
+    '..LDDDDDDLL..',
+    '....DDD......',
+  ];
+  const BOMBER_SIDE = [
+    '..............D.',
+    '.............DD.',
+    '...CC........DDL',
+    '.LDCCDDDDDDDDDDL',
+    'LDDDDDDDDDDDDDDE',
+    '.DDDDDDDDDDDDDD.',
+    '...RR..RR.......',
+    '...EE..EE.......',
+  ];
+  const METHYLATOR_SIDE = [
+    '......LLLL.......',
+    '....LDDCCDDL.....',
+    '.LLDDDDDDDDDDLL..',
+    'LDDDGDDDDDGDDDDE.',
+    '.DDDDDDDDDDDDDD..',
+    '...DDD.DED.DDD...',
+  ];
+  const SPLITTER_SIDE = [
+    '..........DL',
+    '..CC.....DDL',
+    'LDCCDDDDDDD.',
+    'RDDDDDDDDDDE',
+    'LDDDDDDDDDD.',
+    'RDDDDDDDDDDE',
+    '...DD.......',
+  ];
+  const DRONE_SIDE = [
+    '..LLL...',
+    '.DCCDD.L',
+    'RDDDDDDE',
+    '.DDDDD.L',
+    '..LLL...',
+  ];
+  const ARMORED_SIDE = [
+    '...........LLL..',
+    '..KKKK....DDDL..',
+    '.LDDCCDDDDDDDDL.',
+    'RDDDDDDDDDDDDDDE',
+    'RDDDDDDDDDDDDDDE',
+    '.LDDDDDDDDDDDDL.',
+    '...KKK..KKK.....',
+  ];
+
   const gold = { D: C.gold, L: C.cream };   // acetylated (aggressive) palette swap
   const ENEMY_DEFS = {
-    fighter: { rows: MIG, normal: { D: C.periwinkle, L: C.ice, R: C.red, C: C.gold } },
-    bomber: { rows: BOMBER, normal: { D: C.green, L: C.chartreuse, R: C.darkred, C: C.sky } },
-    methyl: { rows: METHYLATOR, normal: { D: C.purple, L: C.pink, C: C.aqua, G: C.lime },
+    fighter: { rows: MIG, side: MIG_SIDE, normal: { D: C.periwinkle, L: C.ice, R: C.red, C: C.gold } },
+    bomber: { rows: BOMBER, side: BOMBER_SIDE, normal: { D: C.green, L: C.chartreuse, R: C.darkred, C: C.sky } },
+    methyl: { rows: METHYLATOR, side: METHYLATOR_SIDE, normal: { D: C.purple, L: C.pink, C: C.aqua, G: C.lime },
       dmg: { D: C.blue, L: C.sky, C: C.aqua, G: C.lime } },
-    sam: { rows: SAM, normal: { D: C.olive, L: C.lgray, K: C.gray, R: C.red } },
+    sam: { rows: SAM, side: SAM, normal: { D: C.olive, L: C.lgray, K: C.gray, R: C.red } },
+    splitter: { rows: SPLITTER, side: SPLITTER_SIDE, normal: { D: C.cyan, L: C.white, R: C.red, C: C.gold } },
+    drone: { rows: DRONE, side: DRONE_SIDE, normal: { D: C.olive, L: C.yellow, C: C.orange, R: C.red } },
+    armored: { rows: ARMORED, side: ARMORED_SIDE, normal: { D: C.rust, L: C.cream, K: C.gray, C: C.sky, R: C.red } },
   };
   // Two frames each: engine exhaust alternates orange/yellow.
   const frames = (rows, pal) => [S(rows, { ...pal, E: C.orange }), S(rows, { ...pal, E: C.yellow })];
+  const bakeEnemy = (rows, d) => ({
+    normal: frames(rows, d.normal),
+    acetyl: frames(rows, { ...d.normal, ...gold }),
+    dmg: frames(rows, d.dmg || d.normal),
+    white: S(rows, null, C.white),
+  });
   const enemy = {};
   for (const [type, d] of Object.entries(ENEMY_DEFS)) {
-    enemy[type] = {
-      normal: frames(d.rows, d.normal),
-      acetyl: frames(d.rows, { ...d.normal, ...gold }),
-      dmg: frames(d.rows, d.dmg || d.normal),
-      white: S(d.rows, null, C.white),
-    };
+    enemy[type] = { ...bakeEnemy(d.rows, d), side: bakeEnemy(d.side, d) };
   }
 
   // ---- Small stuff -----------------------------------------------------------
@@ -143,6 +378,9 @@ const SPR = (() => {
   const missile = S(['.W.', 'WWW', 'WRW', 'WWW', 'G.G'], { W: C.white, R: C.red, G: C.gray });
   const life = S(['...W...', '..WBW..', '.WWWWW.', 'WWWRWWW', 'W.WWW.W', '..R.R..'],
     { W: C.white, B: C.sky, R: C.red });
+  // WINGMAN special's drone, top-down and side profile
+  const wing = S(['...W...', '..WBW..', '.WWWWW.', 'W.WRW.W', '..R.R..'], { W: C.sky, B: C.white, R: C.red });
+  const wingSide = S(['.W.....', 'WWWWBW.', '.RWWWWW'], { W: C.sky, B: C.white, R: C.red });
 
   // ---- Dr. Helena Voss, rogue epigeneticist ---------------------------------
   const portrait = S([
@@ -305,12 +543,24 @@ const SPR = (() => {
     S(['..O..', '.OYO.', 'OYWYO', '.OYO.', '..O..'], { O: C.red, Y: C.orange, W: C.yellow }),
     S(['W.W.W', '.WYW.', 'WYRYW', '.WYW.', 'W.W.W'], { W: C.white, Y: C.yellow, R: C.red }),
     S(['.CCC.', 'C...C', 'C.W.C', 'C...C', '.CCC.'], { C: C.lime, W: C.aqua }),
+    S(['.LLL.', 'L.W.L', 'LWWWL', 'L.W.L', '.LLL.'], { L: C.lime, W: C.white }),
+    S(['..W..', '.WBW.', 'WWWWW', '..W..', '.W.W.'], { W: C.sky, B: C.white }),
   ];
 
   // ---- Bosses: hulls drawn procedurally ---------------------------------------
   // Fortress (vertical stages) is purple; the Histone Gunship (side missions) is military green.
   const FORTRESS_PAL = { top: C.gray, body: C.violet, lines: C.navy, edge: C.lgray, under: C.lavender };
   const GUNSHIP_PAL = { top: C.gray, body: C.green, lines: C.dgreen, edge: C.lgray, under: C.chartreuse };
+  // Keyed by the `pal` field of BOSSES in bosses.js.
+  const BOSS_PALS = {
+    fortress: FORTRESS_PAL,
+    gunship: GUNSHIP_PAL,
+    copier: { top: C.gray, body: C.teal, lines: C.navy, edge: C.ice, under: C.cyan },
+    queen: { top: C.olive, body: C.gold, lines: C.brown, edge: C.cream, under: C.yellow },
+    xinact: { top: C.gray, body: C.rust, lines: C.maroon, edge: C.cream, under: C.orange },
+    twins: { top: C.gray, body: C.blue, lines: C.navy, edge: C.lgray, under: C.periwinkle },
+    flagship: { top: C.lgray, body: C.purple, lines: C.black, edge: C.pink, under: C.magenta },
+  };
   function buildBossHull(pal) {
     const w = 128, h = 48;
     const c = document.createElement('canvas');
@@ -345,12 +595,45 @@ const SPR = (() => {
     return c;
   }
 
+  // Side profile of a boss hull for side-scrolling missions: a flying battleship, nose LEFT.
+  // 128x56, centered like the top-down hull so part offsets stay simple.
+  function buildBossSideHull(pal) {
+    const w = 128, h = 56, cy = 28;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    const half = px => px < 30 ? 2 + px * 0.4 : px < 110 ? 14 : 14 - (px - 110) * 0.25;
+    const put = (px, py, col) => { x.fillStyle = col; x.fillRect(px, py, 1, 1); };
+    for (let px = 0; px < w; px++) {
+      let top = Math.round(cy - half(px)), bot = Math.round(cy + half(px));
+      if (px >= 60 && px <= 96) top = 6;                    // bridge tower
+      if (px >= 36 && px <= 84) bot = Math.max(bot, 48 - Math.max(0, Math.abs(px - 60) - 18));   // keel pod
+      if (px >= 104 && px <= 124) {                          // tail fins
+        top = Math.min(top, 2 + Math.round((124 - px) * 0.4));
+        bot = Math.max(bot, 54 - Math.round((124 - px) * 0.4));
+      }
+      for (let py = top; py <= bot; py++) {
+        let col;
+        if (py === top || py === bot) col = pal.edge;
+        else if (py > bot - 3) col = pal.under;
+        else if (px % 12 === 0 || py === cy) col = pal.lines;
+        else col = py < cy - 6 ? pal.top : pal.body;
+        put(px, py, col);
+      }
+    }
+    for (let px = 64; px <= 92; px += 4) put(px, 10, C.yellow);   // bridge windows
+    for (let px = 8; px <= 28; px += 5) put(px, cy - 2, C.yellow);   // nose windows
+    for (const ny of [cy - 7, cy + 6]) {                             // engine nozzles
+      x.fillStyle = C.gray; x.fillRect(124, ny - 1, 4, 3);
+      x.fillStyle = C.black; x.fillRect(127, ny, 1, 1);
+    }
+    return c;
+  }
+
   return {
-    player: FORMS.map(r => S(r, playerMap)),
-    playerWhite: FORMS.map(r => S(r, null, C.white)),
-    silenced: FORMS.map(r => S(r, silencedMap)),
-    enemy, ebullet, missile, life, portrait, mira, pilots, shieldPip, shieldPipOff, tet, specialIcons,
-    bossHull: buildBossHull(FORTRESS_PAL),
-    gunshipHull: buildBossHull(GUNSHIP_PAL),
+    hulls,
+    enemy, ebullet, missile, life, wing, wingSide, portrait, mira, pilots, shieldPip, shieldPipOff, tet, specialIcons,
+    bossHulls: Object.fromEntries(Object.entries(BOSS_PALS).map(([k, pal]) => [k, buildBossHull(pal)])),
+    bossSideHulls: Object.fromEntries(Object.entries(BOSS_PALS).map(([k, pal]) => [k, buildBossSideHull(pal)])),
   };
 })();

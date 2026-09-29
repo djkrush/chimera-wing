@@ -113,6 +113,10 @@ const Sound = (() => {
     move: () => tone(660, 0.03, { type: 'pulse12', vol: 0.12 }),
     blip: () => tone(1200, 0.02, { type: 'pulse12', vol: 0.05 }),
     bossHit: () => tone(220, 0.03, { type: 'pulse50', vol: 0.12 }),
+    takeoff: () => { noise(0.9, { vol: 0.25, rate: 0.3, rateTo: 1.6 }); tone(120, 0.8, { type: 'triangle', vol: 0.3, slide: 480 }); },
+    land: () => { noise(0.15, { vol: 0.35, rate: 0.4 }); tone(160, 0.2, { type: 'triangle', vol: 0.35, slide: 60 }); },
+    cash: () => [1319, 1568, 2093].forEach((f, i) => tone(f, 0.06, { type: 'pulse12', vol: 0.12, delay: i * 0.05 })),
+    levelup: () => [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, 0.08, { type: 'pulse25', vol: 0.15, delay: i * 0.08 })),
   };
 
   function sfx(name) {
@@ -157,6 +161,14 @@ const Sound = (() => {
       { type: 'triangle', vol: 0.3, notes:
         rep('E2:2 E3:2', 2) + ' ' + rep('A2:2 A3:2', 2) + ' ' + rep('G2:2 G3:2', 2) + ' ' + rep('B2:2 B3:2', 2) },
       { type: 'drums', vol: 0.12, notes: rep('K:2 H:1 H:1 S:2 H:2', 4) },
+    ] },
+    // Starbase and galaxy map: calm, looping.
+    base: { step: 0.14, loop: true, tracks: [
+      { type: 'pulse12', vol: 0.12, notes:
+        'E5:4 B4:2 E5:2 F#5:4 E5:4 D5:4 B4:2 A4:2 B4:8 ' +
+        'C5:4 G4:2 C5:2 D5:4 C5:4 B4:4 G4:2 F#4:2 G4:8' },
+      { type: 'triangle', vol: 0.28, notes:
+        rep('E2:4 B2:4', 2) + ' ' + rep('B2:4 F#3:4', 2) + ' ' + rep('C3:4 G3:4', 2) + ' ' + rep('G2:4 D3:4', 2) },
     ] },
     gameover: { step: 0.12, loop: false, tracks: [
       { type: 'pulse25', vol: 0.16, notes: 'A4:3 G4:3 F4:3 E4:3 D4:3 C4:3 B3:3 A3:9' },

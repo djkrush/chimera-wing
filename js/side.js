@@ -1,13 +1,13 @@
 'use strict';
-// Side-scrolling missions (every even-numbered stage), in the style of U.N. Squadron.
-// The ship faces right and flies freely. Enemy squads arrive on a timed script, and the
-// mission ends with Dr. Voss's Histone Gunship (the boss code in game.js, turned to face left).
+// Side-scrolling assaults (the second leg of every planet mission), in the style of U.N. Squadron.
+// The ship faces right and flies freely. Enemy squads arrive on a timed script (with extra
+// patterns per sector), and the leg ends with the sector's boss (bosses.js) in side profile.
 
 Object.assign(Game, {
   initSide() {
     this.scroll = 0;
     const s = this.stage;
-    const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam'];
+    const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam', ...this.sectorSideKinds()];
     const events = [{ t: 700, kind: 'methyl' }, { t: 1700, kind: 'methyl' }];
     const dur = 2400 + Math.min(s, 12) * 60;   // ~45-55 seconds before the boss
     for (let t = 90; t < dur; t += randi(80, 140) - Math.min(s * 3, 40)) {
@@ -33,12 +33,12 @@ Object.assign(Game, {
     switch (kind) {
       case 'migLine': {
         const y = randi(30, 170), amp = pick([0, 16, 28]);
-        for (let i = 0; i < 5; i++) this.spawnSideEnemy('fighter', 'sine', W + 12 + i * 18, y, { amp, ph: i * 0.6 });
+        for (let i = 0; i < 5; i++) this.spawnSideEnemy(this.mixType('fighter'), 'sine', W + 12 + i * 18, y, { amp, ph: i * 0.6 });
         break;
       }
       case 'migSwoop': {
         const y = pick([30, 170]);
-        for (let i = 0; i < 4; i++) this.spawnSideEnemy('fighter', 'swoop', W + 12 + i * 16, y + (y < 100 ? i * 6 : -i * 6));
+        for (let i = 0; i < 4; i++) this.spawnSideEnemy(this.mixType('fighter'), 'swoop', W + 12 + i * 16, y + (y < 100 ? i * 6 : -i * 6));
         break;
       }
       case 'migRear': {
@@ -51,8 +51,21 @@ Object.assign(Game, {
         break;
       }
       case 'bomber':
-        this.spawnSideEnemy('bomber', 'bomber', W + 16, randi(40, 150));
-        if (this.stage >= 6) this.spawnSideEnemy('bomber', 'bomber', W + 60, randi(40, 150));
+        this.spawnSideEnemy(this.mixType('bomber'), 'bomber', W + 16, randi(40, 150));
+        if (this.stage >= 6) this.spawnSideEnemy(this.mixType('bomber'), 'bomber', W + 60, randi(40, 150));
+        break;
+      case 'splitterLine': {
+        const y = randi(40, 160);
+        for (let i = 0; i < 3; i++) this.spawnSideEnemy('splitter', 'sine', W + 12 + i * 24, y, { amp: 20, ph: i * 0.8 });
+        break;
+      }
+      case 'droneSwarm': {
+        const y = randi(40, 160);
+        for (let i = 0; i < 8; i++) this.spawnSideEnemy('drone', 'swarm', W + 8 + i * 9, y + ((i * 7) % 20) - 10);
+        break;
+      }
+      case 'armoredPair':
+        for (let i = 0; i < 2; i++) this.spawnSideEnemy('armored', 'bomber', W + 16 + i * 50, randi(40, 150));
         break;
       case 'sam': {
         const n = randi(2, 3);
@@ -62,19 +75,21 @@ Object.assign(Game, {
       case 'methyl':
         this.spawnSideEnemy('methyl', 'methyl', W + 12, randi(40, 170));
         break;
-      case 'boss':
-        this.boss = this.makeBoss(true);
-        this.say(VOSS.sideBoss);
-        this.hint('gunship');
+      case 'boss': {
+        const id = this.missionBoss();
+        this.boss = this.makeBoss(true, id);
+        if (id === 'gunship') { this.say(VOSS.sideBoss); this.hint('gunship'); }
+        else this.say('BIG CONTACT AHEAD: THE ' + BOSSES[id].name + '!', 'mira');
         Sound.playSong(Sound.SONGS.boss);
         break;
+      }
     }
   },
 
   spawnSideEnemy(type, beh, x, y, extra = {}) {
     const s = this.stage;
-    const hp = { fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2 }[type];
-    const acetyl = type !== 'sam' && s >= 2 && Math.random() < Math.min(0.08 + s * 0.02, 0.35);
+    const hp = { fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2, splitter: 2, drone: 1, armored: 6 + Math.floor(s / 5) }[type];
+    const acetyl = type !== 'sam' && s >= 2 && Math.random() < this.acetylChance();
     const base = beh === 'rear' ? 2.8 : Math.min(1.8 + s * 0.05, 3);
     const e = {
       type, hp, maxHp: hp, x, y, vx: 0, vy: 0, state: 'side', beh, st: 0,
@@ -110,6 +125,10 @@ Object.assign(Game, {
         e.vx = Math.cos(e.hd) * e.spd;
         e.vy = Math.sin(e.hd) * e.spd;
         if (e.st === 70) this.enemyFire(e);
+        break;
+      case 'swarm':   // drones: fast, and they drift toward your altitude
+        e.vx = -e.spd * 1.3;
+        e.vy = p.alive ? clamp((p.y - e.y) * 0.02, -0.6, 0.6) : 0;
         break;
       case 'bomber':
         e.vx = -0.5;
@@ -165,23 +184,25 @@ Object.assign(Game, {
   },
 
   // NES-style parallax: far mountains, near hills, and a striped ground strip.
+  // Colors come from the planet: [far mountains, near hills, ground, ground stripes].
   drawSideBG(ctx) {
     const s = this.scroll;
-    ctx.fillStyle = C.navy;
+    const [far, near, ground, stripe] = this.planetSky();
+    ctx.fillStyle = far;
     for (let x = 0; x < W; x += 2) {
       const u = x + s * 0.25;
       const h = Math.floor(150 + Math.sin(u * 0.031) * 12 + Math.sin(u * 0.013 + 1) * 18);
       ctx.fillRect(x, h, 2, SIDE_GROUND - h);
     }
-    ctx.fillStyle = C.dgreen;
+    ctx.fillStyle = near;
     for (let x = 0; x < W; x += 2) {
       const u = x + s * 0.6;
       const h = Math.floor(184 + Math.sin(u * 0.05) * 7 + Math.sin(u * 0.021 + 2) * 9);
       ctx.fillRect(x, h, 2, SIDE_GROUND - h);
     }
-    ctx.fillStyle = C.brown;
+    ctx.fillStyle = ground;
     ctx.fillRect(0, SIDE_GROUND, W, 230 - SIDE_GROUND);
-    ctx.fillStyle = C.olive;
+    ctx.fillStyle = stripe;
     ctx.fillRect(0, SIDE_GROUND, W, 1);
     const off = Math.floor(s) % 16;   // same speed as ground units
     for (let x = -off; x < W; x += 16) {

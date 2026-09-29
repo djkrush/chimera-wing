@@ -7,8 +7,12 @@ change how the game plays.
 ## Running and testing
 
 - There is no build step, no package manager, no bundler and no test suite. Open `index.html` in a browser.
-- `index.html?stage=N` skips the title screen and starts at stage N (2 = first side mission,
-  3 = challenging stage, 5 = Nucleosome Fortress, 15 = story finale, 16 = second loop). Use it to check your changes.
+- `index.html?stage=N` skips the title screen and drops into a mission leg (`testLeg` in `campaign.js`):
+  planet `ceil(N/2)` in map order, odd N = approach, even N = assault. E.g. 2 = Earth assault (gunship),
+  5 = Venus challenge approach, 23 = Aegir's Nucleosome Fortress, 26 = the finale. Test campaigns
+  (`camp.test`) never save, all specials are learned, and earlier planets count as cleared.
+- Scripted tests write to the real `localStorage` of that browser (`chimera.save`, `chimera.hi`).
+  Remove what you added when you're done.
 - An automated or background browser tab throttles `requestAnimationFrame`, so simulated key presses
   get missed. To script a test, step frames by hand from the console: `Input.update(); Game.update();`
   in a loop, holding keys with dispatched `keydown`/`keyup` events. Call `Game.draw(ctx)` to render.
@@ -21,35 +25,49 @@ change how the game plays.
 Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load order matters**:
 
 ```
-nes.js → sprites.js → audio.js → input.js → game.js → side.js → specials.js → pilots.js → story.js → tet.js → main.js
+nes.js → sprites.js → audio.js → input.js → game.js → bosses.js → side.js → specials.js → pilots.js
+       → campaign.js → starbase.js → carrier.js → story.js → tet.js → main.js
 ```
 
 | Global | File | Role |
 |---|---|---|
-| `NES` | `js/nes.js` | 256×240 screen size (`NES.W/H`), NES palette `NES.C`, 5×7 bitmap font (`NES.text`), `NES.sprite` (bakes ASCII art into canvases), draw helpers (`draw`, `drawRot`, `disc`, `box`, `wrap`) |
-| `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Sprites point **up**; the game rotates them. |
+| `NES` | `js/nes.js` | 256×240 screen size (`NES.W/H`), NES palette `NES.C`, 5×7 bitmap font (`NES.text`), `NES.sprite` (bakes ASCII art into canvases), draw helpers (`draw`, `drawRot`, `drawFlip`, `disc`, `box`, `wrap`) |
+| `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Top-down sprites point **up** and the game rotates them. Side-mission sprites are **side profiles**, drawn unrotated. |
 | `Sound` | `js/audio.js` | WebAudio chiptune: `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`, sequencer notes as `"NOTE:LEN"` tokens in sixteenths |
 | `Input` | `js/input.js` | Keyboard and gamepad merged into abstract actions: `Input.pressed(a)`, `Input.just(a)`. Actions: `left right up down fire special transform prevForm start back form1-3`. Per-pad remaps live in `localStorage['chimera.padmap']`. |
-| `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, bosses, HUD and all rendering |
-| (mixins) | `js/side.js`, `js/specials.js`, `js/pilots.js`, `js/story.js`, `js/tet.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
+| `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, HUD and rendering |
+| (mixins) | `js/bosses.js`, `js/side.js`, `js/specials.js`, `js/pilots.js`, `js/campaign.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
 | boot | `js/main.js` | Scales the canvas to whole-number sizes, sets global hotkeys, runs a **fixed 60 Hz** accumulator loop (`Input.update(); Game.update();` per tick, `Game.draw(ctx)` per frame) |
 
 ### Game state machine
 
-`Game.state` is one of `title | howto | setup | pilot | intro | hangar | play | clear | result | gameover`.
-`Game.update()` and `Game.draw()` switch on it. Change state with `setState(s)`, which also resets
-`stateT`. `Game.paused` shows the in-game menu over any state.
+`Game.state` is one of `title | howto | setup | pilot | travel | base | map | intro | hangar | sortie |
+takeoff | play | clear | result | landing | debrief | learn | gameover`. `Game.update()` and `Game.draw()`
+switch on it. Change state with `setState(s)`, which also resets `stateT`. `Game.paused` shows the
+in-game menu over any state. `inMenu()` lists the full-screen menu states (no playfield; `draw()` sends
+them to `drawMenuScreen`). While `inBase` is set, `intro`/`hangar` draw over the starbase (`drawInBase`).
 
-START GAME opens the pilot select (`pilot`), which calls `startGame(1)`. The flow for each stage is `startStage(n)` → `intro` (paged briefing) → `openHangar()` (pick a special) →
-`beginPlay()` → `play` → `clear`/`result` → next stage. After the boss on stage `FINALE` (15), `updateClear`
-calls `startEnding()` instead, which plays the epilogue and then starts stage 16.
+Campaign flow (`campaign.js`):
+
+```
+NEW GAME → pilot → newCampaign() → travel → base (autosave)
+base: MISSIONS → startMission(i) → intro (briefing) → hangar (if any specials learned) → sortie
+  → startLeg('approach') → takeoff → play → clear/result → legDone() → landing → afterLanding()
+  → startLeg('assault')  → takeoff → play → boss → clear → landing → missionComplete()
+  → debrief → learn (if a level-up earned a special) → base
+      (finale: debrief → startEnding() → epilogue → startNewGamePlus() → travel → base)
+base: GALAXY MAP → map → travel → base      gameover / ABORT MISSION → missionFailed() → base
+```
 
 ### Story (`js/story.js`)
 
-- `CAST` lists the speakers: `mira` (the ally, aqua), `voss` (the villain, pink) and `echo` (the villain from
-  stage 16 on, magenta). `Game.villain()` picks Voss or the Echo from the stage number.
-- `STORY[n]` holds the title and pages for campaign stages 1–15. A page is `[speaker, text]`.
-  Stages after 15 are built by `briefingFor(n)` from `LOOP_TOPICS` (title and fact) and `ECHO_LINES`.
+- `CAST` lists the speakers: `mira` (the ally, aqua), `voss` (the villain, pink) and `echo` (the villain in
+  the Echo campaign, magenta). `Game.villain()` picks Voss or the Echo from `camp.loop`.
+- `PLANET_STORY[planetId]` holds each planet's title and pages. A page is `[speaker, text]`. Each briefing
+  says why we fight there and what the boss is.
+- `STORY_BEATS[n]` tells Voss's personal story. Beat `n` plays once, before the next briefing after
+  `n` sectors are cleared, so it stays in order on any route. `planetBriefing(S, P)` puts it together
+  (and uses `LOOP_TOPICS`/`ECHO_LINES` in the Echo campaign).
 - `startBriefing(label, title, pages, done)` runs any sequence of pages in the `intro` state. Fire
   finishes the typing and then turns the page. Start skips to `done()`.
 - In-game radio: `say(text, who = villain, queued = false)`. With `queued`, the message waits in `radioQ`
@@ -58,16 +76,28 @@ calls `startEnding()` instead, which plays the epilogue and then starts stage 16
 
 ### Stage types
 
-`stageTypeOf(n)` in `game.js` decides the type: even stages are `side`; odd stages are `boss` (n % 10 === 5),
-`challenge` (n % 4 === 3) or `normal`. `Game.isSide` is a getter on `stageType`.
+Each leg has an explicit type, set by `setupStage(type)`: the approach uses the planet's `approach`
+(`normal`, `challenge` or `boss`, default `normal`) and the assault is always `side`. `Game.isSide` is a
+getter on `stageType`. `this.stage` is a difficulty number from `difficulty(leg)` (it grows with planets
+cleared, not with the route), and the enemy formulas scale with it.
 
 - **Vertical stages:** wave layouts (`buildNormalWaves`, `buildChallengeWaves`), spline flight paths
   (`PATH_DEFS` → `PATHS`), formation slots, dives, methylator beams.
 - **Side missions** (`side.js`): `initSide()` builds a timed event script. `updateSide()` spawns patterns
-  (`migLine`, `migSwoop`, `migRear`, `bomber`, `sam`, `methyl`, `boss`). Each enemy's `beh` field picks
-  its movement in `updateSideEnemy`.
-- **Bosses:** one `makeBoss(side)` serves both the fortress (vertical) and the gunship (side, turned to face left).
-  Parts `L`/`R` are turrets and `C` is the shielded core.
+  (`migLine`, `migSwoop`, `migRear`, `bomber`, `sam`, `methyl`, `splitterLine`, `droneSwarm`,
+  `armoredPair`, `boss`). Each enemy's `beh` field picks its movement in `updateSideEnemy`. Everything
+  in a side mission is drawn in **side profile**: `drawShip(..., side)` uses `SPR.hulls[h].side`,
+  `drawSideEnemy` uses `SPR.enemy[type].side` (facing left, flipped with `NES.drawFlip` when flying right),
+  and bosses use a side-profile hull.
+- **Sectors:** `SECTORS` in `campaign.js` gives each sector its planets, links, boss, enemy `swap`s
+  (`mixType`), extra `sideKinds`, `acetyl` bonus and the hull its shop sells. Planets carry their
+  side-mission background colors (`sky`).
+- **Bosses** (`bosses.js`): `BOSSES[id]` picks a part layout from `BOSS_PARTS` (turrets and cores, with
+  `ox/oy` offsets for the top-down hull and `sx/sy` for the side profile) and a `shield` rule
+  (`turrets`, `launch`, `swapCore`, `swapTurret`). `makeBoss(side, id)`; the planet's `boss` field or
+  the sector's `boss` picks the id.
+- **Carrier** (`carrier.js`): `startTakeoff()`/`startLanding()` run the 1942-style sequences around
+  every leg. `this.carrier` is drawn by `drawWorld` while it exists.
 - **`orient(x, y)`** turns a vertical-stage direction (up = forward) into the current orientation.
   Use it in code shared by both modes so that code doesn't need separate vertical and side branches.
 
@@ -75,13 +105,18 @@ calls `startEnding()` instead, which plays the epilogue and then starts stage 16
 
 - `FORMS`: the player's three forms (speed, `free` = can climb/dive, hitbox).
 - `ENEMY`: enemy types (hp, points `[normal, acetylated]`, hit radius). A new enemy type needs an entry
-  here, art in `SPR`, and drawing in `drawEnemy`.
+  here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
-- `SPECIALS` (in `specials.js`): the hangar's special weapons. Ammo comes from the pilot's `special` stat.
-- `PILOTS` (in `pilots.js`): Maverick, Turtle and Drac, with `weapons` (shot damage multiplier `weapons / 4`,
-  via `gunPower()`), `shields` and `special` stats. There are no lives: `Game.shields` soaks hits through
-  `takeHit()`, one more hit at 0 is game over, and shields refill in `startStage`. `?stage=N` uses the
-  default pilot (Maverick).
+- `SPECIALS` (in `specials.js`): special weapons. The pilot learns them at `LEARN_LEVELS` (2, 5, 8); the
+  hangar lists only `camp.learned`. Ammo = the `special` stat, refilled at every takeoff.
+- `PILOTS` and `HULLS` (in `pilots.js`): `statOf(key)` = pilot + hull + `camp.up` upgrades, capped at
+  `STAT_CAP`. `weapons` is the shot damage multiplier (`statOf('weapons') / 4`, via `gunPower()`), the
+  hull's `speed` scales every form (`speedMul()`). There are no lives: `Game.shields` soaks hits through
+  `takeHit()`, one more hit at 0 fails the mission, and shields refill in `setupStage`.
+- `SECTORS`, `LEVELS`, `LEARN_LEVELS` (in `campaign.js`), `UPGRADES` and prices (in `starbase.js`).
+- `Game.camp` is the whole saved campaign (pilot, hull, owned hulls, upgrades, money, xp, level, learned
+  specials, cleared planets, current sector, loop, story beats seen, score). It is saved as JSON in
+  `localStorage['chimera.save']` by `saveCampaign()` whenever the carrier docks or you buy something.
 - TET capsules (`tet.js`): acetylated kills may drop one (`dropTet`); collecting it restores a silenced form.
 
 ## Conventions
@@ -93,11 +128,14 @@ calls `startEnding()` instead, which plays the epilogue and then starts stage 16
   that isn't in it is silently skipped (so no `&`, `;` or `*`). Wrap long lines with `NES.wrap(str, n)`.
   Dialogue wraps at 25 characters: a briefing page holds 6 lines and a radio message 3. Longer text
   is cut off without any warning, so count the wrapped lines. Screen text at x=8 fits about 30 characters.
-- Sprites are ASCII grids: `.` is transparent, and every other character looks up a color in a map. Draw them pointing up.
+- Sprites are ASCII grids: `.` is transparent, and every other character looks up a color in a map.
+  Draw top-down sprites pointing up. Side-mission art is a separate side profile: the player's points
+  right, enemies' point left. Don't rotate a top-down sprite for a side mission.
 - Every file starts with `'use strict';`. Shared helpers in `game.js` (`rand`, `randi`, `pick`, `clamp`,
   `angDiff`, `TAU`, `C`, `W`, `H`) are globals and available to the files loaded after it.
 - Keep the style: short methods on `Game`, compact one-line statements, and brief comments that explain *why*.
-- Wrap all `localStorage` access in try/catch (keys: `chimera.hi`, `chimera.padmap`).
+- Wrap all `localStorage` access in try/catch (keys: `chimera.hi`, `chimera.padmap`, `chimera.save`).
+  If you change the shape of `Game.camp`, bump its `v` and handle old saves in `continueCampaign`.
 - Keep the game playable with only a D-pad, A, B, Select and Start (NES-style pads). Put keyboard-only
   extras (like `back`) on top of that; don't make them required.
 - Theme: the enemies, mechanics and story are built on real epigenetics (methylation, acetylation, histones,
@@ -111,13 +149,21 @@ calls `startEnding()` instead, which plays the epilogue and then starts stage 16
   `drawSpecialFx` if it lasts over time), and add an icon to `SPR.specialIcons` at the same index.
 - **New side-mission pattern:** add a `case` to `spawnSidePattern`, add it to the `kinds` list in `initSide`,
   and add a `beh` case in `updateSideEnemy` if it needs new movement.
-- **New story beat:** edit `STORY[n]` (campaign) or `LOOP_TOPICS`/`ECHO_LINES` (second loop) in `story.js`.
-  For a one-off radio tip, add it to `HINTS` and call `this.hint('key')` where it happens.
+- **New story beat:** edit `PLANET_STORY` (per planet), `STORY_BEATS` (Voss's arc) or
+  `LOOP_TOPICS`/`ECHO_LINES` (Echo campaign) in `story.js`. For a one-off radio tip, add it to `HINTS`
+  and call `this.hint('key')` where it happens.
+- **New planet:** add it to a sector's `planets` in `SECTORS` (id, name, `sky`, `disc`, optional
+  `approach`/`boss`) and add its briefing to `PLANET_STORY`.
+- **New sector:** add it to `SECTORS` with `x/y` on the map and `links` in **both** directions.
+- **New boss:** add an entry to `BOSSES` (and a layout to `BOSS_PARTS` or a rule to `updateBossShields`
+  if needed) and a palette to `BOSS_PALS` in `sprites.js`. Both hull views are built from the palette.
+- **New hull:** add it to `HULLS` (`pilots.js`) and `HULL_ART` (`sprites.js`, same index, with top-down
+  and side-profile rows), and set a sector's `hull` to sell it.
 - **New system in its own file:** use the `Object.assign(Game, {...})` mixin pattern and add a
   `<script>` tag after `game.js` in `index.html`.
 
 ## Repo notes
 
-- Git branch is `master` with no commits yet (the default branch is meant to be `main`).
+- Work happens on `main`.
 - `.gitignore` ignores `node_modules/` and OS junk files. If you add npm tooling (a linter, a local
   server), keep the game runnable straight from `index.html`.

@@ -129,6 +129,15 @@ const NES = (() => {
     ctx.restore();
   }
 
+  // Mirrored left-right (side profiles flying the other way).
+  function drawFlip(ctx, img, x, y) {
+    ctx.save();
+    ctx.translate(Math.round(x), Math.round(y));
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, -(img.width >> 1), -(img.height >> 1));
+    ctx.restore();
+  }
+
   function disc(ctx, cx, cy, r, color) {
     ctx.fillStyle = color;
     cx = Math.round(cx); cy = Math.round(cy);
@@ -154,5 +163,5 @@ const NES = (() => {
     return lines;
   }
 
-  return { W, H, C, text, textWidth, sprite, draw, drawRot, disc, box, wrap };
+  return { W, H, C, text, textWidth, sprite, draw, drawRot, drawFlip, disc, box, wrap };
 })();

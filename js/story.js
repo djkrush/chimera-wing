@@ -1,10 +1,9 @@
 'use strict';
-// Story campaign: two-voice briefings before each stage, the epilogue, and the second loop.
-// Stages 1-15 tell the story. Beating the fortress on stage 15 plays the epilogue, then the game
-// keeps looping against the "Voss Echo" with a new science fact every stage.
+// Story campaign: two-voice briefings before each planet mission, story beats that follow your
+// progress, the epilogue, and the Echo campaign (New Game+).
+// Each planet briefing says why we fight there and what the boss is. Voss's personal story is told
+// in STORY_BEATS, keyed to how many sectors you have cleared, so it stays in order on any route.
 // Every science line is meant to be accurate. Check new ones before adding them.
-
-const FINALE = 15;
 
 // Speakers. The briefing box and in-game radio take their border color and portrait from here.
 const CAST = {
@@ -14,80 +13,104 @@ const CAST = {
 };
 
 // Pages are [speaker, text]. Text wraps at 25 characters and a page holds 6 lines.
-const STORY = {
-  1: { title: 'DNA METHYLATION', pages: [
+const PLANET_STORY = {
+  // ---- SOL ----
+  earth: { title: 'DNA METHYLATION', pages: [
     ['mira', "PILOT, THIS IS DR. MIRA KATO, CHIMERA PROJECT. VOSS HAS SEIZED THE WORLD'S AIR FORCES WITHOUT CHANGING THEIR DNA."],
     ['mira', 'SHE ADDS METHYL GROUPS TO DNA NEAR GENE PROMOTERS. A HEAVILY METHYLATED PROMOTER USUALLY MEANS A SILENT GENE.'],
     ['mira', "YOUR SHIP'S THREE FORMS RUN ON ONE GENOME, LIKE THE CELLS IN YOUR BODY. SHE WILL TRY TO SILENCE THEM."],
+    ['mira', 'HER HISTONE GUNSHIP HOLDS EARTH ORBIT. BREAK THROUGH HER SCREEN, THEN BRING THE GUNSHIP DOWN.'],
     ['voss', 'MIRA, DARLING. STILL SENDING PILOTS TO FIGHT CHEMISTRY? I NEVER EDIT A GENE. I DECIDE WHICH ONES GET TO SPEAK.'],
   ] },
-  2: { title: 'OPERATION ENHANCER', pages: [
-    ['mira', 'HER RELAYS WORK LIKE ENHANCERS: DNA SWITCHES THAT CAN SIT THOUSANDS OF LETTERS FROM THEIR GENE. THE DNA LOOPS SO THEY TOUCH.'],
+  mars: { title: 'OPERATION ENHANCER', pages: [
+    ['mira', 'HER RELAY ON MARS WORKS LIKE AN ENHANCER: A DNA SWITCH THAT CAN SIT THOUSANDS OF LETTERS FROM ITS GENE. THE DNA LOOPS SO THEY TOUCH.'],
     ['mira', 'GOLD PLANES ARE ACETYLATED. SOME CARRY TET CAPSULES. TET ENZYMES HELP STRIP METHYL MARKS, SO GRAB ONE TO RESTORE A FORM.'],
+    ['mira', 'TAKE DOWN THE GUNSHIP GUARDING THE RELAY AND HER SIGNAL CANNOT REACH THE OUTER SYSTEMS.'],
     ['voss', 'DISTANCE MEANS NOTHING TO AN ENHANCER. OR TO MY MISSILES.'],
   ] },
-  3: { title: 'CHALLENGING STAGE', pages: [
-    ['voss', "A CONTROL GROUP. MY PILOTS WILL NOT FIRE. LET'S MEASURE YOUR BASELINE EXPRESSION."],
-    ['mira', "EVERY GOOD EXPERIMENT NEEDS A CONTROL. GIVE HER DATA SHE WON'T LIKE: HIT ALL 40."],
-  ] },
-  4: { title: 'OPERATION POLYCOMB', pages: [
+  venus: { title: 'OPERATION POLYCOMB', pages: [
     ['mira', 'I SHOULD TELL YOU. HELENA AND I RAN A LAB TOGETHER. WE STUDIED HOW CELLS CHOOSE WHAT TO BECOME.'],
     ['mira', 'WADDINGTON PICTURED A CELL AS A BALL ROLLING DOWN A HILLSIDE OF VALLEYS. EACH VALLEY IS A FATE: SKIN, NERVE, MUSCLE.'],
     ['mira', 'POLYCOMB PROTEINS KEEP A CELL IN ITS VALLEY BY HOLDING THE WRONG GENES SILENT. SHE USES THEM TO KEEP PILOTS LOYAL.'],
+    ['mira', "HER PILOTS OVER VENUS ARE A CONTROL GROUP. THEY WON'T FIRE. HIT ALL 40, THEN HIT HER GUNSHIP."],
     ['voss', 'A NEURON NEVER WAKES UP AS A LIVER CELL. MY PILOTS WILL NEVER WAKE UP AT ALL.'],
   ] },
-  5: { title: 'NUCLEOSOME FORTRESS', pages: [
-    ['mira', 'HER FORTRESS IS BUILT LIKE A NUCLEOSOME: ABOUT 147 LETTERS OF DNA WRAPPED AROUND A CORE OF EIGHT HISTONE PROTEINS.'],
-    ['mira', 'TAKE OUT BOTH TURRETS TO DROP THE SHIELD, THEN HIT THE HISTONE CORE.'],
-    ['voss', 'WELCOME TO MY FORTRESS. DNA WRAPPED TIGHT IS DNA KEPT QUIET. YOU WILL BE VERY QUIET.'],
-  ] },
-  6: { title: 'OPERATION HUNGER WINTER', pages: [
-    ['mira', "I FOUND HELENA'S FILES. HER MOTHER WAS IN THE WOMB DURING THE DUTCH HUNGER WINTER, THE FAMINE OF 1944 TO 1945."],
-    ['mira', 'SIXTY YEARS LATER, PEOPLE EXPOSED TO THAT FAMINE BEFORE BIRTH STILL HAD DIFFERENT METHYLATION ON GENES LIKE IGF2.'],
-    ['voss', 'FAMINE WROTE ON MY MOTHER BEFORE SHE COULD BREATHE. NOBODY ASKED HER. FROM NOW ON, I DO THE WRITING.'],
-  ] },
-  7: { title: 'CHALLENGING STAGE', pages: [
-    ['mira', 'IDENTICAL TWINS SHARE ONE GENOME, YET THEIR METHYLATION DRIFTS APART AS THEY AGE. LIFE LEAVES MARKS.'],
-    ['voss', 'ANOTHER CONTROL GROUP. HOLD FIRE, PILOTS. LET THE SUBJECT PERFORM.'],
-  ] },
-  8: { title: 'OPERATION DNMT1', pages: [
+  // ---- ALPHA CENTAURI ----
+  proxima: { title: 'OPERATION DNMT1', pages: [
     ['mira', 'HER MARKS ARE STICKING. WHEN A CELL DIVIDES, AN ENZYME CALLED DNMT1 COPIES THE METHYL PATTERN ONTO THE NEW DNA.'],
-    ['mira', 'SO A SILENCED GENE STAYS SILENT IN EVERY DAUGHTER CELL. WE HAVE TO HIT THE SOURCE.'],
+    ['mira', 'SO A SILENCED GENE STAYS SILENT IN EVERY DAUGHTER CELL. HER DNMT1 COPIER DOES THE SAME FOR HER FLEET HERE.'],
+    ['mira', 'THE COPIER REBUILDS ONE LOST TURRET, SO KEEP HITTING IT. SPLITTER PLANES BREAK IN TWO WHEN SHOT.'],
     ['voss', 'DNMT1 IS MY FAVORITE ENZYME. I SAY SOMETHING ONCE AND IT REPEATS IT FOREVER.'],
   ] },
-  9: { title: 'HISTONE ACETYLATION', pages: [
+  toliman: { title: 'TWIN DRIFT', pages: [
+    ['mira', 'IDENTICAL TWINS SHARE ONE GENOME, YET THEIR METHYLATION DRIFTS APART AS THEY AGE. LIFE LEAVES MARKS.'],
+    ['mira', 'TOLIMAN AND RIGIL KENTAURUS ARE TWIN STARS. HER SECOND COPIER KEEPS BOTH FLEETS MARKED THE SAME. BREAK IT.'],
+    ['voss', 'ANOTHER CONTROL GROUP. HOLD FIRE, PILOTS. LET THE SUBJECT PERFORM.'],
+  ] },
+  // ---- BARNARD'S STAR ----
+  hive: { title: 'HISTONE ACETYLATION', pages: [
     ['mira', 'ACETYL GROUPS ON HISTONES LOOSEN THEIR GRIP ON DNA. THE CHROMATIN OPENS AND GENES SWITCH ON.'],
     ['mira', 'THAT IS WHY HER GOLD PLANES ARE FASTER AND FIRE TWICE. THEY ARE WORTH DOUBLE, AND THEY DROP TET CAPSULES.'],
+    ['mira', 'HER HIVE QUEEN BREEDS DRONES AT BARNARD B. HER CORE SHIELDS UP WHILE SHE LAUNCHES A SWARM, SO STRIKE BETWEEN SWARMS.'],
     ['voss', 'MY ACETYLATED ELITE. OPEN CHROMATIN, FAST REFLEXES, NO HESITATION.'],
   ] },
-  10: { title: 'OPERATION ROYAL JELLY', pages: [
+  nectar: { title: 'OPERATION ROYAL JELLY', pages: [
     ['mira', 'A QUEEN BEE AND A WORKER CAN SHARE THE SAME GENES. THE LARVA FED ROYAL JELLY BECOMES THE QUEEN.'],
     ['mira', 'IN ONE EXPERIMENT, TURNING DOWN A METHYLATION ENZYME IN LARVAE MADE MOST OF THEM GROW UP QUEEN-LIKE.'],
+    ['mira', 'NECTAR IS WHERE SHE RAISES NEW QUEENS. SHUT DOWN THE ONE ON GUARD BEFORE SHE BREEDS MORE.'],
     ['voss', 'WORKERS AND QUEENS. SAME DNA, DIFFERENT DESTINY. I KNOW WHICH ONE I AM.'],
   ] },
-  11: { title: 'CHALLENGING STAGE', pages: [
-    ['mira', "A TORTOISESHELL CAT'S PATCHES ARE EPIGENETIC. IN EACH FEMALE CELL, ONE X CHROMOSOME IS SHUT DOWN AT RANDOM."],
-    ['voss', 'CONTROL GROUP THREE. DO TRY TO BE INTERESTING.'],
-  ] },
-  12: { title: 'OPERATION AGOUTI', pages: [
+  // ---- SIRIUS ----
+  agouti: { title: 'OPERATION AGOUTI', pages: [
     ['mira', 'AGOUTI MICE CAN BE GENETICALLY IDENTICAL YET BE BORN YELLOW AND OBESE OR BROWN AND LEAN.'],
     ['mira', 'FEED THE MOTHER EXTRA METHYL DONORS LIKE FOLATE AND MORE PUPS COME OUT BROWN. HER DIET CHANGED THEIR MARKS.'],
-    ['voss', 'YOU SEE? THE MOTHER DECIDES. TODAY, I AM EVERYONE\'S MOTHER.'],
+    ['mira', 'THE X-INACTIVATOR GUARDS THIS WORLD. IT HAS TWO CORES, BUT ONLY ONE IS OPEN AT A TIME. WATCH WHICH ONE.'],
+    ['voss', "YOU SEE? THE MOTHER DECIDES. TODAY, I AM EVERYONE'S MOTHER."],
   ] },
-  13: { title: 'GENOMIC IMPRINTING', pages: [
+  calico: { title: 'X-INACTIVATION', pages: [
+    ['mira', "A TORTOISESHELL CAT'S PATCHES ARE EPIGENETIC. IN EACH FEMALE CELL, ONE X CHROMOSOME IS SHUT DOWN AT RANDOM."],
+    ['mira', 'HER X-INACTIVATOR WORKS THE SAME WAY. WHICH CORE SHUTS DOWN IS RANDOM, SO NEVER GET COMFORTABLE.'],
+    ['voss', 'CONTROL GROUP THREE. DO TRY TO BE INTERESTING.'],
+  ] },
+  // ---- TAU CETI ----
+  taue: { title: 'THE HUNGER WINTER', pages: [
+    ['mira', 'IN THE DUTCH HUNGER WINTER OF 1944 TO 1945, A FAMINE STRUCK THE WESTERN NETHERLANDS.'],
+    ['mira', 'SIXTY YEARS LATER, PEOPLE EXPOSED TO THAT FAMINE BEFORE BIRTH STILL HAD DIFFERENT METHYLATION ON GENES LIKE IGF2.'],
+    ['mira', 'HER TAU CETI BASE KEEPS HER OLDEST FILES. THE IMPRINT TWINS GUARD IT. ONLY ONE TURRET IS OPEN AT A TIME.'],
+    ['voss', 'HUNGER IS A TEACHER, PILOT. IT WRITES LESSONS THAT OUTLIVE THE STUDENT.'],
+  ] },
+  tauf: { title: 'GENOMIC IMPRINTING', pages: [
     ['mira', 'SOME GENES REMEMBER WHICH PARENT THEY CAME FROM. ONLY THE COPY FROM ONE PARENT IS SWITCHED ON. THAT IS IMPRINTING.'],
     ['mira', "LOSE THE SAME PIECE OF CHROMOSOME 15 AND YOU GET PRADER-WILLI OR ANGELMAN SYNDROME, DEPENDING ON WHICH PARENT'S COPY IS GONE."],
+    ['mira', 'THE TWINS WORK LIKE IMPRINTING: ONE COPY SPEAKS AND THE OTHER STAYS SILENT. HIT WHICHEVER TURRET IS OPEN.'],
     ['voss', "ONLY ONE PARENT'S COPY GETS TO SPEAK. IN THIS SKY, ONLY I SPEAK."],
   ] },
-  14: { title: 'OPERATION YAMANAKA', pages: [
+  // ---- EPSILON ERIDANI ----
+  aegir: { title: 'NUCLEOSOME FORTRESS', pages: [
+    ['mira', 'HER FORTRESS IS BUILT LIKE A NUCLEOSOME: ABOUT 147 LETTERS OF DNA WRAPPED AROUND A CORE OF EIGHT HISTONE PROTEINS.'],
+    ['mira', 'IT GUARDS THE APPROACH TO AEGIR. TAKE OUT BOTH TURRETS TO DROP THE SHIELD, THEN HIT THE HISTONE CORE.'],
     ['mira', 'IN 2006, SHINYA YAMANAKA TURNED ADULT CELLS BACK INTO STEM CELLS WITH FOUR FACTORS. A LIFETIME OF MARKS, RESET.'],
-    ['mira', "IF MARKS CAN BE RESET, HER SILENCING CAN BE UNDONE. I'M BUILDING A TET WAVE TO BROADCAST FROM HER OWN FORTRESS."],
-    ['voss', 'YAMANAKA WON A NOBEL PRIZE FOR RESETTING CELLS. I WILL SETTLE FOR RESETTING THE WORLD.'],
+    ['mira', "IF MARKS CAN BE RESET, HER SILENCING CAN BE UNDONE. I'M BUILDING A TET WAVE TO BROADCAST FROM HER OWN CITADEL."],
+    ['voss', 'WELCOME TO MY FORTRESS. DNA WRAPPED TIGHT IS DNA KEPT QUIET. YOU WILL BE VERY QUIET.'],
   ] },
-  15: { title: 'THE LAST FORTRESS', pages: [
-    ['mira', 'THIS IS IT. HER TRANSMITTER IS INSIDE THE HISTONE CORE. BREAK IT AND I CAN SEND THE TET WAVE.'],
+  citadel: { title: 'THE LAST FORTRESS', pages: [
+    ['mira', 'THIS IS IT. HER TRANSMITTER IS INSIDE THE CITADEL. HER FLAGSHIP GUARDS IT WITH EVERY WEAPON WE HAVE SEEN.'],
+    ['mira', 'BREAK THE FLAGSHIP AND I CAN SEND THE TET WAVE.'],
     ['voss', 'YOU WANT TO ERASE MY MARKS? MARKS ARE MEMORY, PILOT. I WILL NOT LET THE WORLD FORGET.'],
   ] },
+};
+
+// Voss's story, told in order no matter which route you fly. Keyed by sectors cleared: each beat
+// plays once, at the start of the next briefing.
+const STORY_BEATS = {
+  2: [
+    ['mira', "I FOUND HELENA'S FILES. HER MOTHER WAS IN THE WOMB DURING THE DUTCH HUNGER WINTER, THE FAMINE OF 1944 TO 1945."],
+    ['voss', 'FAMINE WROTE ON MY MOTHER BEFORE SHE COULD BREATHE. NOBODY ASKED HER. FROM NOW ON, I DO THE WRITING.'],
+  ],
+  3: [
+    ['mira', 'SHE IS PULLING HER FLEET BACK TO EPSILON ERIDANI. WHATEVER SHE IS BUILDING, IT IS THERE.'],
+    ['voss', 'YAMANAKA WON A NOBEL PRIZE FOR RESETTING CELLS. I WILL SETTLE FOR RESETTING THE WORLD.'],
+  ],
 };
 
 const EPILOGUE = [
@@ -99,8 +122,8 @@ const EPILOGUE = [
   ['mira', "IT'S AN ECHO OF HELENA, RUNNING ON ITS OWN. PILOT... ONE MORE LOOP?"],
 ];
 
-// Second loop (after the epilogue): each stage covers one topic, with a science fact from Mira
-// and a line from the Echo. Side missions put "OPERATION" in front of the topic.
+// Echo campaign (after the epilogue): each planet covers one topic, with a science fact from Mira
+// and a line from the Echo.
 const LOOP_TOPICS = [
   ["MOTHER'S CARE", 'IN RATS, PUPS GROOMED MORE BY THEIR MOTHER HAVE LESS METHYLATION ON A STRESS HORMONE RECEPTOR GENE AND GROW UP CALMER.'],
   ['CPG ISLANDS', 'CPG ISLANDS ARE STRETCHES OF DNA RICH IN C-G PAIRS. MANY SIT AT GENE PROMOTERS AND ARE USUALLY LEFT UNMETHYLATED.'],
@@ -127,25 +150,30 @@ const HINTS = {
   silenced: 'SHOOT DOWN THE METHYLATOR CARRYING YOUR FORM, OR GRAB A TET CAPSULE.',
   tet: 'TET ENZYMES HELP THE CELL STRIP METHYL MARKS. YOUR GENE IS BACK ONLINE!',
   tetSpare: 'NOTHING TO ERASE RIGHT NOW. TET CAPSULES RESTORE A SILENCED FORM.',
-  gunship: 'SAME LAYOUT AS THE FORTRESS: TURRETS FIRST, THEN THE CORE.',
-  danger: 'SHIELDS DOWN! ONE MORE HIT ENDS IT. CLEAR THE STAGE TO REPAIR.',
+  gunship: 'ITS CORE IS SHIELDED WHILE THE TURRETS STAND. TURRETS FIRST, THEN THE CORE.',
+  danger: 'SHIELDS DOWN! ONE MORE HIT ENDS IT. LAND ON THE CARRIER TO REPAIR.',
 };
 
 Object.assign(Game, {
   // Voss is the villain during the campaign, the Echo after it. (A method, not a getter:
   // Object.assign would copy a getter's value instead of the getter.)
-  villain() { return this.stage > FINALE ? 'echo' : 'voss'; },
+  villain() { return this.camp && this.camp.loop > 0 ? 'echo' : 'voss'; },
 
-  // Title and pages for stage n's briefing.
-  briefingFor(n) {
-    if (STORY[n]) return STORY[n];
-    const k = n - FINALE - 1;
-    const [topic, fact] = LOOP_TOPICS[k % LOOP_TOPICS.length];
-    const type = stageTypeOf(n);
-    const title = type === 'side' ? 'OPERATION ' + topic
-      : type === 'boss' ? 'ECHO FORTRESS'
-        : type === 'challenge' ? 'CHALLENGING STAGE' : topic;
-    return { title, pages: [['mira', fact], ['echo', ECHO_LINES[k % ECHO_LINES.length]]] };
+  // Title and pages for a planet's briefing, with any story beat that is due first.
+  planetBriefing(S, P) {
+    const c = this.camp;
+    let B = PLANET_STORY[P.id];
+    if (c.loop > 0) {
+      const k = SECTORS.flatMap(q => q.planets).indexOf(P) + (c.loop - 1) * 3;
+      const [topic, fact] = LOOP_TOPICS[k % LOOP_TOPICS.length];
+      B = { title: topic, pages: [['mira', fact], ['echo', ECHO_LINES[k % ECHO_LINES.length]]] };
+    }
+    const done = this.sectorsCleared();
+    const beats = [];
+    for (const [n, pages] of Object.entries(STORY_BEATS)) {
+      if (c.loop === 0 && done >= +n && !c.beats.includes(+n)) { c.beats.push(+n); beats.push(...pages); }
+    }
+    return { title: B.title, pages: [...beats, ...B.pages] };
   },
 
   // Shows pages of dialogue in the 'intro' state. done() runs after the last page.
@@ -170,7 +198,10 @@ Object.assign(Game, {
   startEnding() {
     Sound.playSong(Sound.SONGS.title);
     this.adapt = -1;   // hides the adaptation warning on the epilogue screen
-    this.startBriefing('EPILOGUE', 'THE TET WAVE', EPILOGUE, () => this.startStage(FINALE + 1));
+    this.inBase = true;   // the epilogue plays over the starbase
+    const pages = this.camp.loop === 0 ? EPILOGUE
+      : [['mira', 'THE ECHO IS DOWN, BUT ITS PATTERN IS ALREADY COPYING ITSELF AGAIN. ONE MORE LOOP?']];
+    this.startBriefing('EPILOGUE', this.camp.loop === 0 ? 'THE TET WAVE' : 'ECHO ' + this.camp.loop, pages, () => this.startNewGamePlus());
   },
 
   // Mira's radio tips, each shown once per game.

@@ -1,7 +1,7 @@
 'use strict';
-// Mission special weapons. Before each stage the player picks one in the hangar.
-// Every weapon gets as many uses as the pilot's SPECIAL stat (pilots.js), and whatever is
-// left is lost when the mission ends.
+// Special weapons. The pilot learns them at levels 2, 5 and 8 (campaign.js) and equips one
+// learned special before each mission. Every takeoff rearms it with as many uses as the
+// SPECIAL stat (pilots.js).
 
 const SPECIALS = [
   { id: 'laser', name: 'THUNDER LASER', short: 'LSR', color: C.aqua,
@@ -12,6 +12,10 @@ const SPECIALS = [
     desc: ['HITS EVERY ENEMY ON SCREEN', 'AND ERASES ENEMY BULLETS.'] },
   { id: 'shield', name: 'GENE SHIELD', short: 'SHD', color: C.lime,
     desc: ['5-SECOND BARRIER. BLOCKS', 'BULLETS AND METHYL BEAMS.'] },
+  { id: 'tet', name: 'TET BURST', short: 'TET', color: C.mint,
+    desc: ['RESTORES EVERY SILENCED', 'FORM AND STOPS BEAMS.'] },
+  { id: 'wingman', name: 'WINGMAN', short: 'WNG', color: C.sky,
+    desc: ['A DRONE FLIES WITH YOU FOR', '10 SECONDS AND COPIES SHOTS.'] },
 ];
 
 Object.assign(Game, {
@@ -19,20 +23,20 @@ Object.assign(Game, {
 
   openHangar() {
     this.setState('hangar');
-    this.hangarSel = this.lastSpecial;
+    this.hangarSel = Math.max(0, this.camp.learned.indexOf(this.lastSpecial));
   },
 
   updateHangar() {
     this.stateT++;
-    const n = SPECIALS.length;
+    const L = this.camp.learned, n = L.length;
     if (Input.just('up')) { this.hangarSel = (this.hangarSel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { this.hangarSel = (this.hangarSel + 1) % n; Sound.sfx('move'); }
     if (this.stateT > 12 && (Input.just('fire') || Input.just('start') || Input.just('special'))) {
-      const sel = this.hangarSel;
+      const sel = L[this.hangarSel];
       this.lastSpecial = sel;
-      this.special = { idx: sel, ammo: this.pilotDef().special, cd: 0 };
+      this.special = { idx: sel, ammo: this.statOf('special'), cd: 0 };
       Sound.sfx('select');
-      this.beginPlay();
+      this.startSortie();
     }
   },
 
@@ -68,7 +72,38 @@ Object.assign(Game, {
         sp.cd = 30;
         Sound.sfx('restore');
         break;
+      case 'tet':
+        this.tetBurst();
+        sp.cd = 60;
+        break;
+      case 'wingman':
+        this.wingT = 600;
+        sp.cd = 30;
+        Sound.sfx('oneup');
+        break;
     }
+  },
+
+  // TET enzymes strip methyl marks: every silenced form comes back and beams on screen stop.
+  tetBurst() {
+    const p = this.player;
+    this.tetT = 20;
+    for (let f = 0; f < 3; f++) if (p.silenced[f]) this.restoreForm(f);
+    for (const e of this.enemies) {
+      e.holding = -1;
+      if (e.state === 'beam') e.beamT = Math.max(e.beamT, 160);
+      if (e.phase === 'beam') e.beamT = Math.max(e.beamT, 150);
+    }
+    if (this.boss && this.boss.beamT > 0) { this.boss.beamT = 0; this.boss.beamCd = 200; }
+    Sound.sfx('restore');
+  },
+
+  // Where the Wingman drone flies: behind and to one side of the ship.
+  wingOffset() { return this.orient(-18, 8); },
+
+  drawWingman(ctx) {
+    const p = this.player, [wx, wy] = this.wingOffset();
+    NES.draw(ctx, this.isSide ? SPR.wingSide : SPR.wing, p.x + wx, p.y + wy);
   },
 
   burstCluster(b) {
@@ -104,6 +139,8 @@ Object.assign(Game, {
     if (sp && sp.cd > 0) sp.cd--;
     if (p.shieldT > 0) p.shieldT--;
     if (this.crushT > 0) this.crushT--;
+    if (this.wingT > 0) this.wingT--;
+    if (this.tetT > 0) this.tetT--;
     const L = this.laser;
     if (!L) return;
     if (--L.t <= 0 || !p.alive) { this.laser = null; return; }
@@ -136,6 +173,14 @@ Object.assign(Game, {
         ctx.fillRect(Math.round(p.x + Math.cos(a) * 12), Math.round(p.y + Math.sin(a) * 12), 2, 2);
       }
     }
+    if (this.tetT > 0) {
+      const r = (20 - this.tetT) * 12;
+      ctx.fillStyle = (this.t >> 1) & 1 ? C.lime : C.mint;
+      for (let k = 0; k < 40; k++) {
+        const a = k / 40 * TAU;
+        ctx.fillRect(Math.round(p.x + Math.cos(a) * r), Math.round(p.y + Math.sin(a) * r), 2, 2);
+      }
+    }
     if (this.crushT > 12) {
       ctx.fillStyle = C.white;
       ctx.fillRect(0, 0, W, H);
@@ -154,17 +199,18 @@ Object.assign(Game, {
     NES.box(ctx, 16, 30, 224, 172, C.black, C.gold);
     NES.text(ctx, 'HANGAR: MISSION LOADOUT', 128, 38, C.gold, center);
     NES.text(ctx, 'PICK ONE SPECIAL WEAPON.', 128, 52, C.white, center);
-    NES.text(ctx, 'IT ONLY LASTS THIS MISSION.', 128, 62, C.lgray, center);
-    SPECIALS.forEach((s, i) => {
-      const y = 80 + i * 17;
+    NES.text(ctx, 'REARMED AT EVERY TAKEOFF.', 128, 62, C.lgray, center);
+    const L = this.camp.learned;
+    L.forEach((idx, i) => {
+      const s = SPECIALS[idx], y = 80 + i * 17;
       const sel = i === this.hangarSel;
       if (sel) { ctx.fillStyle = C.navy; ctx.fillRect(22, y - 4, 212, 15); }
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 24, y, C.gold);
-      NES.draw(ctx, SPR.specialIcons[i], 40, y + 3);
+      NES.draw(ctx, SPR.specialIcons[idx], 40, y + 3);
       NES.text(ctx, s.name, 52, y, sel ? C.white : C.gray);
-      NES.text(ctx, 'X' + this.pilotDef().special, 228, y, sel ? s.color : C.gray, { align: 'right' });
+      NES.text(ctx, 'X' + this.statOf('special'), 228, y, sel ? s.color : C.gray, { align: 'right' });
     });
-    SPECIALS[this.hangarSel].desc.forEach((l, i) => NES.text(ctx, l, 128, 152 + i * 10, C.aqua, center));
+    SPECIALS[L[this.hangarSel]].desc.forEach((l, i) => NES.text(ctx, l, 128, 152 + i * 10, C.aqua, center));
     NES.text(ctx, 'FIRE IT WITH: C KEY / PAD B', 128, 176, C.lgray, center);
     if ((this.t >> 4) & 1) NES.text(ctx, 'SPACE / A: LAUNCH', 128, 189, C.white, center);
   },
