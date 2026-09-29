@@ -65,6 +65,7 @@ Object.assign(Game, {
       case 'boss':
         this.boss = this.makeBoss(true);
         this.say(VOSS.sideBoss);
+        this.hint('gunship');
         Sound.playSong(Sound.SONGS.boss);
         break;
     }

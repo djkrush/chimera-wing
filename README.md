@@ -4,6 +4,17 @@ A Galaga-style shooter with NES-style graphics. You fly the **VX-3 Chimera**, a 
 fighter, against the air force of **Dr. Helena Voss**, a rogue epigeneticist who has taken over
 the world's pilots by switching their genes on and off.
 
+## The story
+
+Voss never changed a letter of anyone's DNA. She changed which genes are *used*. Your ally,
+**Dr. Mira Kato**, was her lab partner and built the Chimera to stop her. Before every stage Mira
+briefs you on a real piece of epigenetics (Waddington's landscape, the Dutch Hunger Winter,
+agouti mice, queen bees, X-inactivation, imprinting, Yamanaka's reprogramming and more), and
+Voss answers. Along the way you learn why she's doing it.
+
+The campaign runs through stage 15 and ends with an epilogue. After that the game keeps looping
+against the **Voss Echo**, with a new science fact each stage.
+
 ## Running it
 
 No install or build step. Open `index.html` in Chrome, Edge or Firefox.
@@ -44,6 +55,9 @@ until you press one of its buttons, so press one after plugging it in.
   captured ship in Galaga. Shoot that plane down to demethylate the gene and get the form back
   (+1000 points). If your last working form gets silenced, you lose a life.
 - **Acetylated** planes (gold) fly faster, fire double shots and are worth double points.
+- **TET capsules:** gold planes sometimes drop a green-and-white capsule (more often when a form
+  is silenced). Fly into it to demethylate one silenced form. With nothing silenced, it's worth
+  1000 points. Real TET enzymes start the process that removes methyl marks from DNA.
 - **Epigenetic memory:** if one form gets 60% or more of your kills in a stage, the next squadron
   adapts and takes half damage from it. Keep transforming.
 ## Stage order
@@ -90,5 +104,7 @@ js/input.js       keyboard + gamepad (standard, generic, hat-switch) + remapping
 js/game.js        game states, Galaga stages, bosses, player, rendering
 js/side.js        side-scrolling missions: enemy script, behaviors, parallax background
 js/specials.js    hangar screen + special weapons
+js/story.js       campaign briefings, epilogue, second-loop facts, Mira's hints
+js/tet.js         TET capsule pickups
 js/main.js        boot + fixed 60 Hz loop
 ```

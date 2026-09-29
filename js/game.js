@@ -32,16 +32,6 @@ const ENEMY = {
   sam: { name: 'SAM SITE', hp: 2, pts: [200, 200], hit: 7 },
 };
 
-const STAGE_NAMES = [
-  'DNA METHYLATION', 'HISTONE ACETYLATION', 'CPG ISLANDS', 'CHROMATIN REMODELING',
-  'GENOMIC IMPRINTING', 'X-INACTIVATION', 'NON-CODING RNA', 'BIVALENT PROMOTERS',
-  'HETEROCHROMATIN', 'TRANSGENERATIONAL MEMORY', 'CELLULAR REPROGRAMMING',
-];
-const SIDE_NAMES = [
-  'OPERATION ENHANCER', 'OPERATION POLYCOMB', 'OPERATION PROMOTER', 'OPERATION DNMT1',
-  'OPERATION TELOMERE', 'OPERATION NUCLEOSOME',
-];
-
 // Even stages are side-scrolling missions. Odd stages are Galaga-style:
 // challenging stages at 3, 7, 11... and the Nucleosome Fortress at 5, 15, 25...
 function stageTypeOf(n) {
@@ -52,36 +42,16 @@ function stageTypeOf(n) {
 }
 
 // Dr. Helena Voss: rogue epigeneticist. Her science is real; her ethics are not.
+// In-game radio lines. Stage briefings and the rest of the story live in story.js.
 const VOSS = {
-  intro: [
-    "I AM DR. HELENA VOSS. I NEVER TOUCHED YOUR PILOTS' DNA. I ONLY CHANGED WHICH GENES ARE SWITCHED ON.",
-    'ONE METHYL GROUP ON A CPG ISLAND AND A GENE FALLS SILENT. MY METHYLATORS WILL SILENCE YOUR SHIP.',
-    'ACETYLATE THE HISTONES AND THE CHROMATIN OPENS. MY GOLD-MARKED PILOTS ARE... VERY EXPRESSIVE.',
-    'YOU TRANSFORM? CUTE. I REPROGRAM CELLS. SAME IDEA... BETTER SCIENCE.',
-    "GENOMIC IMPRINTING: ONLY ONE PARENT'S COPY GETS TO SPEAK. IN THIS SKY, ONLY I SPEAK.",
-    "X-INACTIVATION PACKS A WHOLE CHROMOSOME INTO A BARR BODY. I'LL PACK YOU TIGHTER.",
-    'SAME GENOME, TWO HUNDRED CELL TYPES. EXPRESSION IS EVERYTHING, PILOT.',
-    'MY MARKS ARE HERITABLE. YOUR GRANDCHILDREN WILL REMEMBER THIS DAY.',
-  ],
-  boss: [
-    'WELCOME TO MY NUCLEOSOME FORTRESS: 147 BASE PAIRS OF DNA WRAPPED AROUND A HISTONE CORE. HEAVILY ARMED.',
-    'THE HISTONE CODE IS WRITTEN IN METHYL AND ACETYL MARKS. TODAY I WRITE YOUR ENDING.',
-  ],
-  side: [
-    'ENHANCERS WORK FROM FAR AWAY: DNA LOOPS SO THEY CAN REACH THEIR GENE. MY SAM SITES REACH FAR TOO.',
-    'POLYCOMB PROTEINS KEEP GENES SILENT FOR GENERATIONS. MY GROUND CREWS ARE JUST AS LOYAL.',
-    'A PROMOTER IS WHERE TRANSCRIPTION BEGINS. THIS VALLEY IS WHERE YOUR ENDING BEGINS.',
-    'DNMT1 COPIES MY METHYL MARKS EVERY TIME A CELL DIVIDES. I NEVER HAVE TO REPEAT MYSELF.',
-    'HISTONE VARIANTS SWAP IN WHEN THE CELL NEEDS THEM. SO DO MY SQUADRONS.',
-  ],
   sideBoss: 'MY HISTONE GUNSHIP. SAME CORE DESIGN, NOW WITH MORE GUNS.',
-  challenge: "A CONTROL GROUP. MY PILOTS WILL NOT FIRE. LET'S MEASURE YOUR BASELINE EXPRESSION.",
   silence: ['METHYLATED! THAT GENE STAYS OFF.', 'A LITTLE CH3 ON YOUR PROMOTER. HUSH.', 'NO TRANSCRIPTION FOR YOU!'],
   restore: ['DEMETHYLATED?! THAT MARK WAS SUPPOSED TO BE PERMANENT!', 'TET ENZYMES? HOW... DULL.'],
   locked: 'GENOME FULLY SILENCED. GOODNIGHT, PILOT.',
   bossShield: 'MY HISTONE CORE IS SHIELDED WHILE BOTH TURRETS STAND. GOOD LUCK.',
   bossPhase2: 'MY HISTONE CORE IS EXPOSED... HOW RUDE.',
   bossDown: "A SETBACK! MARKS CAN BE REWRITTEN. I'LL BE BACK!",
+  finalDown: "MY TRANSMITTER! MIRA, DON'T YOU DARE...",
   gameover: 'YOUR PHENOTYPE HAS BEEN... REVISED.',
 };
 
@@ -170,7 +140,7 @@ function buildChallengeWaves(stage) {
   });
 }
 
-const HOWTO_PAGES = 4;
+const HOWTO_PAGES = 5;
 const MENU = ['START GAME', 'CONTROLLER SETUP', 'HOW TO PLAY'];
 const SETUP_STEPS = [
   { key: 'fire', label: 'FIRE' },
@@ -198,6 +168,7 @@ const Game = {
   clearDelay: 90, bossWin: false, resultBonus: 0,
   scroll: 0, side: null,                                   // side-scrolling mission state
   special: null, lastSpecial: 0, laser: null, crushT: 0,   // mission special weapon
+  pickups: [], radioQ: [], hintsSeen: new Set(),           // TET capsules, queued radio, Mira's tips
 
   init() {
     this.hi = loadHi();
@@ -214,14 +185,18 @@ const Game = {
   toTitle() {
     this.setState('title');
     this.enemies = []; this.pBul = []; this.eBul = []; this.parts = []; this.pops = []; this.booms = [];
-    this.boss = null; this.radio = null; this.paused = false;
+    this.boss = null; this.radio = null; this.radioQ = []; this.pickups = []; this.paused = false;
     this.stageType = 'normal'; this.special = null; this.laser = null; this.crushT = 0;
     Sound.playSong(Sound.SONGS.title);
   },
 
   toast(text) { this.toastMsg = { text, t: 150 }; },
 
-  say(text) { this.radio = { lines: NES.wrap(text, 25).slice(0, 3), t: 200 }; },
+  // Radio message. who defaults to the current villain. queued = wait for the current message.
+  say(text, who = this.villain(), queued = false) {
+    const msg = { who, lines: NES.wrap(text, 25).slice(0, 3), t: 200 };
+    if (queued && this.radio) this.radioQ.push(msg); else this.radio = msg;
+  },
 
   newPlayer() {
     return { x: 128, y: PY, form: 0, nextForm: 0, morphT: 0, fireCd: 0, alive: true, respawnT: 0,
@@ -231,6 +206,7 @@ const Game = {
   startGame(stage = 1) {
     this.score = 0; this.lives = 3; this.nextExtra = 20000;
     this.nextAdapt = -1; this.shots = 0; this.hitsTotal = 0;
+    this.hintsSeen = new Set();
     this.player = this.newPlayer();
     this.startStage(stage);
   },
@@ -261,27 +237,9 @@ const Game = {
     if (!p.alive && this.lives > 0) this.respawn();
     this.placePlayer();
 
-    let title, line;
-    if (this.isSide) {
-      const idx = n / 2 - 1;
-      title = SIDE_NAMES[idx % SIDE_NAMES.length];
-      line = VOSS.side[idx % VOSS.side.length];
-    } else if (this.stageType === 'boss') {
-      title = 'NUCLEOSOME FORTRESS';
-      line = VOSS.boss[(n / 5 - 1) % VOSS.boss.length];
-    } else if (this.stageType === 'challenge') {
-      title = 'CHALLENGING STAGE';
-      line = VOSS.challenge;
-    } else {
-      let idx = 0;   // how many normal stages came before this one
-      for (let s = 1; s < n; s++) if (stageTypeOf(s) === 'normal') idx++;
-      title = STAGE_NAMES[idx % STAGE_NAMES.length];
-      line = VOSS.intro[idx % VOSS.intro.length];
-    }
-    this.intro = { title, lines: NES.wrap(line, 25).slice(0, 6), t: 0, full: false };
-    this.intro.total = this.intro.lines.join('').length;
-    this.radio = null;
-    this.setState('intro');
+    this.pickups = []; this.radioQ = [];
+    const B = this.briefingFor(n);
+    this.startBriefing(this.stageType === 'challenge' ? '' : 'STAGE ' + n, B.title, B.pages, () => this.openHangar());
     Sound.playSong(Sound.SONGS.stage);
   },
 
@@ -374,7 +332,7 @@ const Game = {
     if (this.paused) { this.updateGameMenu(); return; }
     this.updateStars(this.state === 'intro' || this.state === 'hangar' ? 3 : 1);
     if (this.isSide && this.state !== 'title') this.scroll += 1.5;
-    if (this.radio && --this.radio.t <= 0) this.radio = null;
+    if (this.radio && --this.radio.t <= 0) this.radio = this.radioQ.shift() || null;
     switch (this.state) {
       case 'title': this.updateTitle(); break;
       case 'howto': this.updateHowto(); break;
@@ -477,10 +435,14 @@ const Game = {
     if (shown >= I.total) I.full = true;
     this.updatePlayer(false);
     this.updateBullets();
-    // The briefing stays up until the player presses fire (Space / pad A).
-    // First press finishes the typing; the next one starts the stage.
-    if (this.stateT > 20 && (Input.just('fire') || Input.just('start'))) {
-      if (!I.full) { I.full = true; I.t = I.total * 1.5; } else { this.openHangar(); return; }
+    // The briefing waits for fire (Space / pad A). A press finishes the typing, the next one
+    // turns the page, and after the last page it moves on. Start skips the rest of the briefing.
+    if (this.stateT <= 20) return;
+    if (Input.just('start')) { I.done(); return; }
+    if (Input.just('fire')) {
+      if (!I.full) { I.full = true; I.t = I.total * 1.5; }
+      else if (I.page < I.pages.length - 1) { this.showPage(I.page + 1); Sound.sfx('move'); }
+      else I.done();
     }
   },
 
@@ -496,6 +458,7 @@ const Game = {
     this.updateBullets();
     this.updateSpecial();
     this.collide();
+    this.updatePickups();
     this.updateAttacks();
     if (this.state === 'play') this.checkStageEnd();
   },
@@ -505,7 +468,10 @@ const Game = {
     this.updatePlayer(true);
     this.updateBullets();
     this.updateSpecial();
-    if (this.state === 'clear' && this.stateT > this.clearDelay) this.startStage(this.stage + 1);
+    this.updatePickups();
+    if (this.state !== 'clear' || this.stateT <= this.clearDelay) return;
+    if (this.bossWin && this.stage === FINALE) this.startEnding();
+    else this.startStage(this.stage + 1);
   },
 
   updateResult() {
@@ -820,7 +786,7 @@ const Game = {
     e.dead = true;
     const diving = e.state !== 'form';
     let pts = this.stageType === 'challenge' ? 100 : ENEMY[e.type].pts[diving ? 1 : 0];
-    if (e.acetyl) pts *= 2;
+    if (e.acetyl) { pts *= 2; this.dropTet(e); }
     if (e.holding >= 0) { this.restoreForm(e.holding); pts += 1000; }
     this.addScore(pts);
     if (diving || pts >= 300) this.popup(e.x, e.y - 4, String(pts), e.acetyl ? C.gold : C.white);
@@ -1007,6 +973,7 @@ const Game = {
     else { src.holding = f; src.beamT = 160; }
     this.popup(p.x, p.y - 18, FORMS[f].name + ' SILENCED', C.pink);
     this.say(pick(VOSS.silence));
+    this.hint('silenced');
     Sound.sfx('silence');
     this.spark(p.x, p.y, C.lime, 10);
     p.invuln = 90;
@@ -1292,7 +1259,7 @@ const Game = {
     this.enemies = [];
     this.eBul = [];
     this.boss = null;
-    this.say(VOSS.bossDown);
+    this.say(this.stage === FINALE ? VOSS.finalDown : VOSS.bossDown);
     p.silenced = [false, false, false];
     p.silenceT = [0, 0, 0];
     this.nextAdapt = this.computeAdapt();
@@ -1347,6 +1314,7 @@ const Game = {
     if (this.isSide) this.drawSideBG(ctx);
     if (this.boss) this.drawBoss(ctx);
     for (const e of this.enemies) this.drawEnemy(ctx, e);
+    this.drawPickups(ctx);
     this.drawSpecialFx(ctx, 'under');
     for (const b of this.pBul) {
       const bx = Math.round(b.x), by = Math.round(b.y);
@@ -1498,29 +1466,33 @@ const Game = {
       const B = this.boss;
       const tot = B.parts.reduce((s, q) => s + q.max, 0);
       const cur = B.parts.reduce((s, q) => s + Math.max(0, q.hp), 0);
-      NES.text(ctx, 'VOSS', 4, 11, C.pink);
+      NES.text(ctx, this.villain() === 'echo' ? 'ECHO' : 'VOSS', 4, 11, CAST[this.villain()].col);
       ctx.fillStyle = C.darkred; ctx.fillRect(40, 12, 160, 5);
       ctx.fillStyle = C.pink; ctx.fillRect(40, 12, Math.ceil(160 * cur / tot), 5);
     }
   },
 
-  drawPortrait(ctx, x, y) {
-    ctx.fillStyle = C.navy;
+  drawPortrait(ctx, x, y, who) {
+    ctx.fillStyle = who === 'mira' ? C.dgreen : C.navy;
     ctx.fillRect(x, y, 26, 26);
-    ctx.drawImage(SPR.portrait, x + 1, y + 1);
+    ctx.drawImage(CAST[who].portrait(), x + 1, y + 1);
+    if (who === 'echo' && (this.t >> 2) & 1) {   // the Echo is a broadcast: add scanlines
+      ctx.fillStyle = C.black;
+      for (let j = 2; j < 26; j += 3) ctx.fillRect(x + 1, y + j, 24, 1);
+    }
   },
 
   drawRadio(ctx) {
     const r = this.radio;
-    NES.box(ctx, 2, 10, 252, 30, C.black, C.pink);
-    this.drawPortrait(ctx, 4, 12);
+    NES.box(ctx, 2, 10, 252, 30, C.black, CAST[r.who].col);
+    this.drawPortrait(ctx, 4, 12, r.who);
     r.lines.forEach((l, i) => NES.text(ctx, l, 34, 13 + i * 9, C.white));
   },
 
   drawIntro(ctx) {
     const I = this.intro;
-    const label = this.stageType === 'challenge' ? '' : 'STAGE ' + this.stage;
-    if (label) NES.text(ctx, label, 128, 22, C.white, { align: 'center', scale: 2, shadow: C.navy });
+    const who = CAST[I.who];
+    if (I.label) NES.text(ctx, I.label, 128, 22, C.white, { align: 'center', scale: 2, shadow: C.navy });
     NES.text(ctx, I.title, 128, 42, this.stageType === 'boss' ? C.pink : C.aqua, { align: 'center' });
     if (this.adapt >= 0) {
       NES.text(ctx, 'ENEMY ADAPTED TO: ' + FORMS[this.adapt].name, 128, 58, C.red, { align: 'center' });
@@ -1528,16 +1500,20 @@ const Game = {
     }
     // Dialogue box sits above the player's ship so it stays visible during the intro.
     const by = 90;
-    NES.box(ctx, 4, by, 248, 84, C.black, C.pink);
-    this.drawPortrait(ctx, 10, by + 6);
-    NES.text(ctx, 'DR. HELENA VOSS', 42, by + 6, C.pink);
+    NES.box(ctx, 4, by, 248, 84, C.black, who.col);
+    this.drawPortrait(ctx, 10, by + 6, I.who);
+    NES.text(ctx, who.name, 42, by + 6, who.col);
     let left = I.full ? Infinity : Math.floor(I.t / 1.5);
     I.lines.forEach((l, i) => {
       if (left <= 0) return;
       NES.text(ctx, l.slice(0, left), 42, by + 20 + i * 10, C.white);
       left -= l.length;
     });
-    if (I.full && (this.t >> 4) & 1) NES.text(ctx, 'PRESS SPACE / A', 244, by + 74, C.white, { align: 'right' });
+    if (I.pages.length > 1) NES.text(ctx, (I.page + 1) + '/' + I.pages.length, 10, by + 74, C.gray);
+    if (I.full && (this.t >> 4) & 1) {
+      const last = I.page === I.pages.length - 1;
+      NES.text(ctx, last ? 'PRESS SPACE / A' : 'NEXT: SPACE / A', 244, by + 74, C.white, { align: 'right' });
+    }
   },
 
   drawResult(ctx) {
@@ -1568,9 +1544,10 @@ const Game = {
       NES.text(ctx, ratio + ' %', 216, 130, C.white, { align: 'right' });
     }
     if (this.stateT > 90) {
-      NES.box(ctx, 4, 170, 248, 36, C.black, C.pink);
-      this.drawPortrait(ctx, 10, 175);
-      NES.text(ctx, 'DR. HELENA VOSS', 42, 175, C.pink);
+      const who = CAST[this.villain()];
+      NES.box(ctx, 4, 170, 248, 36, C.black, who.col);
+      this.drawPortrait(ctx, 10, 175, this.villain());
+      NES.text(ctx, who.name, 42, 175, who.col);
       NES.wrap(VOSS.gameover, 25).forEach((l, i) => NES.text(ctx, l, 42, 187 + i * 9, C.white));
     }
   },
@@ -1696,10 +1673,10 @@ const Game = {
     const pg = this.howPage;
     if (pg === 0) {
       T('MISSION BRIEFING', 128, 10, C.gold, { align: 'center' });
-      ['DR. HELENA VOSS, A ROGUE', 'EPIGENETICIST, HAS SILENCED THE',
-        "FREE WILL OF THE WORLD'S AIR", 'FORCES WITH A FEW WELL PLACED',
-        'METHYL MARKS.', '', 'ONLY THE VX-3 CHIMERA, A',
-        'TRANSFORMING FIGHTER, CAN STOP', 'HER SQUADRONS.']
+      ['DR. HELENA VOSS, A ROGUE', 'EPIGENETICIST, HAS TAKEN OVER',
+        "THE WORLD'S AIR FORCES. SHE", 'NEVER CHANGED THEIR DNA. SHE',
+        'SWITCHED THEIR GENES OFF.', '', 'DR. MIRA KATO, HER OLD LAB',
+        'PARTNER, BUILT THE VX-3 CHIMERA', 'TO STOP HER. YOU FLY IT.']
         .forEach((l, i) => T(l, 8, 26 + i * 10));
       T('CONTROLS', 128, 120, C.gold, { align: 'center' });
       T('PAD', 72, 132, C.aqua); T('KEYS', 176, 132, C.aqua);
@@ -1707,6 +1684,18 @@ const Game = {
         ['MORPH', 'SELECT', 'X'], ['BACK', 'LB', 'Q'], ['MENU', 'START', 'ENTER']]
         .forEach(([a, b, c], i) => { T(a, 8, 144 + i * 10, C.lgray); T(b, 72, 144 + i * 10); T(c, 176, 144 + i * 10); });
       T('1 2 3 KEYS PICK A FORM', 128, 208, C.gray, { align: 'center' });
+    } else if (pg === 4) {
+      T('THE SCIENCE', 128, 10, C.gold, { align: 'center' });
+      [['GENOME', 'ALL YOUR DNA. ALMOST EVERY', 'CELL CARRIES THE SAME COPY.'],
+        ['EPIGENOME', 'MARKS ON DNA AND HISTONES THAT', 'SET WHICH GENES A CELL USES.'],
+        ['METHYLATION', 'METHYL GROUPS ON DNA. NEAR A', 'PROMOTER THEY SILENCE A GENE.'],
+        ['ACETYLATION', 'ACETYL GROUPS ON HISTONES', 'LOOSEN DNA SO GENES SWITCH ON.'],
+        ['HISTONES', 'PROTEIN SPOOLS. DNA WRAPPED', 'ON THEM FORMS NUCLEOSOMES.'],
+        ['TET ENZYMES', 'START REMOVING METHYL MARKS.', 'MARKS CAN BE UNDONE!']]
+        .forEach(([term, a, b], i) => {
+          const y = 26 + i * 32;
+          T(term, 8, y, C.aqua); T(a, 16, y + 10); T(b, 16, y + 19, C.lgray);
+        });
     } else if (pg === 3) {
       T('MISSIONS', 128, 10, C.gold, { align: 'center' });
       this.drawShip(ctx, 0, 24, 34, 0, true, true);
@@ -1746,11 +1735,13 @@ const Game = {
         T(n, 44, y, C.white); T(pts, 240, y, C.aqua, { align: 'right' });
       });
       T('(IN FORMATION / DIVING)', 240, 98, C.gray, { align: 'right' });
-      NES.drawRot(ctx, SPR.enemy.fighter.acetyl[0], 24, 117, Math.PI);
-      ['GOLD PLANES ARE ACETYLATED:', 'FASTER, MEANER, DOUBLE POINTS.'].forEach((l, i) => T(l, 44, 114 + i * 10, C.gold));
+      NES.drawRot(ctx, SPR.enemy.fighter.acetyl[0], 24, 113, Math.PI);
+      ['ACETYLATED (GOLD) PLANES:', 'FASTER, DOUBLE POINTS.'].forEach((l, i) => T(l, 40, 108 + i * 10, C.gold));
+      NES.draw(ctx, SPR.tet, 24, 134);
+      ['SOME DROP TET CAPSULES.', 'THEY RESTORE A FORM.'].forEach((l, i) => T(l, 40, 128 + i * 10, C.lime));
       ['METHYLATOR BEAMS SILENCE THE', 'FORM YOU ARE IN. SHOOT DOWN THE', 'CARRIER TO RESTORE IT (+1000).',
-        '', 'LEAN ON ONE FORM AND VOSS', 'MAKES HER PILOTS RESIST IT.', 'KEEP TRANSFORMING!']
-        .forEach((l, i) => T(l, 8, 142 + i * 10, i < 3 ? C.pink : C.lgray));
+        'LEAN ON ONE FORM AND VOSS', 'MAKES HER PILOTS RESIST IT.', 'KEEP TRANSFORMING!']
+        .forEach((l, i) => T(l, 8, 156 + i * 10, i < 3 ? C.pink : C.lgray));
     }
     T((pg + 1) + '/' + HOWTO_PAGES + '  FIRE: NEXT', 128, 226, C.gray, { align: 'center' });
   },

@@ -175,6 +175,40 @@ const SPR = (() => {
     W: C.white, L: C.lgray, P: C.purple, E: C.lime, R: C.rose,
   });
 
+  // ---- Dr. Mira Kato, Chimera Project lead (the player's ally) ---------------
+  const mira = S([
+    '.......KKKKKKKKKK.......',
+    '.....KKKKKKKKKKKKKK.....',
+    '....KKKKKKKKKKKKKKKK....',
+    '...KKKKKKKKKKKKKKKKKK...',
+    '...KKKKSSSSSSSSSSKKKK...',
+    '..GKKKSSSSSSSSSSSSKKKG..',
+    '..GKKSSSSSSSSSSSSSSKKG..',
+    '..GKSSKKKSSSSSSKKKSSKG..',
+    '..GKSSWBWSSSSSSWBWSSKG..',
+    '..GKSSSSSSSSSSSSSSSSKG..',
+    '..HKSSSSSSSDDSSSSSSSK...',
+    '..H.KSSSSSSSSSSSSSSK....',
+    '..HH.SSSSSMMMMSSSSS.....',
+    '....HHSSSSSSSSSSSS......',
+    '......SSSSSSSSSSS.......',
+    '........DSSSSSD.........',
+    '....CCCCCLSSSSLCCCCC....',
+    '..CCCCCCCLLSSLLCCCCCCC..',
+    '.CCCCCCCCLLLLLLCCCCCCCC.',
+    '.CCECCCCCLLLLLLCCCCCECC.',
+    '.CCECCCCCCLLLLCCCCCCECC.',
+    '.CCECCCCCCLLLLCCCCCCECC.',
+    '.CCECCCCCCCLLCCCCCCCECC.',
+    '.CCECCCCCCCLLCCCCCCCECC.',
+  ], {
+    K: C.brown, S: C.orange, D: C.rust, W: C.white, B: C.black, G: C.lgray, H: C.gray,
+    M: C.rose, C: C.white, E: C.lgray, L: C.blue,
+  });
+
+  // TET enzyme capsule (demethylates a silenced form)
+  const tet = S(['.LLLWW.', 'LLLLWWW', 'LGLLWWW', 'LLLLWWW', '.LLLWW.'], { L: C.lime, G: C.green, W: C.white });
+
   // ---- Special weapon icons (same order as SPECIALS in specials.js) ----------
   const specialIcons = [
     S(['.......', 'CCCCCCC', 'WWWWWWW', 'CCCCCCC', '.......'], { C: C.aqua, W: C.white }),
@@ -225,7 +259,7 @@ const SPR = (() => {
     player: FORMS.map(r => S(r, playerMap)),
     playerWhite: FORMS.map(r => S(r, null, C.white)),
     silenced: FORMS.map(r => S(r, silencedMap)),
-    enemy, ebullet, missile, life, portrait, specialIcons,
+    enemy, ebullet, missile, life, portrait, mira, tet, specialIcons,
     bossHull: buildBossHull(FORTRESS_PAL),
     gunshipHull: buildBossHull(GUNSHIP_PAL),
   };
