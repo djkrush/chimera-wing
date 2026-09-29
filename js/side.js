@@ -1,0 +1,194 @@
+'use strict';
+// Side-scrolling missions (every even-numbered stage), in the style of U.N. Squadron.
+// The ship faces right and flies freely. Enemy squads arrive on a timed script, and the
+// mission ends with Dr. Voss's Histone Gunship (the boss code in game.js, turned to face left).
+
+Object.assign(Game, {
+  initSide() {
+    this.scroll = 0;
+    const s = this.stage;
+    const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam'];
+    const events = [{ t: 700, kind: 'methyl' }, { t: 1700, kind: 'methyl' }];
+    const dur = 2400 + Math.min(s, 12) * 60;   // ~45-55 seconds before the boss
+    for (let t = 90; t < dur; t += randi(80, 140) - Math.min(s * 3, 40)) {
+      let kind = pick(kinds);
+      if (kind === 'migRear' && s < 4) kind = 'migSwoop';   // no ambushes from behind in the first mission
+      events.push({ t, kind });
+    }
+    events.sort((a, b) => a.t - b.t);
+    events.push({ t: dur + 150, kind: 'boss' });
+    this.side = { events, i: 0, t: 0, warns: [] };
+  },
+
+  updateSide() {
+    const S = this.side;
+    S.t++;
+    while (S.i < S.events.length && S.events[S.i].t <= S.t) this.spawnSidePattern(S.events[S.i++].kind);
+    for (const w of S.warns) w.t--;
+    S.warns = S.warns.filter(w => w.t > 0);
+  },
+
+  spawnSidePattern(kind) {
+    const p = this.player;
+    switch (kind) {
+      case 'migLine': {
+        const y = randi(30, 170), amp = pick([0, 16, 28]);
+        for (let i = 0; i < 5; i++) this.spawnSideEnemy('fighter', 'sine', W + 12 + i * 18, y, { amp, ph: i * 0.6 });
+        break;
+      }
+      case 'migSwoop': {
+        const y = pick([30, 170]);
+        for (let i = 0; i < 4; i++) this.spawnSideEnemy('fighter', 'swoop', W + 12 + i * 16, y + (y < 100 ? i * 6 : -i * 6));
+        break;
+      }
+      case 'migRear': {
+        // ambush from behind, with a warning flashed on the left edge first
+        for (let i = 0; i < 3; i++) {
+          const y = clamp(p.y + (i - 1) * 24, 24, 180);
+          this.spawnSideEnemy('fighter', 'rear', -40 - i * 22, y);
+          this.side.warns.push({ y, t: 50 });
+        }
+        break;
+      }
+      case 'bomber':
+        this.spawnSideEnemy('bomber', 'bomber', W + 16, randi(40, 150));
+        if (this.stage >= 6) this.spawnSideEnemy('bomber', 'bomber', W + 60, randi(40, 150));
+        break;
+      case 'sam': {
+        const n = randi(2, 3);
+        for (let i = 0; i < n; i++) this.spawnSideEnemy('sam', 'ground', W + 10 + i * 36, SIDE_GROUND - 4);
+        break;
+      }
+      case 'methyl':
+        this.spawnSideEnemy('methyl', 'methyl', W + 12, randi(40, 170));
+        break;
+      case 'boss':
+        this.boss = this.makeBoss(true);
+        this.say(VOSS.sideBoss);
+        Sound.playSong(Sound.SONGS.boss);
+        break;
+    }
+  },
+
+  spawnSideEnemy(type, beh, x, y, extra = {}) {
+    const s = this.stage;
+    const hp = { fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2 }[type];
+    const acetyl = type !== 'sam' && s >= 2 && Math.random() < Math.min(0.08 + s * 0.02, 0.35);
+    const base = beh === 'rear' ? 2.8 : Math.min(1.8 + s * 0.05, 3);
+    const e = {
+      type, hp, maxHp: hp, x, y, vx: 0, vy: 0, state: 'side', beh, st: 0,
+      hd: beh === 'rear' ? 0 : Math.PI, spd: base * (acetyl ? 1.2 : 1),
+      ang: beh === 'rear' ? Math.PI / 2 : -Math.PI / 2,
+      slot: null, wave: -1, acetyl, holding: -1, flash: 0, fireYs: [], t: randi(0, 60), dead: false,
+      fireAt: s >= 2 && Math.random() < 0.5 ? randi(40, 110) : 0,
+      ...extra,
+    };
+    if (type === 'sam') e.face = 0;
+    this.enemies.push(e);
+    return e;
+  },
+
+  updateSideEnemy(e) {
+    const p = this.player;
+    e.st++;
+    switch (e.beh) {
+      case 'sine':
+        e.vx = -e.spd;
+        e.vy = e.amp ? Math.cos(e.st * 0.06 + e.ph) * e.amp * 0.06 : 0;
+        break;
+      case 'swoop':
+        // fly in, then curve toward the player for about a second
+        if (e.st > 25 && e.st < 85 && p.alive) {
+          e.hd += clamp(angDiff(e.hd, Math.atan2(p.y - e.y, p.x - e.x)), -0.05, 0.05);
+        }
+        e.vx = Math.cos(e.hd) * e.spd;
+        e.vy = Math.sin(e.hd) * e.spd;
+        break;
+      case 'rear':
+        if (e.x < p.x && p.alive) e.hd += clamp(angDiff(e.hd, Math.atan2(p.y - e.y, 200)), -0.02, 0.02);
+        e.vx = Math.cos(e.hd) * e.spd;
+        e.vy = Math.sin(e.hd) * e.spd;
+        if (e.st === 70) this.enemyFire(e);
+        break;
+      case 'bomber':
+        e.vx = -0.5;
+        e.vy = Math.sin(e.st * 0.02) * 0.3;
+        if (e.st % 100 === 50 && e.x < W - 10) this.spreadShot(e.x - 8, e.y, 3, 0.25, 2);
+        break;
+      case 'ground':
+        e.vx = -1.5;   // moves with the ground
+        e.vy = 0;
+        if (e.x < W - 8 && e.x > 30 && e.st % Math.max(70, 110 - this.stage * 4) === 0) this.enemyFire(e);
+        break;
+      case 'methyl':
+        this.updateSideMethyl(e);
+        return;
+    }
+    e.x += e.vx;
+    e.y += e.vy;
+    if (e.fireAt && e.st === e.fireAt && e.x < W - 10) this.enemyFire(e);
+    const gone = (e.vx < 0 && e.x < -30) || (e.vx > 0 && e.x > W + 30) || e.y < -40 || e.y > H + 20;
+    if (gone) e.dead = true;
+  },
+
+  // Methylator: parks at the right, lines up with the player and fires a leftward silencing beam.
+  // If it gets away while carrying a gene, that form stays silenced until the mission ends.
+  updateSideMethyl(e) {
+    const p = this.player;
+    if (!e.phase) e.phase = 'in';
+    if (e.phase === 'in') {
+      const tx = 200, ty = clamp(p.alive ? p.y : 110, 30, 180);
+      const dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy);
+      if (d < 2 || e.st > 240) {
+        e.phase = 'beam'; e.beamT = 0; e.face = -Math.PI / 2; e.vx = 0; e.vy = 0;
+      } else {
+        const sp = Math.min(1.8, d * 0.08 + 0.5);
+        e.vx = dx / d * sp; e.vy = dy / d * sp;
+        e.x += e.vx; e.y += e.vy;
+      }
+    } else if (e.phase === 'beam') {
+      const T = ++e.beamT;
+      if (T % 10 === 1 && T < 150) Sound.sfx('beam');
+      e.beamExt = T < 30 ? T / 30 : T < 150 ? 1 : Math.max(0, 1 - (T - 150) / 25);
+      if (T < 150 && p.alive) e.y += clamp((p.y - e.y) * 0.02, -0.3, 0.3);   // slowly tracks you
+      if (e.beamExt >= 1 && T < 150 && p.alive && p.invuln <= 0 && e.holding < 0) {
+        const x0 = e.x - 6;
+        if (p.x < x0 && Math.abs(p.y - e.y) < 3 + (x0 - p.x) * 0.28 - 2) this.silenceForm(e);
+      }
+      if (T >= 175) { e.phase = 'out'; e.beamExt = 0; }
+    } else {
+      e.vx = 1; e.vy = 0;   // backs away to the right, still facing you
+      e.x += e.vx;
+      if (e.x > W + 30) e.dead = true;
+    }
+  },
+
+  // NES-style parallax: far mountains, near hills, and a striped ground strip.
+  drawSideBG(ctx) {
+    const s = this.scroll;
+    ctx.fillStyle = C.navy;
+    for (let x = 0; x < W; x += 2) {
+      const u = x + s * 0.25;
+      const h = Math.floor(150 + Math.sin(u * 0.031) * 12 + Math.sin(u * 0.013 + 1) * 18);
+      ctx.fillRect(x, h, 2, SIDE_GROUND - h);
+    }
+    ctx.fillStyle = C.dgreen;
+    for (let x = 0; x < W; x += 2) {
+      const u = x + s * 0.6;
+      const h = Math.floor(184 + Math.sin(u * 0.05) * 7 + Math.sin(u * 0.021 + 2) * 9);
+      ctx.fillRect(x, h, 2, SIDE_GROUND - h);
+    }
+    ctx.fillStyle = C.brown;
+    ctx.fillRect(0, SIDE_GROUND, W, 230 - SIDE_GROUND);
+    ctx.fillStyle = C.olive;
+    ctx.fillRect(0, SIDE_GROUND, W, 1);
+    const off = Math.floor(s) % 16;   // same speed as ground units
+    for (let x = -off; x < W; x += 16) {
+      ctx.fillRect(x, SIDE_GROUND + 7, 6, 1);
+      ctx.fillRect(x + 8, SIDE_GROUND + 15, 4, 1);
+    }
+    if (this.side && (this.t >> 2) & 1) {
+      for (const w of this.side.warns) NES.text(ctx, '!>', 4, w.y - 3, C.red);
+    }
+  },
+});
