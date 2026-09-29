@@ -40,6 +40,22 @@ buttons land in odd places, use **CONTROLLER SETUP** on the title screen to rema
 TRANSFORM, PREV FORM and START. The mapping is saved per controller. Browsers hide a controller
 until you press one of its buttons, so press one after plugging it in.
 
+## Pilots
+
+Before stage 1 you pick who flies the Chimera. Each pilot has three stats:
+
+- **Weapons** sets how hard your shots hit (4 = normal damage, 8 = double).
+- **Shields** is how many hits the ship can take. When they run out the HUD flashes
+  **DANGER**, and one more hit destroys the ship and ends the game. Shields are repaired at the
+  start of every stage, and score bonuses (20,000, then every 70,000) repair one.
+- **Special** is how many times you can use your special weapon in each mission.
+
+| Pilot    |               | Weapons | Shields | Special |
+|----------|---------------|---------|---------|---------|
+| MAVERICK | Hotshot ace   | 8       | 4       | 3       |
+| TURTLE   | Iron wall     | 4       | 8       | 3       |
+| DRAC     | Alien tactician | 4     | 4       | 6       |
+
 ## The three forms
 
 | Form      | Weapon                  | Movement                     | Special |
@@ -53,7 +69,8 @@ until you press one of its buttons, so press one after plugging it in.
 - **Methylators** (purple flying wings) fly down and fire a methylation beam. If it catches you,
   the form you were in is **silenced** and you can't use it. The Methylator carries it away, like a
   captured ship in Galaga. Shoot that plane down to demethylate the gene and get the form back
-  (+1000 points). If your last working form gets silenced, you lose a life.
+  (+1000 points). If your last working form gets silenced, it costs a shield and all your forms come back
+  (with no shields left, it destroys the ship).
 - **Acetylated** planes (gold) fly faster, fire double shots and are worth double points.
 - **TET capsules:** gold planes sometimes drop a green-and-white capsule (more often when a form
   is silenced). Fly into it to demethylate one silenced form. With nothing silenced, it's worth
@@ -83,15 +100,15 @@ Stages alternate between two styles of play:
 ## Special weapons
 
 After Voss's briefing, a **hangar** screen lets you pick one special weapon for that mission. Fire it
-with **C** (keyboard) or **B** (controller). Ammo is limited, and whatever you don't use is lost when
-the mission ends.
+with **C** (keyboard) or **B** (controller). You can use it as many times as your pilot's
+**Special** stat, and whatever you don't use is lost when the mission ends.
 
-| Weapon        | Ammo | Effect |
-|---------------|------|--------|
-| THUNDER LASER | 5    | One-second beam that pierces everything ahead |
-| CLUSTER BOMB  | 12   | Bursts into 8 fragments on impact (or when its fuse runs out) |
-| MEGA CRUSH    | 2    | Damages every enemy on screen and erases enemy bullets |
-| GENE SHIELD   | 3    | 5-second barrier that blocks bullets, rams enemies and stops methylation beams |
+| Weapon        | Effect |
+|---------------|--------|
+| THUNDER LASER | One-second beam that pierces everything ahead |
+| CLUSTER BOMB  | Fires 3 bombs. Each bursts into 8 fragments on impact (or when its fuse runs out) |
+| MEGA CRUSH    | Damages every enemy on screen and erases enemy bullets |
+| GENE SHIELD   | 5-second barrier that blocks bullets, rams enemies and stops methylation beams |
 
 ## Project layout
 
@@ -104,6 +121,7 @@ js/input.js       keyboard + gamepad (standard, generic, hat-switch) + remapping
 js/game.js        game states, Galaga stages, bosses, player, rendering
 js/side.js        side-scrolling missions: enemy script, behaviors, parallax background
 js/specials.js    hangar screen + special weapons
+js/pilots.js      pilot select screen, pilot stats, shields
 js/story.js       campaign briefings, epilogue, second-loop facts, Mira's hints
 js/tet.js         TET capsule pickups
 js/main.js        boot + fixed 60 Hz loop

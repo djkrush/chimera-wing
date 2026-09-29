@@ -160,7 +160,7 @@ function saveHi(v) {
 const Game = {
   state: 'title', stateT: 0, t: 0, paused: false,
   menu: 0, howPage: 0, setup: null,
-  score: 0, hi: 20000, lives: 3, stage: 0, nextExtra: 20000,
+  score: 0, hi: 20000, shields: 0, stage: 0, nextExtra: 20000,
   player: null, enemies: [], pBul: [], eBul: [], parts: [], pops: [], booms: [], stars: [],
   waves: [], waveI: 0, formation: null, formationReady: false, attackCd: 0,
   stageType: 'normal', adapt: -1, nextAdapt: -1, formKills: [0, 0, 0], stageHits: 0,
@@ -204,7 +204,7 @@ const Game = {
   },
 
   startGame(stage = 1) {
-    this.score = 0; this.lives = 3; this.nextExtra = 20000;
+    this.score = 0; this.shields = this.pilotDef().shields; this.nextExtra = 20000;
     this.nextAdapt = -1; this.shots = 0; this.hitsTotal = 0;
     this.hintsSeen = new Set();
     this.player = this.newPlayer();
@@ -234,7 +234,7 @@ const Game = {
     p.silenced = [false, false, false];
     p.silenceT = [0, 0, 0];
     p.shieldT = 0;
-    if (!p.alive && this.lives > 0) this.respawn();
+    this.shields = this.pilotDef().shields;   // repaired between stages
     this.placePlayer();
 
     this.pickups = []; this.radioQ = [];
@@ -274,10 +274,13 @@ const Game = {
     this.score += n;
     if (this.score > this.hi) this.hi = this.score;
     if (this.score >= this.nextExtra) {
-      this.lives++;
+      // Score bonus: repair one shield (instead of an extra ship).
       this.nextExtra = this.nextExtra === 20000 ? 70000 : this.nextExtra + 70000;
-      this.popup(this.player.x, this.player.y - 20, '1UP', C.lime);
-      Sound.sfx('oneup');
+      if (this.shields < this.pilotDef().shields) {
+        this.shields++;
+        this.popup(this.player.x, this.player.y - 20, 'SHIELD +1', C.lime);
+        Sound.sfx('oneup');
+      }
     }
   },
 
@@ -312,7 +315,7 @@ const Game = {
   },
 
   updateStars(speed) {
-    const sideways = this.isSide && this.state !== 'title' && this.state !== 'howto' && this.state !== 'setup';
+    const sideways = this.isSide && !['title', 'howto', 'setup', 'pilot'].includes(this.state);
     for (const s of this.stars) {
       if (sideways) {
         s.x -= s.s * speed;
@@ -336,6 +339,7 @@ const Game = {
     switch (this.state) {
       case 'title': this.updateTitle(); break;
       case 'howto': this.updateHowto(); break;
+      case 'pilot': this.updatePilotSelect(); break;
       case 'setup': this.updateSetup(); break;
       case 'intro': this.updateIntro(); break;
       case 'hangar': this.updateHangar(); break;
@@ -379,7 +383,7 @@ const Game = {
     if (Input.just('down')) { this.menu = (this.menu + 1) % MENU.length; Sound.sfx('move'); }
     if (this.stateT > 20 && (Input.just('fire') || Input.just('start'))) {
       Sound.sfx('select');
-      if (this.menu === 0) { Sound.stopSong(); this.startGame(1); }
+      if (this.menu === 0) this.openPilotSelect();
       else if (this.menu === 1) this.openSetup();
       else { this.howPage = 0; this.setState('howto'); }
     }
@@ -832,10 +836,7 @@ const Game = {
       if (p.silenceT[f] > 0 && --p.silenceT[f] === 0 && p.silenced[f]) this.restoreForm(f);
     }
     if (!p.alive) {
-      p.respawnT--;
-      if (this.lives <= 0) { if (p.respawnT <= 0 && this.state !== 'gameover') this.gameOver(); return; }
-      const busy = this.enemies.some(e => e.state === 'dive' || e.state === 'beamgo' || e.state === 'beam');
-      if (p.respawnT <= 0 && (!busy || p.respawnT < -180)) this.respawn();
+      if (--p.respawnT <= 0 && this.state !== 'gameover') this.gameOver();
       return;
     }
     if (p.invuln > 0) p.invuln--;
@@ -888,17 +889,17 @@ const Game = {
   },
 
   fireWeapon() {
-    const p = this.player;
+    const p = this.player, k = this.gunPower();
     const mine = this.pBul.filter(b => b.form === p.form).length;
     if (p.form === 0) {
       if (mine > 4) return;
-      for (const ox of [-3, 3]) this.shoot(ox, -6, 0, -6, { kind: 'shot', dmg: 1, form: 0 });
+      for (const ox of [-3, 3]) this.shoot(ox, -6, 0, -6, { kind: 'shot', dmg: k, form: 0 });
       p.fireCd = 9; this.shots += 2;
       Sound.sfx('shoot');
     } else if (p.form === 1) {
       if (mine > 9) return;
       for (const a of [-0.22, 0, 0.22]) {
-        this.shoot(0, -6, Math.sin(a) * 5, -Math.cos(a) * 5, { kind: 'spread', dmg: 1, form: 1 });
+        this.shoot(0, -6, Math.sin(a) * 5, -Math.cos(a) * 5, { kind: 'spread', dmg: k, form: 1 });
       }
       p.fireCd = 15; this.shots += 3;
       Sound.sfx('spread');
@@ -907,7 +908,7 @@ const Game = {
       for (const s of [-1, 1]) {
         const hd = -Math.PI / 2 + s * 0.9;
         this.shoot(s * 6, -4, Math.cos(hd) * 1.2, Math.sin(hd) * 1.2,
-          { hd, spd: 1.2, kind: 'missile', dmg: 2, form: 2, life: 150, target: null });
+          { hd, spd: 1.2, kind: 'missile', dmg: 2 * k, form: 2, life: 150, target: null });
       }
       p.fireCd = 26; this.shots += 2;
       Sound.sfx('missile');
@@ -919,17 +920,17 @@ const Game = {
     if (!p.alive || p.invuln > 0 || p.shieldT > 0) return;
     if (p.form === 2 && p.morphT === 0) {
       // Battloid armor soaks the hit, then the robot is forced back into a flight form.
+      const nf = this.nextAvailable(2, 1);
+      if (nf < 0) { this.takeHit(); return; }   // nowhere to morph: the shields take it
       p.battCd = 600;
       p.invuln = 90;
-      const nf = this.nextAvailable(2, 1);
-      if (nf < 0) { this.killPlayer(); return; }
       this.morphTo(nf);
       this.explode(p.x, p.y, 10, [C.white, C.lgray, C.gray]);
       this.popup(p.x, p.y - 16, 'ARMOR BREAK', C.orange);
       Sound.sfx('armor');
       return;
     }
-    this.killPlayer();
+    this.takeHit();
   },
 
   killPlayer() {
@@ -937,23 +938,9 @@ const Game = {
     p.alive = false;
     p.respawnT = 150;
     p.morphT = 0;
-    this.lives--;
     this.explode(p.x, p.y, 30, [C.white, C.sky, C.red, C.yellow]);
     for (let i = 1; i <= 3; i++) this.booms.push({ x: p.x + rand(-10, 10), y: p.y + rand(-8, 8), n: 10, delay: i * 8 });
     Sound.sfx('die');
-  },
-
-  respawn() {
-    const p = this.player;
-    p.alive = true; p.invuln = 120; p.battCd = 0; p.morphT = 0; p.fireCd = 0;
-    this.placePlayer();
-    let f = [0, 1, 2].find(i => !p.silenced[i]);
-    if (f === undefined) {
-      p.silenced = [false, false, false];
-      for (const e of this.enemies) e.holding = -1;
-      f = 0;
-    }
-    p.form = p.nextForm = f;
   },
 
   // Methylation beam hit: that form's gene is switched off until the methylator is shot down.
@@ -962,9 +949,12 @@ const Game = {
     if (p.shieldT > 0) { this.spark(p.x, p.y, C.aqua, 6); return; }   // Gene Shield blocks beams
     const remaining = [0, 1, 2].filter(f => !p.silenced[f]);
     if (remaining.length <= 1) {
-      this.say(VOSS.locked);
-      this.killPlayer();
+      // Last form silenced: the shields take the hit and reboot the whole genome.
       if (src !== 'boss') src.beamT = Math.max(src.beamT, 160);
+      if (!this.takeHit()) { this.say(VOSS.locked); return; }
+      p.silenced = [false, false, false];
+      p.silenceT = [0, 0, 0];
+      for (const e of this.enemies) e.holding = -1;
       return;
     }
     const f = p.morphT > 0 ? p.nextForm : p.form;
@@ -1278,6 +1268,7 @@ const Game = {
     this.drawStars(ctx);
     if (this.state === 'title') this.drawTitle(ctx);
     else if (this.state === 'howto') this.drawHowto(ctx);
+    else if (this.state === 'pilot') this.drawPilotSelect(ctx);
     else if (this.state === 'setup') this.drawSetup(ctx);
     else this.drawWorld(ctx);
     if (this.toastMsg && (this.toastMsg.t > 30 || this.toastMsg.t % 8 < 5)) {
@@ -1441,8 +1432,10 @@ const Game = {
       NES.text(ctx, def.short + ' ' + String(sp.ammo).padStart(2, '0'), 100, 1, sp.ammo ? C.gold : C.gray);
     }
 
-    // reserve ships
-    for (let i = 0; i < Math.min(this.lives - (p.alive ? 1 : 0), 7); i++) NES.draw(ctx, SPR.life, 7 + i * 9, 234);
+    // shield pips; with none left the next hit is fatal
+    const maxSh = this.pilotDef().shields;
+    if (!this.shields && p.alive) { if ((this.t >> 3) & 1) NES.text(ctx, 'DANGER', 4, 231, C.red); }
+    else for (let i = 0; i < maxSh; i++) NES.draw(ctx, i < this.shields ? SPR.shieldPip : SPR.shieldPipOff, 7 + i * 8, 234);
 
     // form status
     for (let f = 0; f < 3; f++) {
@@ -1708,10 +1701,9 @@ const Game = {
         const y = 124 + i * 14;
         NES.draw(ctx, SPR.specialIcons[i], 14, y + 3);
         T(s.name, 26, y, s.color);
-        T('X' + s.ammo, 248, y, C.white, { align: 'right' });
       });
-      T('LIMITED AMMO. IT ONLY WORKS', 128, 184, C.pink, { align: 'center' });
-      T('FOR THAT ONE MISSION.', 128, 194, C.pink, { align: 'center' });
+      T("AMMO = YOUR PILOT'S SPECIAL", 128, 184, C.pink, { align: 'center' });
+      T('STAT, FOR ONE MISSION ONLY.', 128, 194, C.pink, { align: 'center' });
     } else if (pg === 1) {
       T('THE VX-3 CHIMERA', 128, 10, C.gold, { align: 'center' });
       const rows = [

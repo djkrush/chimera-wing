@@ -1,15 +1,16 @@
 'use strict';
 // Mission special weapons. Before each stage the player picks one in the hangar.
-// Ammo is limited and whatever is left is lost when the mission ends.
+// Every weapon gets as many uses as the pilot's SPECIAL stat (pilots.js), and whatever is
+// left is lost when the mission ends.
 
 const SPECIALS = [
-  { id: 'laser', name: 'THUNDER LASER', short: 'LSR', ammo: 5, color: C.aqua,
+  { id: 'laser', name: 'THUNDER LASER', short: 'LSR', color: C.aqua,
     desc: ['A ONE-SECOND BEAM THAT', 'PIERCES EVERYTHING AHEAD.'] },
-  { id: 'cluster', name: 'CLUSTER BOMB', short: 'CLU', ammo: 12, color: C.orange,
-    desc: ['BURSTS INTO 8 FRAGMENTS', 'ON IMPACT.'] },
-  { id: 'crush', name: 'MEGA CRUSH', short: 'MGC', ammo: 2, color: C.white,
+  { id: 'cluster', name: 'CLUSTER BOMB', short: 'CLU', color: C.orange,
+    desc: ['3 BOMBS. EACH BURSTS INTO', '8 FRAGMENTS ON IMPACT.'] },
+  { id: 'crush', name: 'MEGA CRUSH', short: 'MGC', color: C.white,
     desc: ['HITS EVERY ENEMY ON SCREEN', 'AND ERASES ENEMY BULLETS.'] },
-  { id: 'shield', name: 'GENE SHIELD', short: 'SHD', ammo: 3, color: C.lime,
+  { id: 'shield', name: 'GENE SHIELD', short: 'SHD', color: C.lime,
     desc: ['5-SECOND BARRIER. BLOCKS', 'BULLETS AND METHYL BEAMS.'] },
 ];
 
@@ -29,7 +30,7 @@ Object.assign(Game, {
     if (this.stateT > 12 && (Input.just('fire') || Input.just('start') || Input.just('special'))) {
       const sel = this.hangarSel;
       this.lastSpecial = sel;
-      this.special = { idx: sel, ammo: SPECIALS[sel].ammo, cd: 0 };
+      this.special = { idx: sel, ammo: this.pilotDef().special, cd: 0 };
       Sound.sfx('select');
       this.beginPlay();
     }
@@ -53,7 +54,8 @@ Object.assign(Game, {
         Sound.sfx('charge');
         break;
       case 'cluster':
-        this.shoot(0, -8, 0, -3.5, { kind: 'cluster', dmg: 3, form: -1, life: 34 });
+        for (const vx of [-1, 0, 1]) this.shoot(0, -8, vx, -3.5, { kind: 'cluster', dmg: 3, form: -1, life: 34 });
+        this.shots += 2;   // three bombs per use
         sp.cd = 15;
         Sound.sfx('missile');
         break;
@@ -160,7 +162,7 @@ Object.assign(Game, {
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 24, y, C.gold);
       NES.draw(ctx, SPR.specialIcons[i], 40, y + 3);
       NES.text(ctx, s.name, 52, y, sel ? C.white : C.gray);
-      NES.text(ctx, 'X' + s.ammo, 228, y, sel ? s.color : C.gray, { align: 'right' });
+      NES.text(ctx, 'X' + this.pilotDef().special, 228, y, sel ? s.color : C.gray, { align: 'right' });
     });
     SPECIALS[this.hangarSel].desc.forEach((l, i) => NES.text(ctx, l, 128, 152 + i * 10, C.aqua, center));
     NES.text(ctx, 'FIRE IT WITH: C KEY / PAD B', 128, 176, C.lgray, center);

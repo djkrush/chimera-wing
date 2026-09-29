@@ -21,7 +21,7 @@ change how the game plays.
 Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load order matters**:
 
 ```
-nes.js → sprites.js → audio.js → input.js → game.js → side.js → specials.js → story.js → tet.js → main.js
+nes.js → sprites.js → audio.js → input.js → game.js → side.js → specials.js → pilots.js → story.js → tet.js → main.js
 ```
 
 | Global | File | Role |
@@ -31,16 +31,16 @@ nes.js → sprites.js → audio.js → input.js → game.js → side.js → spec
 | `Sound` | `js/audio.js` | WebAudio chiptune: `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`, sequencer notes as `"NOTE:LEN"` tokens in sixteenths |
 | `Input` | `js/input.js` | Keyboard and gamepad merged into abstract actions: `Input.pressed(a)`, `Input.just(a)`. Actions: `left right up down fire special transform prevForm start back form1-3`. Per-pad remaps live in `localStorage['chimera.padmap']`. |
 | `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, bosses, HUD and all rendering |
-| (mixins) | `js/side.js`, `js/specials.js`, `js/story.js`, `js/tet.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
+| (mixins) | `js/side.js`, `js/specials.js`, `js/pilots.js`, `js/story.js`, `js/tet.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
 | boot | `js/main.js` | Scales the canvas to whole-number sizes, sets global hotkeys, runs a **fixed 60 Hz** accumulator loop (`Input.update(); Game.update();` per tick, `Game.draw(ctx)` per frame) |
 
 ### Game state machine
 
-`Game.state` is one of `title | howto | setup | intro | hangar | play | clear | result | gameover`.
+`Game.state` is one of `title | howto | setup | pilot | intro | hangar | play | clear | result | gameover`.
 `Game.update()` and `Game.draw()` switch on it. Change state with `setState(s)`, which also resets
 `stateT`. `Game.paused` shows the in-game menu over any state.
 
-The flow for each stage is `startStage(n)` → `intro` (paged briefing) → `openHangar()` (pick a special) →
+START GAME opens the pilot select (`pilot`), which calls `startGame(1)`. The flow for each stage is `startStage(n)` → `intro` (paged briefing) → `openHangar()` (pick a special) →
 `beginPlay()` → `play` → `clear`/`result` → next stage. After the boss on stage `FINALE` (15), `updateClear`
 calls `startEnding()` instead, which plays the epilogue and then starts stage 16.
 
@@ -77,7 +77,11 @@ calls `startEnding()` instead, which plays the epilogue and then starts stage 16
 - `ENEMY`: enemy types (hp, points `[normal, acetylated]`, hit radius). A new enemy type needs an entry
   here, art in `SPR`, and drawing in `drawEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
-- `SPECIALS` (in `specials.js`): the hangar's special weapons.
+- `SPECIALS` (in `specials.js`): the hangar's special weapons. Ammo comes from the pilot's `special` stat.
+- `PILOTS` (in `pilots.js`): Maverick, Turtle and Drac, with `weapons` (shot damage multiplier `weapons / 4`,
+  via `gunPower()`), `shields` and `special` stats. There are no lives: `Game.shields` soaks hits through
+  `takeHit()`, one more hit at 0 is game over, and shields refill in `startStage`. `?stage=N` uses the
+  default pilot (Maverick).
 - TET capsules (`tet.js`): acetylated kills may drop one (`dropTet`); collecting it restores a silenced form.
 
 ## Conventions
