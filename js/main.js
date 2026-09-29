@@ -2,10 +2,11 @@
 // Boot + fixed 60 Hz game loop.
 (() => {
   const canvas = document.getElementById('screen');
+  canvas.width = NES.W; canvas.height = NES.H;   // set before getContext: resizing resets its state
   const ctx = canvas.getContext('2d', { alpha: false });
   ctx.imageSmoothingEnabled = false;
 
-  // Scale the 256x240 screen by whole numbers for crisp pixels.
+  // Scale the 424x240 screen by whole numbers for crisp pixels.
   function resize() {
     const fit = Math.min(window.innerWidth / NES.W, window.innerHeight / NES.H);
     const s = fit >= 1 ? Math.floor(fit) : fit;

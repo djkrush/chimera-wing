@@ -72,7 +72,9 @@ Object.assign(Game, {
     return true;
   },
 
-  drawPilotSelect(ctx) {
+  drawPilotSelect(ctx) { this.panel(ctx, () => this.drawPilotPage(ctx)); },
+
+  drawPilotPage(ctx) {
     const center = { align: 'center' };
     NES.text(ctx, 'CHOOSE YOUR PILOT', 128, 10, C.gold, center);
     const stats = [['WEAPONS', 'weapons', C.red], ['SHIELDS', 'shields', C.sky], ['SPECIAL', 'special', C.gold]];

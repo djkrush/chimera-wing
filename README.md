@@ -1,6 +1,6 @@
 # CHIMERA WING: The Epigenome War
 
-A Galaga / U.N. Squadron-style shooter with NES-style graphics. You fly the **VX-3 Chimera**, a
+A Galaga / U.N. Squadron-style shooter with SNES-style widescreen graphics. You fly the **VX-3 Chimera**, a
 transforming fighter, off the deck of a space carrier against the fleets of **Dr. Helena Voss**,
 a rogue epigeneticist who has taken over the galaxy's pilots by switching their genes on and off.
 
@@ -33,7 +33,7 @@ SOL ──<                         │       >── EPSILON ERIDANI (Voss's Ci
 - Every planet mission has two legs. You **take off from the carrier**, fly the **approach**,
   **land back on the carrier**, then take off again for the **assault**, which ends in a boss
   fight, and land. A mission goes one of two ways (each sector has both):
-  - **Vertical approach, then side-scrolling assault** ending at the sector's **ground base**.
+  - **Vertical approach, then side-scrolling assault** ending at the sector's **boss warship**.
   - **Side-scrolling approach, then a vertical capital-ship flyover** (see below).
 - Clearing every planet in a sector pays a bonus and **opens the sectors linked to it**.
   Epsilon Eridani opens once Sirius *or* Tau Ceti falls, so you choose your route.
@@ -41,7 +41,7 @@ SOL ──<                         │       >── EPSILON ERIDANI (Voss's Ci
   You keep your money, XP and upgrades, and can try again.
 - The game **saves** every time the carrier docks. Pick **CONTINUE** on the title screen.
 
-| Sector | Signature enemy | Ground base (side boss) | Capital ship (vertical boss) |
+| Sector | Signature enemy | Boss warship (side boss) | Capital ship (vertical boss) |
 |---|---|---|---|
 | SOL | – | Histone Bunker | Methyl Dreadnought |
 | ALPHA CENTAURI | Splitters: break into two MiGs when shot (DNMT1 copying) | DNMT1 Copier: rebuilds one lost turret | DNMT1 Replicator |
@@ -150,9 +150,9 @@ upgrades add to them):
     carrying your gene, that form stays silenced for the rest of the leg.
   - The sector's own enemies (see the table above)
 
-  A side-scrolling assault ends at the sector's **ground base**. It rolls in along the ground and
-  the scroll stops. Destroy every turret, missile launcher, fighter hangar, radar dish and reactor
-  core on it to win. The core stays shielded while the turrets stand (each sector's base has its
+  A side-scrolling assault ends at the sector's **boss warship**, a battleship, destroyer or carrier
+  grounded on its landing legs. It rolls in along the ground and the scroll stops. Destroy every
+  turret, missile launcher, fighter hangar, radar mast and reactor core on it to win. The core stays shielded while the turrets stand (each sector's base has its
   own twist on this).
 
 ## Special weapons
@@ -174,19 +174,22 @@ rearms it with as many uses as your **Special** stat.
 
 ```
 index.html        page + canvas
-js/nes.js         NES palette, bitmap font, sprite baking, draw helpers
-js/sprites.js     all pixel art (hulls top-down + side profile, aircraft, portraits, boss bases)
+js/nes.js         palette, bitmap font, sprite baking, SNES windows, draw helpers
+js/snes.js        SNES rendering: color ramps, shading, glows, color math, Mode 7, parallax
+js/shipyard.js    painter for the carrier, capital ships and boss warships
+js/sprites.js     sprite art (hulls top-down + side profile, aircraft, anime portraits, icons)
 js/audio.js       chiptune synth (pulse/triangle/noise) + music sequencer + sound effects
 js/input.js       keyboard + gamepad (standard, generic, hat-switch) + remapping
 js/game.js        game states, Galaga stages, player, enemies, rendering
-js/bosses.js      side-mission boss bases (turrets, hardpoints, cores, shields, beams)
+js/bosses.js      side-mission boss warships (turrets, hardpoints, cores, shields, beams)
 js/capital.js     vertical boss fights: capital-ship flyovers
-js/side.js        side-scrolling assaults: enemy script, behaviors, parallax background
+js/side.js        side-scrolling assaults: enemy script, behaviors
+js/scenery.js     per-planet scenery: Mode 7 surfaces, parallax layers, nebula
 js/specials.js    hangar screen + special weapons
 js/pilots.js      pilot select, ship hulls, stats, shields
 js/campaign.js    sectors, missions, rewards, levels, saves, galaxy map
 js/starbase.js    starbase menus, shop, status, learn-a-special screen
-js/carrier.js     space carrier art, takeoff and landing
+js/carrier.js     space carrier art, elevator/catapult takeoff and landing
 js/story.js       planet briefings, story beats, epilogue, Echo facts, Mira's hints
 js/tet.js         TET capsule pickups
 js/main.js        boot + fixed 60 Hz loop

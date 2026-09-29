@@ -14,7 +14,7 @@
 // swap: enemy types this sector swaps in, as [new type, chance]
 // sideKinds: extra side-mission patterns (side.js) added to the usual mix
 const SECTORS = [
-  { id: 'sol', name: 'SOL', short: 'SOL', base: 'LUNA STATION', x: 30, y: 108, col: C.gold,
+  { id: 'sol', name: 'SOL', short: 'SOL', base: 'LUNA STATION', x: 28, y: 108, col: C.gold,
     links: ['acen', 'barn'], boss: 'bunker', capital: 'dreadnought', hull: -1, acetyl: 0, swap: {}, sideKinds: [],
     bonus: { money: 1000, xp: 150 },
     planets: [
@@ -23,7 +23,7 @@ const SECTORS = [
       { id: 'venus', name: 'VENUS', sky: [C.olive, C.gold, C.brown, C.yellow], disc: [C.gold, C.cream], terrain: 'clouds',
         approach: 'challenge' },
     ] },
-  { id: 'acen', name: 'ALPHA CENTAURI', short: 'ALPHA CEN', base: 'CENTAURI GATE', x: 92, y: 60, col: C.orange,
+  { id: 'acen', name: 'ALPHA CENTAURI', short: 'ALPHA CEN', base: 'CENTAURI GATE', x: 146, y: 60, col: C.orange,
     links: ['sol', 'sirius'], boss: 'copier', capital: 'replicator', hull: 1, acetyl: 0,
     swap: { fighter: [['splitter', 0.35]] }, sideKinds: ['splitterLine', 'splitterLine'],
     bonus: { money: 1500, xp: 200 },
@@ -32,7 +32,7 @@ const SECTORS = [
       { id: 'toliman', name: 'TOLIMAN', sky: [C.teal, C.dgreen, C.olive, C.cyan], disc: [C.teal, C.cyan], terrain: 'ocean',
         approach: 'challenge' },
     ] },
-  { id: 'barn', name: "BARNARD'S STAR", short: 'BARNARD', base: 'HIVEWATCH', x: 92, y: 156, col: C.red,
+  { id: 'barn', name: "BARNARD'S STAR", short: 'BARNARD', base: 'HIVEWATCH', x: 146, y: 156, col: C.red,
     links: ['sol', 'tau'], boss: 'queen', capital: 'ark', hull: 2, acetyl: 0.1,
     swap: { fighter: [['drone', 0.5]] }, sideKinds: ['droneSwarm', 'droneSwarm'],
     bonus: { money: 1500, xp: 200 },
@@ -40,7 +40,7 @@ const SECTORS = [
       { id: 'hive', name: 'BARNARD B', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.olive, C.gold], terrain: 'hive' },
       { id: 'nectar', name: 'NECTAR', sky: [C.olive, C.gold, C.brown, C.cream], disc: [C.gold, C.yellow], terrain: 'hive', order: 'sv' },
     ] },
-  { id: 'sirius', name: 'SIRIUS', short: 'SIRIUS', base: 'DOG STAR DOCK', x: 162, y: 60, col: C.ice,
+  { id: 'sirius', name: 'SIRIUS', short: 'SIRIUS', base: 'DOG STAR DOCK', x: 278, y: 60, col: C.ice,
     links: ['acen', 'tau', 'eps'], boss: 'xinact', capital: 'barr', hull: 3, acetyl: 0.2,
     swap: {}, sideKinds: ['bomber', 'bomber'],
     bonus: { money: 2000, xp: 250 },
@@ -49,7 +49,7 @@ const SECTORS = [
       { id: 'calico', name: 'CALICO', sky: [C.gray, C.rust, C.brown, C.orange], disc: [C.orange, C.lgray], terrain: 'fields',
         approach: 'challenge' },
     ] },
-  { id: 'tau', name: 'TAU CETI', short: 'TAU CETI', base: 'CETI ANCHORAGE', x: 162, y: 156, col: C.yellow,
+  { id: 'tau', name: 'TAU CETI', short: 'TAU CETI', base: 'CETI ANCHORAGE', x: 278, y: 156, col: C.yellow,
     links: ['barn', 'sirius', 'eps'], boss: 'twins', capital: 'imprint', hull: 3, acetyl: 0,
     swap: { bomber: [['armored', 0.4]] }, sideKinds: ['armoredPair'],
     bonus: { money: 2000, xp: 250 },
@@ -57,7 +57,7 @@ const SECTORS = [
       { id: 'taue', name: 'TAU CETI E', sky: [C.navy, C.blue, C.gray, C.lgray], disc: [C.lgray, C.sky], terrain: 'ice' },
       { id: 'tauf', name: 'TAU CETI F', sky: [C.navy, C.violet, C.purple, C.lavender], disc: [C.violet, C.lavender], terrain: 'ice', order: 'sv' },
     ] },
-  { id: 'eps', name: 'EPSILON ERIDANI', short: 'EPS ERI', base: 'ERIDANI ROADS', x: 224, y: 108, col: C.pink,
+  { id: 'eps', name: 'EPSILON ERIDANI', short: 'EPS ERI', base: 'ERIDANI ROADS', x: 396, y: 108, col: C.pink,
     links: ['sirius', 'tau'], boss: 'citadel', capital: 'nucleosome', hull: -1, acetyl: 0.1,
     swap: { fighter: [['splitter', 0.2], ['drone', 0.2]], bomber: [['armored', 0.3]] },
     sideKinds: ['splitterLine', 'droneSwarm', 'armoredPair'],
@@ -388,10 +388,10 @@ Object.assign(Game, {
     const c = this.camp, center = { align: 'center' }, t = this.t;
     SNES.half(ctx, () => {
       ctx.fillStyle = '#2048c0';
-      for (let x = 8; x < W; x += 16) ctx.fillRect(x, 26, 1, 150);
+      for (let x = 4; x < W; x += 16) ctx.fillRect(x, 26, 1, 150);
       for (let y = 26; y < 180; y += 16) ctx.fillRect(0, y, W, 1);
     }, 0.3);
-    NES.text(ctx, 'GALAXY MAP', 128, 6, C.gold, { align: 'center', scale: 2 });
+    NES.text(ctx, 'GALAXY MAP', CX, 6, C.gold, { align: 'center', scale: 2 });
     for (const S of SECTORS) {
       for (const id of S.links) {
         const O = SECTOR_BY_ID[id];
@@ -427,6 +427,10 @@ Object.assign(Game, {
 
   drawMapScreen(ctx) {
     this.drawMap(ctx);
+    this.panel(ctx, () => this.drawMapInfo(ctx));
+  },
+
+  drawMapInfo(ctx) {
     const S = SECTORS[this.mapSel], c = this.camp, center = { align: 'center' };
     NES.box(ctx, 8, 180, 240, 38, C.black, S.col);
     if (this.isUnlocked(S.id)) {
@@ -450,41 +454,44 @@ Object.assign(Game, {
     const e = k * k * (3 - 2 * k);
     this.drawMap(ctx, { x: A.x + (B.x - A.x) * e, y: A.y + (B.y - A.y) * e });
     const msg = k < 1 && T.from !== T.to ? 'JUMPING TO ' + B.name : 'DOCKING AT ' + B.base;
-    NES.box(ctx, 8, 190, 240, 20, C.black, B.col);
-    if ((this.t >> 3) & 1 || k >= 1) NES.text(ctx, msg, 128, 196, C.white, { align: 'center' });
+    NES.box(ctx, OX + 8, 190, 240, 20, C.black, B.col);
+    if ((this.t >> 3) & 1 || k >= 1) NES.text(ctx, msg, CX, 196, C.white, { align: 'center' });
   },
 
   // Full-screen campaign screens.
   drawMenuScreen(ctx) {
     switch (this.state) {
       case 'base': this.drawBase(ctx); break;
+      case 'sortie': this.drawSortie(ctx); break;
       case 'map': this.drawMapScreen(ctx); break;
       case 'travel': this.drawTravel(ctx); break;
-      case 'sortie': this.drawSortie(ctx); break;
-      case 'debrief': this.drawDebrief(ctx); break;
-      case 'learn': this.drawLearn(ctx); break;
+      case 'debrief': this.panel(ctx, () => this.drawDebrief(ctx)); break;
+      case 'learn': this.panel(ctx, () => this.drawLearn(ctx)); break;
     }
   },
 
   // Briefing and loadout at the starbase: the station behind the dialogue.
   drawInBase(ctx) {
     this.drawBaseScene(ctx, 118);
-    if (this.state === 'intro') this.drawIntro(ctx);
-    else if (this.state === 'hangar') this.drawHangar(ctx);
-    if (this.radio) this.drawRadio(ctx);
+    this.panel(ctx, () => {
+      if (this.state === 'intro') this.drawIntro(ctx);
+      else if (this.state === 'hangar') this.drawHangar(ctx);
+      if (this.radio) this.drawRadio(ctx);
+    });
   },
 
   drawSortie(ctx) {
     const P = this.mission.planet, T = this.stateT;
     const r = Math.round(Math.min(70, 8 + T * 0.4));
-    const px = 256 - Math.min(40, T * 0.3), sc = this.scenery(P);
+    const px = W - 20 - Math.min(60, T * 0.4), sc = this.scenery(P);
     SNES.add(ctx, () => {   // atmosphere: a glow a little larger than the planet
       const g = SNES.glow(40, SNES.mix(sc.haze, '#000000', 0.45)), d = (r + 8) * 2 + 1;
       ctx.drawImage(g, Math.round(px - d / 2), Math.round(120 - d / 2), d, d);
     });
     SNES.globe(ctx, sc.floor, px, 120, r, T * 0.004);
-    this.drawCarrierSide(ctx, 90 + Math.sin(T * 0.05) * 4, 124 + Math.sin(T * 0.03) * 3, true);
-    NES.text(ctx, 'EN ROUTE TO ' + P.name, 128, 20, C.white, { align: 'center' });
-    if (T > 20 && (this.t >> 4) & 1) NES.text(ctx, 'A: SKIP', 128, 222, C.gray, { align: 'center' });
+    const s = 0.5 - Math.min(0.2, T * 0.0015);   // the carrier shrinks into the distance
+    this.drawCarrierSide(ctx, 30 + T * 0.35 + Math.sin(T * 0.05) * 4, 132 - CAR.sh * s / 2 + Math.sin(T * 0.03) * 3, true, s);
+    NES.text(ctx, 'EN ROUTE TO ' + P.name, CX, 20, C.white, { align: 'center' });
+    if (T > 20 && (this.t >> 4) & 1) NES.text(ctx, 'A: SKIP', CX, 222, C.gray, { align: 'center' });
   },
 });

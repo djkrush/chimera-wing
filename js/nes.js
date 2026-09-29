@@ -1,7 +1,7 @@
 'use strict';
 // NES-style rendering helpers: palette, sprite baking, 5x7 bitmap font, primitives.
 const NES = (() => {
-  const W = 256, H = 240;
+  const W = 424, H = 240;   // 16:9 widescreen at the SNES's 240 lines
 
   // Colors taken from the NES 2C02 palette (common emulator values).
   const C = {

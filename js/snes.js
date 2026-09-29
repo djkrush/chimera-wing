@@ -239,7 +239,7 @@ const SNES = (() => {
   function scrollY(ctx, img, off, x = 0) {
     const h = img.height;
     let y = (((Math.round(off) % h) + h) % h) - h;
-    for (; y < NES.H; y += h) ctx.drawImage(img, x, y);
+    for (; y < NES.H; y += h) for (let tx = x; tx < NES.W; tx += img.width) ctx.drawImage(img, tx, y);
   }
 
   // ---- Mode 7 -----------------------------------------------------------------------------------

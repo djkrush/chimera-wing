@@ -108,14 +108,14 @@ Object.assign(Game, {
     ctx.save();
     ctx.translate(0, oy);
     SNES.add(ctx, () => {                              // the sector's star: layered glow and a hot core
-      NES.draw(ctx, SNES.glow(28, SNES.mix(S.col, '#000000', 0.6)), 228, 24);
-      NES.draw(ctx, SNES.glow(14, S.col), 228, 24);
+      NES.draw(ctx, SNES.glow(28, SNES.mix(S.col, '#000000', 0.6)), W - 40, 24);
+      NES.draw(ctx, SNES.glow(14, S.col), W - 40, 24);
     });
-    NES.draw(ctx, SNES.sphere(6, SNES.mix(S.col, '#ffffff', 0.6)), 228, 24);
+    NES.draw(ctx, SNES.sphere(6, SNES.mix(S.col, '#ffffff', 0.6)), W - 40, 24);
     const P = S.planets[0];                            // one of the sector's planets, turning slowly
-    SNES.add(ctx, () => NES.draw(ctx, SNES.glow(34, SNES.mix(this.scenery(P).haze, '#000000', 0.55)), 30, 104));
-    SNES.globe(ctx, this.scenery(P).floor, 30, 104, 28, t * 0.004);
-    const hx = 84, hy = 62, art = this.stationArt();
+    SNES.add(ctx, () => NES.draw(ctx, SNES.glow(40, SNES.mix(this.scenery(P).haze, '#000000', 0.55)), 36, 100));
+    SNES.globe(ctx, this.scenery(P).floor, 36, 100, 34, t * 0.004);
+    const hx = 132, hy = 58, art = this.stationArt();
     ctx.drawImage(art.back, hx - 82, hy - 32);         // panels, truss and the far half of the ring
     NES.draw(ctx, SNES.sphere(12, '#98a0b0'), hx, hy);  // hub
     ctx.fillStyle = '#58b8f0'; ctx.fillRect(hx - 6, hy - 2, 12, 2);
@@ -126,7 +126,7 @@ Object.assign(Game, {
       ctx.fillStyle = C.yellow; ctx.fillRect(Math.round(hx + Math.cos(a) * 42), Math.round(hy + Math.sin(a) * 11) - 1, 2, 1);
     }
     ctx.fillStyle = (t >> 4) & 1 ? C.red : C.darkred; ctx.fillRect(hx - 1, hy - 16, 2, 2);
-    this.drawCarrierSide(ctx, 176, 88, false);
+    this.drawCarrierSide(ctx, 206, 56, false, 0.36);   // docked at the end of the arm
     ctx.restore();
   },
 
@@ -175,6 +175,11 @@ Object.assign(Game, {
     this.drawBaseScene(ctx);
     NES.text(ctx, S.base, 6, 4, C.white);
     NES.text(ctx, S.name + (c.loop ? ' ECHO ' + c.loop : ''), 6, 13, S.col);
+    this.panel(ctx, () => this.drawBaseMenu(ctx));
+  },
+
+  drawBaseMenu(ctx) {
+    const S = this.sectorDef(), U = this.baseUI, c = this.camp, items = this.baseItems();
     NES.box(ctx, 4, 112, 248, 124, C.black, S.col);
     NES.text(ctx, c.money + ' CR', 10, 117, C.gold);
     NES.text(ctx, 'LV ' + c.level, 128, 117, C.lime, { align: 'center' });

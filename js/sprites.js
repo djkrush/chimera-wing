@@ -802,48 +802,8 @@ const SPR = (() => {
     B(['..W..', '.WBW.', 'WWWWW', '..W..', '.W.W.'], { W: C.sky, B: C.white }),
   ];
 
-  // ---- Side-mission boss bases, drawn procedurally --------------------------------
-  // Keyed by the `pal` field of BOSSES in bosses.js.
-  const BOSS_PALS = {
-    bunker: { top: C.gray, body: C.green, lines: C.dgreen, edge: C.lgray, under: C.chartreuse },
-    copier: { top: C.gray, body: C.teal, lines: C.navy, edge: C.ice, under: C.cyan },
-    queen: { top: C.olive, body: C.gold, lines: C.brown, edge: C.cream, under: C.yellow },
-    xinact: { top: C.gray, body: C.rust, lines: C.maroon, edge: C.cream, under: C.orange },
-    twins: { top: C.gray, body: C.blue, lines: C.navy, edge: C.lgray, under: C.periwinkle },
-    citadel: { top: C.lgray, body: C.purple, lines: C.black, edge: C.pink, under: C.magenta },
-  };
-
-  // Fortified ground base for side-mission bosses (bosses.js), 176 x 112, bottom row on the ground.
-  // A long bunker, a wall, a gun tower and the tall command tower (target spots in bosses.js).
-  function buildBaseHull(pal) {
-    const w = 176, h = 112;
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const x = c.getContext('2d');
-    const put = (col, a, b, cw, ch) => { x.fillStyle = col; x.fillRect(a, b, cw, ch); };
-    const block = (bx, by, bw, bh) => {
-      put(pal.body, bx, by, bw, bh);
-      put(pal.top, bx, by, bw, 4);
-      for (let yy = by + 8; yy < by + bh; yy += 8) put(pal.lines, bx, yy, bw, 1);   // seams
-      put(pal.edge, bx, by, bw, 1); put(pal.edge, bx, by, 1, bh);                    // lit edges
-      put(pal.lines, bx + bw - 1, by, 1, bh);                                         // shaded edge
-      for (let yy = by + 5; yy < by + bh - 4; yy += 12) {                             // windows
-        for (let xx = bx + 5; xx < bx + bw - 4; xx += 8) put(C.yellow, xx, yy, 2, 2);
-      }
-    };
-    block(0, 72, 176, 40);
-    block(70, 56, 50, 16);
-    block(40, 36, 30, 36);
-    block(120, 2, 30, 70);
-    for (let xx = 2; xx < 174; xx += 12) put(pal.top, xx, 69, 5, 3);                // bunker battlements
-    for (let xx = 0; xx < 176; xx += 8) put(pal.under, xx, 108, 4, 4);             // hazard stripes
-    put(C.gray, 146, 0, 1, 2);                                                       // antenna
-    return c;
-  }
-
   return {
     hulls,
     enemy, ebullet, missile, life, wing, wingSide, portrait, mira, pilots, shieldPip, shieldPipOff, tet, specialIcons,
-    baseHulls: Object.fromEntries(Object.entries(BOSS_PALS).map(([k, pal]) => [k, buildBaseHull(pal)])),
   };
 })();

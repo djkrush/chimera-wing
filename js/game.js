@@ -3,6 +3,8 @@
 
 const C = NES.C;
 const W = NES.W, H = NES.H;
+const CX = W >> 1;          // screen center
+const OX = (W - 256) >> 1;  // left edge of a centered 256-wide panel (menus and dialogue)
 const PY = 212;        // player's home row
 const PY_MIN = 150;    // highest Guardian/Battloid can climb
 const SIDE_GROUND = 206;   // top of the ground strip in side-scrolling missions
@@ -90,10 +92,11 @@ const PATH_DEFS = {
   ch2: [[120, -16], [120, 72], [96, 132], [56, 148], [36, 120], [52, 92], [92, 100], [124, 148], [128, 260]],
   ch3: [[-16, 132], [72, 128], [124, 96], [160, 60], [196, 68], [208, 100], [176, 124], [120, 112], [60, 64], [24, -24]],
 };
+// The paths were laid out for a 256-wide field; they stretch to the widescreen.
 const PATHS = {};
 for (const [k, pts] of Object.entries(PATH_DEFS)) {
-  PATHS[k] = buildPath(pts);
-  PATHS[k + 'M'] = buildPath(pts.map(([x, y]) => [W - x, y]));   // mirrored
+  PATHS[k] = buildPath(pts.map(([x, y]) => [x * W / 256, y]));
+  PATHS[k + 'M'] = buildPath(pts.map(([x, y]) => [W - x * W / 256, y]));   // mirrored
 }
 
 // ---- Wave layouts -------------------------------------------------------------
@@ -196,7 +199,7 @@ const Game = {
   },
 
   newPlayer() {
-    return { x: 128, y: PY, form: 0, nextForm: 0, morphT: 0, fireCd: 0, alive: true, respawnT: 0,
+    return { x: CX, y: PY, form: 0, nextForm: 0, morphT: 0, fireCd: 0, alive: true, respawnT: 0,
       invuln: 60, battCd: 0, silenced: [false, false, false], silenceT: [0, 0, 0], moving: false, shieldT: 0 };
   },
 
@@ -238,7 +241,7 @@ const Game = {
   // Start position: bottom-center for vertical stages, left side for side-scrolling missions.
   placePlayer() {
     const p = this.player;
-    if (this.isSide) { p.x = 40; p.y = 186; } else { p.x = 128; p.y = PY; }
+    if (this.isSide) { p.x = 40; p.y = 186; } else { p.x = CX; p.y = PY; }
   },
 
   // Converts a direction given in "vertical stage" terms (up = forward) into the current
@@ -537,7 +540,7 @@ const Game = {
   slotPos(slot) {
     const f = this.formation;
     return {
-      x: 128 + f.ox + (slot.c - 4.5) * 22 * f.spread,   // 10 columns of SNES-size planes fit 246px at full spread
+      x: CX + f.ox + (slot.c - 4.5) * 28 * f.spread,   // 10 columns span about 280px of the widescreen
       y: 40 + slot.r * 19 * (1 + (f.spread - 1) * 0.6),
     };
   },
@@ -547,7 +550,7 @@ const Game = {
     if (!f) return;
     f.t++;
     if (!this.formationReady) {
-      f.ox = Math.sin(f.t * 0.02) * 12;   // sway while squadrons fly in
+      f.ox = Math.sin(f.t * 0.02) * 20;   // sway while squadrons fly in
       f.spread = 1;
       const settling = this.enemies.some(e => e.state === 'enter' || e.state === 'toSlot');
       if (this.stageType === 'normal' && this.waveI >= this.waves.length && !settling) {
@@ -658,7 +661,7 @@ const Game = {
 
   startDive(e, turn) {
     e.state = 'dive'; e.phase = 0; e.pt = 0; e.hd = -Math.PI / 2;
-    e.turn = turn ?? (e.x < 128 ? -1 : 1);
+    e.turn = turn ?? (e.x < CX ? -1 : 1);
     e.spd = 1.6;
     e.maxSpd = Math.min(2.2 + this.stage * 0.06, 3.4) * (e.acetyl ? 1.2 : 1);
     e.fireYs = [70, 110, 140].slice(0, this.stage < 2 ? 1 : this.stage < 6 ? 2 : 3);
@@ -676,7 +679,7 @@ const Game = {
     } else {
       e.spd = Math.min(e.maxSpd, e.spd + 0.05);
       if (e.y < 170) {
-        let tx = p.alive ? p.x : 128;
+        let tx = p.alive ? p.x : CX;
         if (e.type === 'bomber') tx += Math.sin(e.pt * 0.06 + e.wob) * 48;
         const desired = Math.atan2(PY + 40 - e.y, tx - e.x);
         const rate = (e.type === 'fighter' ? 0.045 : 0.035) * (e.acetyl ? 1.4 : 1);
@@ -696,7 +699,7 @@ const Game = {
   // Methylator attack: fly above the player and fire a gene-silencing beam.
   startBeam(e) {
     e.state = 'beamgo'; e.phase = 0; e.pt = 0; e.hd = -Math.PI / 2;
-    e.turn = e.x < 128 ? -1 : 1; e.spd = 1.6;
+    e.turn = e.x < CX ? -1 : 1; e.spd = 1.6;
     e.tx = clamp(this.player.x, 32, W - 32); e.ty = 120;
     Sound.sfx('dive');
   },
@@ -758,7 +761,7 @@ const Game = {
     if (e.type === 'methyl') {
       const beaming = this.enemies.some(x => x.state === 'beamgo' || x.state === 'beam');
       if (!beaming && e.holding < 0 && Math.random() < 0.6) { this.startBeam(e); return; }
-      const turn = e.x < 128 ? -1 : 1;
+      const turn = e.x < CX ? -1 : 1;
       this.startDive(e, turn);
       // bomber escorts, like Galaga's boss + butterflies
       pool.filter(b => b.type === 'bomber' && b.slot.r === 1 && Math.abs(b.slot.c - e.slot.c) <= 2)
@@ -896,7 +899,7 @@ const Game = {
     if (Input.pressed('down')) dy++;
     if (this.isSide) {
       // Side missions: every form flies freely over the left part of the screen.
-      const maxX = this.boss ? W - 10 : 200;   // at a boss base you can fly the whole screen
+      const maxX = this.boss ? W - 10 : W - 164;   // at a boss base you can fly the whole screen
       p.x = clamp(p.x + dx * sp, 18, maxX);
       p.y = clamp(p.y + dy * sp, 22, SIDE_GROUND - 14);
     } else {
@@ -1131,8 +1134,8 @@ const Game = {
     else this.drawWorld(ctx);
     if (this.toastMsg && (this.toastMsg.t > 30 || this.toastMsg.t % 8 < 5)) {
       const w = NES.textWidth(this.toastMsg.text) + 12;
-      NES.box(ctx, 128 - (w >> 1), 212, w, 13, C.navy, C.sky);
-      NES.text(ctx, this.toastMsg.text, 128, 215, C.white, { align: 'center' });
+      NES.box(ctx, CX - (w >> 1), 212, w, 13, C.navy, C.sky);
+      NES.text(ctx, this.toastMsg.text, CX, 215, C.white, { align: 'center' });
     }
   },
 
@@ -1191,8 +1194,15 @@ const Game = {
     this.drawSpecialFx(ctx, 'over');
     this.drawParticles(ctx);
     this.drawHUD(ctx);
-    if (this.radio) this.drawRadio(ctx);
+    this.panel(ctx, () => this.drawOverlay(ctx));
+  },
 
+  // Run a layout made for a 256-wide screen, centered on the widescreen.
+  panel(ctx, fn) { ctx.save(); ctx.translate(OX, 0); fn(); ctx.restore(); },
+
+  // Dialogue, menus and banners over the playfield (in a centered 256-wide panel).
+  drawOverlay(ctx) {
+    if (this.radio) this.drawRadio(ctx);
     switch (this.state) {
       case 'intro': this.drawIntro(ctx); break;
       case 'hangar': this.drawHangar(ctx); break;
@@ -1308,17 +1318,17 @@ const Game = {
     SNES.half(ctx, () => { ctx.fillStyle = '#000010'; ctx.fillRect(0, 0, W, 10); ctx.fillRect(0, 229, W, 11); }, 0.6);
     NES.text(ctx, '1UP', 4, 1, C.red);
     NES.text(ctx, pad6(this.score), 32, 1, C.white);
-    NES.text(ctx, 'HI', 164, 1, C.red);
-    NES.text(ctx, pad6(this.hi), 184, 1, C.white);
+    NES.text(ctx, 'HI', W - 69, 1, C.red);
+    NES.text(ctx, pad6(this.hi), W - 49, 1, C.white);
     // Top middle alternates between the mission's special weapon ammo and the adaptation warning.
     const sp = this.special;
     const showAdapt = this.adapt >= 0 && (!sp || (this.t >> 6) & 1);
     if (showAdapt) {
-      if ((this.t >> 4) & 1) NES.text(ctx, 'ADPT:' + FORMS[this.adapt].short, 88, 1, C.pink);
+      if ((this.t >> 4) & 1) NES.text(ctx, 'ADPT:' + FORMS[this.adapt].short, CX, 1, C.pink, { align: 'center' });
     } else if (sp) {
       const def = SPECIALS[sp.idx];
-      NES.draw(ctx, SPR.specialIcons[sp.idx], 92, 4);
-      NES.text(ctx, def.short + ' ' + String(sp.ammo).padStart(2, '0'), 100, 1, sp.ammo ? C.gold : C.gray);
+      NES.draw(ctx, SPR.specialIcons[sp.idx], CX - 32, 4);
+      NES.text(ctx, def.short + ' ' + String(sp.ammo).padStart(2, '0'), CX - 24, 1, sp.ammo ? C.gold : C.gray);
     }
 
     // shield pips; with none left the next hit is fatal
@@ -1328,7 +1338,7 @@ const Game = {
 
     // form status
     for (let f = 0; f < 3; f++) {
-      const x = 84 + f * 30, y = 231;
+      const x = CX - 40 + f * 30, y = 231;
       const cur = p.alive && (p.morphT > 0 ? p.nextForm : p.form) === f;
       let col = C.gray;
       if (p.silenced[f]) col = C.magenta;
@@ -1341,21 +1351,21 @@ const Game = {
         ctx.fillStyle = C.orange; ctx.fillRect(x, y + 8, Math.ceil(21 * (1 - p.battCd / 600)), 1);
       }
     }
-    NES.text(ctx, 'LV', 214, 231, C.red);
-    NES.text(ctx, String(this.camp ? this.camp.level : 1).padStart(2, '0'), 234, 231, C.white);
+    NES.text(ctx, 'LV', W - 42, 231, C.red);
+    NES.text(ctx, String(this.camp ? this.camp.level : 1).padStart(2, '0'), W - 22, 231, C.white);
 
     if (this.boss && !this.radio) {
       const B = this.boss;
       const tot = B.parts.reduce((s, q) => s + q.max, 0);
       const cur = B.parts.reduce((s, q) => s + Math.max(0, q.hp), 0);
       NES.text(ctx, this.villain() === 'echo' ? 'ECHO' : 'VOSS', 4, 11, CAST[this.villain()].col);
-      this.drawBar(ctx, 40, 12, 160, 5, cur / tot, C.pink);
+      this.drawBar(ctx, 40, 12, W - 80, 5, cur / tot, C.pink);
     }
     if (this.capital && !this.radio) {   // capital ship: targets left, and which pass this is
       const K = this.capital, left = this.capitalLeft();
       NES.text(ctx, 'PASS ' + K.pass, 4, 11, C.gold);
-      this.drawBar(ctx, 56, 12, 144, 5, left / K.targets.length, C.pink);
-      NES.text(ctx, String(left), 252, 11, C.white, { align: 'right' });
+      this.drawBar(ctx, 56, 12, W - 112, 5, left / K.targets.length, C.pink);
+      NES.text(ctx, String(left), W - 4, 11, C.white, { align: 'right' });
     }
   },
 
@@ -1490,7 +1500,7 @@ const Game = {
   drawTitle(ctx) {
     const t = this.t;
     // Earth rising at the bottom: a rotating globe with a glowing rim of atmosphere (additive).
-    const cx = 128, cy = 376, r = 186;
+    const cx = CX, cy = 396, r = 240;
     SNES.add(ctx, () => {
       const glowCols = ['#081430', '#102858', '#1c4490', '#3068d0'];
       for (let x = 0; x < W; x++) {
@@ -1499,8 +1509,12 @@ const Game = {
       }
     });
     SNES.globe(ctx, this.scenery(SECTORS[0].planets[0]).floor, cx, cy, r, t * 0.0015);
-    this.drawHelix(ctx, 12, t * 0.5);
-    this.drawHelix(ctx, W - 13, t * 0.5 + 40);
+    for (const [x, ph] of [[14, 0], [44, 60], [W - 15, 40], [W - 45, 100]]) this.drawHelix(ctx, x, t * 0.5 + ph);
+    this.panel(ctx, () => this.drawTitleMenu(ctx));
+  },
+
+  drawTitleMenu(ctx) {
+    const t = this.t;
 
     // logo, with a glint sweeping across it every few seconds
     const logo = this.titleLogo();
@@ -1539,7 +1553,9 @@ const Game = {
     NES.text(ctx, 'Z FIRE  C SPECIAL  X MORPH', 128, 225, C.white, { align: 'center' });
   },
 
-  drawHowto(ctx) {
+  drawHowto(ctx) { this.panel(ctx, () => this.drawHowtoPage(ctx)); },
+
+  drawHowtoPage(ctx) {
     // lines up to 31 characters: a full-screen window, with the left margin pulled in to fit
     const T = (s, x, y, c = C.white, o) => NES.text(ctx, s, x === 8 ? 5 : x === 16 ? 13 : x, y, c, o);
     const pg = this.howPage;
@@ -1617,7 +1633,9 @@ const Game = {
     T((pg + 1) + '/' + HOWTO_PAGES + '  FIRE: NEXT', 128, 226, C.gray, { align: 'center' });
   },
 
-  drawSetup(ctx) {
+  drawSetup(ctx) { this.panel(ctx, () => this.drawSetupPage(ctx)); },
+
+  drawSetupPage(ctx) {
     const S = this.setup;
     NES.box(ctx, 2, 2, 252, 236, C.black, C.sky);
     NES.text(ctx, 'CONTROLLER SETUP', 128, 14, C.gold, { align: 'center' });

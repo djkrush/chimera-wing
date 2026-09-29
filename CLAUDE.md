@@ -25,18 +25,20 @@ change how the game plays.
 Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load order matters**:
 
 ```
-nes.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js → specials.js → pilots.js
-       → campaign.js → starbase.js → carrier.js → story.js → tet.js → main.js
+nes.js → snes.js → shipyard.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js
+       → scenery.js → specials.js → pilots.js → campaign.js → starbase.js → carrier.js → story.js → tet.js → main.js
 ```
 
 | Global | File | Role |
 |---|---|---|
-| `NES` | `js/nes.js` | 256×240 screen size (`NES.W/H`), NES palette `NES.C`, 5×7 bitmap font (`NES.text`), `NES.sprite` (bakes ASCII art into canvases), draw helpers (`draw`, `drawRot`, `drawFlip`, `disc`, `box`, `wrap`) |
+| `NES` | `js/nes.js` | 424×240 widescreen size (`NES.W/H`), base palette `NES.C`, shaded 5×7 bitmap font (`NES.text`), `NES.sprite`, draw helpers (`draw`, `drawRot`, `drawFlip`, `disc`, `box` (SNES window), `hilite`, `wrap`) |
+| `SNES` | `js/snes.js` | 15-bit color and 5-shade `ramp`s, `bake` (shaded ASCII sprites), `glow`/`sphere`/`globe`, smooth `drawRot` with scaling, color math (`add`, `half`), HDMA-style `bands`, parallax `layer`/`scrollX`/`scrollY`, Mode 7 `texture`/`mode7` |
+| `YARD` | `js/shipyard.js` | Painter for the big pre-rendered machines (carrier, capital ships, boss warships): `sheet(w, h)` lays down materials at height levels (`rect`, `poly`, `ellipse`, `mirrorX`, `recolor`), `bake()` bevels, drop-shadows and outlines them; detail helpers `modules`, `plates`, `greebles`, `vent`, `turret`, `windows` |
 | `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Top-down sprites point **up** and the game rotates them. Side-mission sprites are **side profiles**, drawn unrotated. |
 | `Sound` | `js/audio.js` | WebAudio chiptune: `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`, sequencer notes as `"NOTE:LEN"` tokens in sixteenths |
 | `Input` | `js/input.js` | Keyboard and gamepad merged into abstract actions: `Input.pressed(a)`, `Input.just(a)`. Actions: `left right up down fire special transform prevForm start back form1-3`. Per-pad remaps live in `localStorage['chimera.padmap']`. |
 | `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, HUD and rendering |
-| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/specials.js`, `js/pilots.js`, `js/campaign.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
+| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/pilots.js`, `js/campaign.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
 | boot | `js/main.js` | Scales the canvas to whole-number sizes, sets global hotkeys, runs a **fixed 60 Hz** accumulator loop (`Input.update(); Game.update();` per tick, `Game.draw(ctx)` per frame) |
 
 ### Game state machine
@@ -90,24 +92,34 @@ cleared, not with the route), and the enemy formulas scale with it.
   `armoredPair`, `boss`). Each enemy's `beh` field picks its movement in `updateSideEnemy`. Everything
   in a side mission is drawn in **side profile**: `drawShip(..., side)` uses `SPR.hulls[h].side`,
   `drawSideEnemy` uses `SPR.enemy[type].side` (facing left, flipped with `NES.drawFlip` when flying right),
-  and the boss is a ground base drawn side-on.
+  and the boss is a grounded warship drawn side-on.
 - **Sectors:** `SECTORS` in `campaign.js` gives each sector its planets, links, boss, enemy `swap`s
   (`mixType`), extra `sideKinds`, `acetyl` bonus and the hull its shop sells. Planets carry their
   side-mission background colors (`sky`).
-- **Boss bases** (`bosses.js`, side missions): `BOSSES[id]` picks a target layout from `BASE_LAYOUTS`
-  (turrets, launchers, hangars, radars, cores; `sx/sy` from the base's left edge at ground level),
-  a `shield` rule (`turrets`, `launch`, `swapCore`, `swapTurret`) and a palette for the structure.
-  `makeBoss(id)`. The base rolls in with the ground, then sets `scrollLock`. Win = every target dead.
-  The structure is scenery: shots pass through it and the ship can fly over the whole screen.
+- **Boss warships** (`bosses.js`, side missions): grounded warships on landing legs, bow left.
+  `BOSSES[id]` picks a hull `style` (`BASE_STYLES`: battleship, destroyer, carrier), a palette, how many
+  targets of each kind it mounts (`BASE_LAYOUTS`: turrets, launchers, hangars, radars, cores) and a
+  `shield` rule (`turrets`, `launch`, `swapCore`, `swapTurret`). The style paints the hull (`bossArt`)
+  and returns the target slots, so targets sit on painted features (`sx/sy` from the hull's left edge
+  at ground level). The ship rolls in with the ground, then sets `scrollLock`. Win = every target dead.
+  The hull is scenery: shots pass through it and the ship can fly over the whole screen.
 - **Homing missiles** re-check `targetable()` every frame, so they drop targets that die, leave the
   screen, get shielded or are removed. New target kinds must be added to `findTarget`/`targetable`.
-- **Capital ships** (`capital.js`, vertical boss): `CAPITALS[id]` sets the hull size, palette and how many
-  turrets, hangars and cores `layoutTargets` places. The hull scrolls down; each pass that ends with
-  targets left triggers `turnT` ("coming about") and the next pass shows the ship rotated 180 degrees.
+- **Capital ships** (`capital.js`, vertical boss): `CAPITALS[id]` sets the hull `style` (`CAP_STYLES`:
+  battleship, destroyer, carrier, twin), size, palette and target counts. The style paints the hull and
+  returns target slots. The ship is drawn with a transform (`placeCapital`: center, angle, scale) through
+  three phases: `zoom` (it grows from far away to full size), `pass` (it scrolls under you; only now can
+  targets be hit) and, when a pass ends with targets left, `spin` (seen from far away, it turns 180
+  degrees) before the next zoom. `capitalToScreen(lx, ly)` maps hull coordinates to the screen.
   Specials and homing missiles reach its targets through `capitalOnScreen()`/`damageCapTarget()`.
   The planet's `boss`/`capital` field or the sector's picks the id.
-- **Carrier** (`carrier.js`): `startTakeoff()`/`startLanding()` run the 1942-style sequences around
-  every leg. `this.carrier` is drawn by `drawWorld` while it exists.
+- **Carrier** (`carrier.js`): drawn to scale with the ship (`CAR`: a 360×720 top view, a 580-wide side
+  profile). `startTakeoff()` lifts the ship on the deck elevator and catapults it off the bow while the
+  camera follows; `startLanding()` brings the carrier in stern first, the ship touches down on the wires,
+  rolls out to the elevator and is lowered. `this.carrier` is drawn by `drawWorld` while it exists.
+- **Widescreen layout:** gameplay uses the whole 424-wide screen (`W`, center `CX`). Menus, dialogue and
+  banners are 256-wide layouts drawn in a centered panel: `panel(ctx, fn)` translates by `OX`. Backdrops
+  (title, starbase, galaxy map, sortie) span the full width.
 - **`orient(x, y)`** turns a vertical-stage direction (up = forward) into the current orientation.
   Use it in code shared by both modes so that code doesn't need separate vertical and side branches.
 
@@ -131,8 +143,13 @@ cleared, not with the route), and the enemy formulas scale with it.
 
 ## Conventions
 
-- **Stay NES-authentic.** Use only colors from `NES.C` and the 256×240 resolution. Round coordinates to
-  whole pixels when drawing. Don't use anti-aliasing, gradients or smooth rotation (`drawRot` snaps to 16 directions).
+- **Stay SNES-authentic.** The screen is 424×240 (16:9 at the SNES's 240 lines). Colors are 15-bit (use
+  `SNES.rgb`/`mix`/`ramp`); shade with 5-step ramps and banded glows, never smooth gradients or
+  anti-aliasing. Round coordinates to whole pixels. Rotation and scaling (`SNES.drawRot`, transforms)
+  and color math (`SNES.add`, `SNES.half`) are fine, as on the SNES.
+- **Art direction:** Robotech is the reference for portraits (anime cel style) and for our ships and the
+  enemies; Truxton for the mechanical detail of ships, turrets and tanks; Space Battleship Yamato and Star
+  Destroyers for the bosses. Every enemy is a machine (no animals, fish or bugs).
 - **All timing counts frames at 60 Hz** (e.g. `300` = 5 seconds). Don't use `Date`/`performance.now()` for game logic.
 - **The font is uppercase only** and has a limited character set (see `FONT` in `nes.js`). A character
   that isn't in it is silently skipped (so no `&`, `;` or `*`). Wrap long lines with `NES.wrap(str, n)`.
@@ -142,7 +159,7 @@ cleared, not with the route), and the enemy formulas scale with it.
   Draw top-down sprites pointing up. Side-mission art is a separate side profile: the player's points
   right, enemies' point left. Don't rotate a top-down sprite for a side mission.
 - Every file starts with `'use strict';`. Shared helpers in `game.js` (`rand`, `randi`, `pick`, `clamp`,
-  `angDiff`, `TAU`, `C`, `W`, `H`) are globals and available to the files loaded after it.
+  `angDiff`, `TAU`, `C`, `W`, `H`, `CX`, `OX`) are globals and available to the files loaded after it.
 - Keep the style: short methods on `Game`, compact one-line statements, and brief comments that explain *why*.
 - Wrap all `localStorage` access in try/catch (keys: `chimera.hi`, `chimera.padmap`, `chimera.save`).
   If you change the shape of `Game.camp`, bump its `v` and handle old saves in `continueCampaign`.
@@ -165,9 +182,10 @@ cleared, not with the route), and the enemy formulas scale with it.
 - **New planet:** add it to a sector's `planets` in `SECTORS` (id, name, `sky`, `disc`, optional
   `order`, `approach`, `boss`, `capital`) and add its briefing to `PLANET_STORY`.
 - **New sector:** add it to `SECTORS` with `x/y` on the map and `links` in **both** directions.
-- **New boss base:** add an entry to `BOSSES` (and a layout to `BASE_LAYOUTS` or a rule to
-  `updateBossShields` if needed) and a palette to `BOSS_PALS` in `sprites.js`.
-- **New capital ship:** add an entry to `CAPITALS` (name, size, palette, target counts, `launch` type, intro).
+- **New boss warship:** add an entry to `BOSSES` (name, `style`, `pal`, `layout`, `shield`, `launch`, `hp`,
+  intro), plus a layout to `BASE_LAYOUTS`, a hull to `BASE_STYLES` or a rule to `updateBossShields` if needed.
+- **New capital ship:** add an entry to `CAPITALS` (name, `style`, size, palette, target counts, `launch`
+  type, intro). A new `CAP_STYLES` hull must return at least as many slots as the ship mounts.
 - **New hull:** add it to `HULLS` (`pilots.js`) and `HULL_ART` (`sprites.js`, same index, with top-down
   and side-profile rows), and set a sector's `hull` to sell it.
 - **New system in its own file:** use the `Object.assign(Game, {...})` mixin pattern and add a
