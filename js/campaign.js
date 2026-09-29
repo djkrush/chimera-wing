@@ -206,7 +206,7 @@ Object.assign(Game, {
     this.inBase = false;
     this.stage = this.difficulty(leg);
     this.setupStage(leg === 'approach' ? (M.planet.approach || 'normal') : 'side');
-    Sound.playSong(Sound.SONGS.stage);
+    if (Sound.current !== Sound.SONGS.mission) Sound.playSong(Sound.SONGS.mission);   // keep the groove across legs
     this.startTakeoff();
     if (leg === 'assault') this.say('APPROACH CLEAR. REARMED AND REFUELED. NOW THE ASSAULT ON ' + M.planet.name + '.', 'mira');
   },
