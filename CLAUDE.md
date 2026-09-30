@@ -54,7 +54,9 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 `Game.state` is one of `title | howto | setup | pilot | travel | base | map | intro | hangar | sortie |
 takeoff | play | clear | result | landing | debrief | learn | gameover`. `Game.update()` and `Game.draw()`
 switch on it. Change state with `setState(s)`, which also resets `stateT`. `Game.paused` shows the
-in-game menu over any state. `inMenu()` lists the full-screen menu states (no playfield; `draw()` sends
+in-game menu over any state; START opens it on every screen past the title (so menus confirm with A,
+not START). It offers RESUME, SKIP BRIEFING, SOUND, ABORT MISSION, QUIT TO TITLE and EXIT GAME
+(`exitGame()`: save, leave fullscreen, go back a page). `inMenu()` lists the full-screen menu states (no playfield; `draw()` sends
 them to `drawMenuScreen`). While `inBase` is set, `intro`/`hangar` draw over the starbase (`drawInBase`).
 
 Campaign flow (`campaign.js`):
@@ -97,7 +99,7 @@ base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT M
   `n` systems are secured, so it stays in order on any route. `GALAXY_STORY[galaxyId]` plays on the
   carrier's first arrival in a galaxy.
 - `startBriefing(label, title, pages, done)` runs any sequence of pages in the `intro` state. Fire
-  finishes the typing and then turns the page. Start skips to `done()`.
+  finishes the typing and then turns the page. The game menu's SKIP BRIEFING jumps to `done()`.
 - In-game radio: `say(text, who = villain, queued = false)`. With `queued`, the message waits in `radioQ`
   until the current one ends. `hint(key)` shows one of Mira's `HINTS` once per game.
 - `VOSS` in `game.js` keeps the in-play radio barks (silenced, restored, boss phases, game over).

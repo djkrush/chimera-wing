@@ -204,7 +204,7 @@ Object.assign(Game, {
 
   updateSortie() {
     this.stateT++;
-    const skip = this.stateT > 20 && (Input.just('fire') || Input.just('start'));
+    const skip = this.stateT > 20 && Input.just('fire');
     if (this.stateT > 170 || skip) this.startLeg(0);
   },
 
@@ -277,7 +277,7 @@ Object.assign(Game, {
     this.stateT++;
     if (this.stateT === 150 && this.debrief.levels.length) Sound.sfx('levelup');
     if (this.stateT === 60) Sound.sfx('cash');
-    if (this.stateT < 90 || !(Input.just('fire') || Input.just('start'))) return;
+    if (this.stateT < 90 || !Input.just('fire')) return;
     Sound.sfx('select');
     if (this.camp.pending.length) this.openLearn();
     else this.leaveDebrief();

@@ -75,7 +75,7 @@ Object.assign(Game, {
     const L = this.learnUI, n = L.opts.length;
     if (Input.just('up')) { L.sel = (L.sel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { L.sel = (L.sel + 1) % n; Sound.sfx('move'); }
-    if (this.stateT >= 20 && (Input.just('fire') || Input.just('start'))) this.pickLearn();
+    if (this.stateT >= 20 && Input.just('fire')) this.pickLearn();
   },
 
   pickLearn() {

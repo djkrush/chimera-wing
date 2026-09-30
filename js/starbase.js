@@ -101,7 +101,7 @@ Object.assign(Game, {
     if (Input.just('down')) { U.sel = (U.sel + 1) % n; Sound.sfx('move'); }
     U.sel = Math.min(U.sel, n - 1);
     if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage('main'); return; }
-    if (this.stateT > 10 && (Input.just('fire') || Input.just('start'))) this.baseAct();
+    if (this.stateT > 10 && Input.just('fire')) this.baseAct();
   },
 
   baseAct() {

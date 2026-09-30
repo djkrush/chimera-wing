@@ -62,7 +62,7 @@ Object.assign(Game, {
         if (best >= 0) { U.sel = best; Sound.sfx('move'); }
       }
     }
-    if (this.stateT > 10 && (Input.just('fire') || Input.just('start'))) this.mapPick();
+    if (this.stateT > 10 && Input.just('fire')) this.mapPick();
   },
 
   mapPick() {
@@ -117,7 +117,7 @@ Object.assign(Game, {
   updateTravel() {
     this.stateT++;
     const T = this.travel;
-    const skip = this.stateT > 20 && (Input.just('fire') || Input.just('start'));
+    const skip = this.stateT > 20 && Input.just('fire');
     if (this.stateT >= T.dur || skip) {
       this.camp.at = T.to;
       this.travel = null;

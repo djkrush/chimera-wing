@@ -52,7 +52,7 @@ Object.assign(Game, {
     const L = this.camp.learned, n = L.length;
     if (Input.just('up')) { this.hangarSel = (this.hangarSel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { this.hangarSel = (this.hangarSel + 1) % n; Sound.sfx('move'); }
-    if (this.stateT > 12 && (Input.just('fire') || Input.just('start') || Input.just('special'))) this.launchHangar();
+    if (this.stateT > 12 && (Input.just('fire') || Input.just('special'))) this.launchHangar();
   },
 
   launchHangar() {

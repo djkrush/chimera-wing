@@ -131,12 +131,14 @@ No install or build step. Open `index.html` in Chrome, Edge or Firefox.
 | Transform   | X / Y / RB / RT         | X / K           |
 | Previous form | LB / LT               | Q / Shift       |
 | Pick a form | –                       | 1 / 2 / 3       |
-| Pause       | Start                   | Enter / P / Esc |
+| Game menu   | Start                   | Enter / P / Esc |
 
 **Touch screens:** on an Android phone (Chrome or Samsung Internet) the touch controls switch on by
 themselves (on other touch screens, at the first touch). The game fills the screen, in landscape. In
 flight, put your left thumb anywhere on the left half for a floating joystick; **A** fires (hold it),
-**B** fires the special, **X** transforms, **START** pauses. In menus and on the star map, tap a row,
+**B** fires the special, **X** transforms, **START** opens the game menu (from any screen), where
+**EXIT GAME** saves, leaves fullscreen and takes you back out of the game. The title screen has
+**EXIT GAME** too. In menus and on the star map, tap a row,
 card or planet to pick it and tap it again to use it. The mouse works the same way on a desktop.
 
 Controllers use the browser Gamepad API. Xbox and PlayStation pads work as-is. Generic USB pads

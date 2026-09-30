@@ -335,6 +335,8 @@ const Game = {
     if (this.toastMsg && --this.toastMsg.t <= 0) this.toastMsg = null;
     if (this.paused) { this.updateGameMenu(); return; }
     const st = this.state;
+    // START opens the game menu on every screen past the title (in menus A picks, so START is free).
+    if (Input.just('start') && !['title', 'howto', 'setup', 'pilot'].includes(st)) { this.openGameMenu(); return; }
     this.updateStars(st === 'intro' || st === 'hangar' || st === 'sortie' ? 3 : st === 'takeoff' || st === 'landing' ? 2 : 1);
     if (this.isSide && !this.inMenu() && !this.scrollLock && !(this.chronoT > 0 && (this.t & 1))) this.scroll += 1.5;   // a boss base stops the scroll
     if (this.radio && --this.radio.t <= 0) this.radio = this.radioQ.shift() || null;
@@ -375,9 +377,11 @@ const Game = {
   },
 
   gameMenuItems() {
-    const items = ['RESUME', 'SOUND: ' + (Sound.muted ? 'OFF' : 'ON')];
-    if (this.mission && !this.inBase) items.push('ABORT MISSION');
-    return [...items, 'QUIT TO TITLE'];
+    const items = ['RESUME'];
+    if (this.state === 'intro') items.push('SKIP BRIEFING');
+    items.push('SOUND: ' + (Sound.muted ? 'OFF' : 'ON'));
+    if (this.mission && !this.inBase && this.state !== 'debrief' && this.state !== 'learn') items.push('ABORT MISSION');
+    return [...items, 'QUIT TO TITLE', 'EXIT GAME'];
   },
 
   updateGameMenu() {
@@ -392,9 +396,22 @@ const Game = {
     Sound.sfx('select');
     const item = this.gameMenuItems()[this.gameMenuSel];
     if (item === 'RESUME') this.paused = false;
+    else if (item === 'SKIP BRIEFING') { this.paused = false; this.intro.done(); }
     else if (item.startsWith('SOUND')) Sound.toggleMute();
     else if (item === 'ABORT MISSION') { this.paused = false; this.missionFailed(); }
-    else { saveHi(this.hi); this.toTitle(); }
+    else if (item === 'EXIT GAME') this.exitGame();
+    else { this.saveCampaign(); saveHi(this.hi); this.toTitle(); }
+  },
+
+  // Leave the game: save, drop out of fullscreen and go back to the page before (a browser can't close
+  // a tab it didn't open). With nowhere to go back to, it stops at the title and says so.
+  exitGame() {
+    this.saveCampaign();
+    saveHi(this.hi);
+    this.toTitle();
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { /* not fullscreen */ }
+    if (history.length > 1) history.back();
+    else this.toast('PROGRESS SAVED. CLOSE THE TAB TO EXIT.');
   },
 
   updateTitle() {
@@ -414,11 +431,12 @@ const Game = {
     if (item === 'CONTINUE') this.continueCampaign();
     else if (item === 'NEW GAME') this.openPilotSelect();
     else if (item === 'CONTROLLER SETUP') this.openSetup();
+    else if (item === 'EXIT GAME') this.exitGame();
     else { this.howPage = 0; this.setState('howto'); }
   },
 
   titleItems() {
-    return [...(this.hasSave() ? ['CONTINUE'] : []), 'NEW GAME', 'CONTROLLER SETUP', 'HOW TO PLAY'];
+    return [...(this.hasSave() ? ['CONTINUE'] : []), 'NEW GAME', 'CONTROLLER SETUP', 'HOW TO PLAY', ...(Touch.on ? ['EXIT GAME'] : [])];
   },
 
   updateHowto() {
@@ -473,7 +491,6 @@ const Game = {
     // The briefing waits for fire (Space / pad A). A press finishes the typing, the next one
     // turns the page, and after the last page it moves on. Start skips the rest of the briefing.
     if (this.stateT <= 20) return;
-    if (Input.just('start')) { I.done(); return; }
     if (Input.just('fire')) {
       if (!I.full) { I.full = true; I.t = I.total * 1.5; }
       else if (I.page < I.pages.length - 1) { this.showPage(I.page + 1); Sound.sfx('move'); }
@@ -482,7 +499,7 @@ const Game = {
   },
 
   updatePlay() {
-    if (Input.just('start') || Input.just('back')) { this.openGameMenu(); return; }
+    if (Input.just('back')) { this.openGameMenu(); return; }
     this.stateT++;
     const slow = this.chronoT > 0 && (this.t & 1);   // CHRONO FIELD: the enemy runs at half speed
     if (!slow) {
@@ -527,7 +544,7 @@ const Game = {
     this.updateEnemies();
     if (this.boss) { this.boss.t++; }
     this.updateBullets();
-    if ((this.stateT > 120 && (Input.just('fire') || Input.just('start'))) || this.stateT > 1200) this.missionFailed();
+    if ((this.stateT > 120 && Input.just('fire')) || this.stateT > 1200) this.missionFailed();
   },
 
   checkStageEnd() {
@@ -1134,6 +1151,7 @@ const Game = {
     else if (this.inMenu()) this.drawMenuScreen(ctx);
     else if (this.inBase) this.drawInBase(ctx);
     else this.drawWorld(ctx);
+    if (this.paused) this.panel(ctx, () => this.drawGameMenu(ctx));   // over any screen
     if (this.toastMsg && (this.toastMsg.t > 30 || this.toastMsg.t % 8 < 5)) {
       const w = NES.textWidth(this.toastMsg.text) + 12;
       NES.box(ctx, CX - (w >> 1), 212, w, 13, C.navy, C.sky);
@@ -1219,19 +1237,19 @@ const Game = {
       case 'result': this.drawResult(ctx); break;
       case 'gameover': this.drawGameOver(ctx); break;
     }
-    if (this.paused) this.drawGameMenu(ctx);
   },
 
   drawGameMenu(ctx) {
-    NES.box(ctx, 64, 76, 128, 84, C.black, C.white);
+    const items = this.gameMenuItems(), h = items.length * 14 + 40;
+    NES.box(ctx, 56, 76, 144, h, C.black, C.white);
     NES.text(ctx, 'GAME MENU', 128, 84, C.gold, { align: 'center' });
-    this.gameMenuItems().forEach((item, i) => {
+    items.forEach((item, i) => {
       const y = 102 + i * 14;
       const sel = i === this.gameMenuSel;
-      if (sel) NES.draw(ctx, SPR.life, 80, y + 3);
-      NES.text(ctx, item, 90, y, sel ? C.white : C.gray);
+      if (sel) NES.draw(ctx, SPR.life, 72, y + 3);
+      NES.text(ctx, item, 82, y, sel ? C.white : C.gray);
     });
-    NES.text(ctx, 'A: PICK  B: BACK', 128, 148, C.lgray, { align: 'center' });
+    NES.text(ctx, 'A: PICK  B: BACK', 128, 76 + h - 12, C.lgray, { align: 'center' });
   },
 
   drawEnemy(ctx, e) {
