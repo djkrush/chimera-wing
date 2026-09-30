@@ -72,24 +72,48 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 | ARMOR WEAVE | Battloid armor reboots 25% faster (2 levels) |
 | TET SCANNER | Gold planes drop more TET capsules (2 levels) |
 | TRADE LICENSE | +10% pay from every mission (3 levels) |
+| Guns | A gun part to fit in the hangar (see Guns below) |
 
-- Some planets have a **shipyard** that sells a hull. Each hull has its own guns for each form and
-  its own strengths, so transforming changes your weapon:
+- Some planets have a **shipyard** that sells a hull. Each hull comes with a default gun for each form
+  (you keep those guns), its own strengths, and a mount per form (L = light, H = heavy):
 
-| Hull | Fighter | Guardian | Battloid | Strength | Stats | Speed | Sold at |
-|---|---|---|---|---|---|---|---|
-| VX-3 CHIMERA | Twin cannon | 3-way spread | Homing missiles | Balanced | – | 100% | (starting ship) |
-| VX-5 MANTICORE | Vulcan | 3-way spread | Homing missiles | Fighter ×1.4 | WPN+1 SHD−1 | 110% | Proxima B |
-| VX-6 GRIFFIN | Piercing laser | Bomb shot | Vulcan | Battloid ×1.4 | SHD+3 SPC−1 | 90% | Barnard B |
-| VX-9 HYDRA | Helix wave | Ripple laser | Homing missiles | All ×1.1 | +1 each | 110% | Calico (Sirius), Neutrino (SN 1987A) |
-| VX-7 WYVERN | Twin cannon | Ripple laser | Bomb shot | Guardian ×1.4 | SHD+1 SPC+1 | 100% | Imprint (Tarantula), Rosewater (M32) |
-| VX-8 BASILISK | Piercing laser | Helix wave | Homing missiles | Fighter/Guardian ×1.2 | WPN+3 SHD−2 | 115% | Lumina (S Doradus), Azure (NGC 206) |
-| VX-12 PHOENIX | Piercing laser | Ripple laser | Homing missiles | All ×1.3 | +2 each | 115% | Relic (Mayall II), Aegir (M31 Nucleus) |
+| Hull | Fighter | Guardian | Battloid | Mounts | Strength | Stats | Speed | Sold at |
+|---|---|---|---|---|---|---|---|---|
+| VX-3 CHIMERA | Twin cannon | 3-way spread | Homing missiles | L L H | Balanced | – | 100% | (starting ship) |
+| VX-5 MANTICORE | Vulcan | 3-way spread | Homing missiles | L L L | Fighter ×1.4 | WPN+1 SHD−1 | 110% | Proxima B |
+| VX-6 GRIFFIN | Piercing laser | Bomb shot | Vulcan | H H H | Battloid ×1.4 | SHD+3 SPC−1 | 90% | Barnard B |
+| VX-9 HYDRA | Helix wave | Ripple laser | Homing missiles | L H H | All ×1.1 | +1 each | 110% | Calico (Sirius), Neutrino (SN 1987A) |
+| VX-7 WYVERN | Twin cannon | Ripple laser | Bomb shot | L H H | Guardian ×1.4 | SHD+1 SPC+1 | 100% | Imprint (Tarantula), Rosewater (M32) |
+| VX-8 BASILISK | Piercing laser | Helix wave | Homing missiles | H L H | Fighter/Guardian ×1.2 | WPN+3 SHD−2 | 115% | Lumina (S Doradus), Azure (NGC 206) |
+| VX-12 PHOENIX | Piercing laser | Ripple laser | Homing missiles | H H H | All ×1.3 | +2 each | 115% | Relic (Mayall II), Aegir (M31 Nucleus) |
 
-The guns: **Twin cannon** (fast pairs), **3-way spread**, **Homing missiles**, **Piercing laser** (goes
-through three planes), **Bomb shot** (bursts on impact; in side-scrolling stages it falls in an arc
-onto ground targets), **Vulcan** (rapid machine gun), **Helix wave** (two shots twisting round each
-other) and **Ripple laser** (a ring that widens as it flies).
+### Guns
+
+Guns are parts. You own the default guns of every hull you own, markets sell more (`OWNED` or a price),
+and the **hangar** fits one gun to each form before every sortie. A light mount takes only light guns;
+a heavy mount takes either. The hull's strength in a form still multiplies whatever gun is fitted there.
+
+**Guns level up with use.** Every point a form scores trains the gun fitted in it: LV2 at 2,000,
+LV3 at 6,000, LV4 at 15,000 and LV5 at 35,000. Each level changes the shot in a way you can see. The
+hangar shows each gun's level, a bar to the next one and what it will do; the debrief lists guns that
+levelled.
+
+| Gun | Mount | Price | What it does | LV2 / LV3 / LV4 / LV5 |
+|---|---|---|---|---|
+| Twin cannon | Light | 1,200 | Fast pairs of bolts | Faster bolts / third stream / wider streams / pierces one plane |
+| 3-way spread | Light | 1,500 | Three pellets in a fan | Faster / five ways / bigger pellets / seven ways |
+| Vulcan | Light | 1,800 | Rapid machine gun | Tighter / more rounds / tighter / more rounds |
+| Helix wave | Light | 2,400 | Two shots twisting round each other | Wider sway / faster / three strands / bigger orbs |
+| Homing missiles | Light | 2,800 | Missiles that hunt the nearest target | Turn faster / three missiles / turn faster / four missiles |
+| Ripple laser | Light | 3,000 | A piercing ring that widens as it flies | Grows faster / wider / faster / widest |
+| Bomb shot | Heavy | 2,600 | Bursts on impact; falls onto ground targets in side stages | Bigger blast / two bombs / bigger blast / three bombs |
+| Piercing laser | Heavy | 3,000 | Goes through three planes | One more plane per level |
+| Swivel vulcan | Light | 4,500 | Two barrels splayed to the sides swing forward while fire is held, back when released (Axelay's Round Vulcan) | Wider sweep / center barrel / faster swing / heavier rounds |
+| Charge shot | Heavy | 6,000 | Tap for bolts; hold fire to charge three steps and release a big piercing ball (Gradius III, Strikers 1945) | Charges faster / bigger ball / tap fires a pair / full charge bursts |
+| Rear rail gun | Heavy | 7,500 | A slug fired backward that hits harder the closer the target (Thunder Force IV) | Faster reload / pierces / twin rails / forward rail too |
+
+Milky Way markets sell the first eight; the swivel vulcan, charge shot and rail gun appear from the
+Magellanic Cloud on.
 
 ## Passive skills
 
@@ -117,7 +141,8 @@ No install or build step. Open `index.html` in Chrome, Edge or Firefox.
 
 - `index.html?stage=N` jumps straight into a planet's stronghold for testing: planet `ceil(N/2)` in map
   order, odd N = first leg, even N = the boss leg (e.g. 2 = Earth's base, 4 = the flyover at Mars,
-  168 = the Citadel). Add `&hull=2` for a hull and `&passives=drone,rear` for skills. Test runs don't save.
+  168 = the Citadel). Add `&hull=2` for a hull, `&passives=drone,rear` for skills and
+  `&fit=charge,swivel,rail` for the three forms' guns (test runs own every gun). Test runs don't save.
 - `index.html?touch` turns on the touch controls on a desktop browser.
 - `F` toggles fullscreen and `M` mutes the sound.
 
@@ -213,8 +238,8 @@ upgrades and level-up training add to them, up to 16):
 
 ## Special weapons
 
-You learn a special at every even level. After a briefing, the **hangar** screen lets you equip one
-special you have learned. Fire it with **C** (keyboard) or **B** (controller). Every takeoff rearms it
+You learn a special at every even level. After every briefing, the **hangar** screen fits your guns
+(one row per form) and, once you have learned one, the special you'll carry. Fire it with **C** (keyboard) or **B** (controller). Every takeoff rearms it
 with as many uses as your **Special** stat.
 
 | Weapon        | Effect |
@@ -253,8 +278,8 @@ js/bosses.js      side-mission boss warships (turrets, hardpoints, cores, shield
 js/capital.js     vertical boss fights: capital-ship flyovers
 js/side.js        side-scrolling assaults: enemy script, behaviors
 js/scenery.js     per-planet scenery: Mode 7 surfaces, parallax layers, nebula
-js/specials.js    hangar screen + special weapons
-js/weapons.js     the eight primary guns: firing, bullet flight, drawing
+js/specials.js    hangar screen (gun fit, special) + special weapons
+js/weapons.js     gun parts, mounts, gun levels, firing, bullet flight, drawing
 js/pilots.js      pilot select, ship hulls, stats, shields
 js/skills.js      passive skills, level-up choices (stat, special, passive)
 js/world.js       galaxies, star systems, planets (hand-written and generated), missions, markets

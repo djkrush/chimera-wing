@@ -65,8 +65,9 @@ Object.assign(Game, {
 
   // ---- Campaign start, save and load --------------------------------------------------
   newCamp(pilot) {
-    return { v: 2, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
-      level: 1, learned: [], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0 };
+    return { v: 3, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
+      level: 1, learned: [], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0,
+      guns: [...HULLS[0].guns], fit: {}, gunXP: {}, ord: {} };   // guns owned, fit[hull] = [gun0, gun1, gun2], XP per gun, ordnance (M2)
   },
 
   newCampaign(pilot) {
@@ -100,8 +101,9 @@ Object.assign(Game, {
   continueCampaign() {
     let c = null;
     try { c = JSON.parse(localStorage.getItem('chimera.save')); } catch (e) { c = null; }
-    if (c && c.v === 1) c = this.migrateSave(c);
-    if (!c || c.v !== 2 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
+    if (c && c.v === 1) c = this.migrateSave(c);   // old saves step up one version at a time
+    if (c && c.v === 2) c = this.migrateV2(c);
+    if (!c || c.v !== 3 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
       Sound.sfx('denied');
       this.toast('SAVE DATA UNREADABLE');
       return;
@@ -126,11 +128,22 @@ Object.assign(Game, {
       level: o.level || 1, learned: o.learned || [], loop: o.loop || 0, beats: o.beats || [], score: o.score || 0 });
     for (let i = 0; i < (o.learnQ || 0); i++) c.pending.push('special');
     c.opened = [...new Set([c.at, ...Object.keys(o.cleared || {})].filter(id => PLANET_BY_ID[id]).map(id => PLANET_BY_ID[id].sys))];
+    c.v = 2;
+    return c;
+  },
+
+  // Version 2 saves (guns fixed to the hull): you own the default guns of every hull you own.
+  migrateV2(c) {
+    c.hulls = (c.hulls || [0]).filter(h => HULLS[h]);
+    if (!c.hulls.length) c.hulls = [0];
+    c.guns = [...new Set(c.hulls.flatMap(h => HULLS[h].guns))];
+    Object.assign(c, { fit: {}, gunXP: {}, ord: {}, v: 3 });
     return c;
   },
 
   // Dev shortcut (?stage=N): planet ceil(N/2) in map order (PLANETS), its stronghold; odd N = first
-  // leg, even N = the boss leg. ?passives=drone,rear and ?hull=N set up the test ship.
+  // leg, even N = the boss leg. ?passives=drone,rear, ?hull=N and ?fit=charge,swivel,rail set up the
+  // test ship (a test campaign owns every gun).
   testLeg(n, q) {
     const k = clamp(Math.ceil(n / 2), 1, PLANETS.length) - 1, P = PLANETS[k];
     this.pilot = 0;
@@ -139,6 +152,9 @@ Object.assign(Game, {
     Object.assign(this.camp, { test: true, at: P.id, learned: SPECIALS.map((s, i) => i), passives, pending: [],
       hull: clamp(parseInt(q.get('hull'), 10) || 0, 0, HULLS.length - 1) });
     this.camp.hulls = [this.camp.hull];
+    this.camp.guns = GUN_IDS.slice();
+    const fit = (q.get('fit') || '').split(',');
+    if (fit.some(g => GUNS[g])) this.camp.fit[this.camp.hull] = [0, 1, 2].map(f => (GUNS[fit[f]] && this.canMount(this.camp.hull, f, fit[f]) ? fit[f] : HULLS[this.camp.hull].guns[f]));
     for (let i = 0; i < k; i++) PLANETS[i].missions.forEach((m, j) => { this.camp.cleared[PLANETS[i].id + ':' + j] = true; });
     this.resetRun(0);
     this.mission = this.makeMission(P, P.missions.length - 1);
@@ -184,17 +200,14 @@ Object.assign(Game, {
   startMission(mi) {
     const P = this.planetHere(), S = this.systemDef();
     this.mission = this.makeMission(P, mi);
+    this.mission.gunLv0 = Object.fromEntries(this.camp.guns.map(g => [g, this.gunLevel(g)]));   // for the debrief
     this.nextAdapt = -1;
     const B = this.planetBriefing(S, P, this.mission.kind);
     this.startBriefing(P.name, B.title, B.pages, () => this.openLoadout());
     Sound.playSong(Sound.SONGS.stage);
   },
 
-  openLoadout() {
-    if (this.camp.learned.length) { this.openHangar(); return; }
-    this.special = null;
-    this.startSortie();
-  },
+  openLoadout() { this.openHangar(); },
 
   // Cutscene: the carrier leaves orbit and flies down toward the planet.
   startSortie() {
@@ -267,8 +280,9 @@ Object.assign(Game, {
     c.money += money;
     c.xp += gain;
     const levels = this.gainLevels();
+    const gunUps = c.guns.filter(g => M.gunLv0 && this.gunLevel(g) > (M.gunLv0[g] || 1)).map(g => [g, this.gunLevel(g)]);
     this.debrief = { planet: P.name, kind: K.name, lines, total: money, levels, unlocked, planetClear, secured, liberated,
-      system: S.name, finale: this.isFinale() };
+      system: S.name, finale: this.isFinale(), gunUps };
     this.setState('debrief');
     Sound.playSong(Sound.SONGS.victory);
   },
@@ -313,6 +327,7 @@ Object.assign(Game, {
       if (D.planetClear) msgs.push([D.planet + ' CLEARED!', C.gold]);
       if (D.secured) msgs.push([D.system + ' SECURED!', C.gold]);
       if (D.liberated) msgs.push([D.system + ' LIBERATED!', C.gold]);
+      for (const [g, lv] of D.gunUps) msgs.push([GUNS[g].name + ' LV' + lv + '!', C.aqua]);
       for (const u of D.unlocked) msgs.push(['NEW ' + u, C.pink]);
       for (const [m, col, blink] of msgs.slice(0, 5)) {
         if (!blink || (this.t >> 3) & 1) NES.text(ctx, m, 128, y, col, center);

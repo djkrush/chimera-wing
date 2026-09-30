@@ -16,24 +16,25 @@ const STAT_MAX = 8;
 const STAT_CAP = 16;   // pilot + hull + starbase upgrades + level-up training never go past this
 
 // Ship hulls. The pilot flies one hull at a time. Its modifiers add to the pilot's stats, and speed
-// scales every form. Each hull has its own gun for each form (weapons.js: GUNS) and its own strengths:
-// form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID. Planet markets sell them (P.hulls in
-// world.js). Keep the order: saves store the index, and HULL_ART (sprites.js) follows it.
+// scales every form. guns = the hull's default fit, one gun per form (weapons.js: GUNS); mounts = the
+// heaviest gun class each form takes; form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID.
+// Planet markets sell them (P.hulls in world.js). Keep the order: saves store the index, and HULL_ART
+// (sprites.js) follows it.
 const HULLS = [
   { name: 'VX-3 CHIMERA', weapons: 0, shields: 0, special: 0, speed: 1, price: 0,
-    guns: ['twin', 'spread', 'homing'], form: [1, 1, 1], desc: 'THE ORIGINAL. BALANCED.' },
+    guns: ['twin', 'spread', 'homing'], form: [1, 1, 1], mounts: ['light', 'light', 'heavy'], desc: 'THE ORIGINAL. BALANCED.' },
   { name: 'VX-5 MANTICORE', weapons: 1, shields: -1, special: 0, speed: 1.1, price: 4000,
-    guns: ['vulcan', 'spread', 'homing'], form: [1.4, 1, 0.8], desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
+    guns: ['vulcan', 'spread', 'homing'], form: [1.4, 1, 0.8], mounts: ['light', 'light', 'light'], desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
   { name: 'VX-6 GRIFFIN', weapons: 0, shields: 3, special: -1, speed: 0.9, price: 5000,
-    guns: ['laser', 'bomb', 'vulcan'], form: [0.9, 1, 1.4], desc: 'HEAVY ARMOR. BEST AS A BATTLOID.' },
+    guns: ['laser', 'bomb', 'vulcan'], form: [0.9, 1, 1.4], mounts: ['heavy', 'heavy', 'heavy'], desc: 'HEAVY ARMOR. BEST AS A BATTLOID.' },
   { name: 'VX-9 HYDRA', weapons: 1, shields: 1, special: 1, speed: 1.1, price: 9000,
-    guns: ['wave', 'ripple', 'homing'], form: [1.1, 1.1, 1.1], desc: 'GOOD AT EVERYTHING.' },
+    guns: ['wave', 'ripple', 'homing'], form: [1.1, 1.1, 1.1], mounts: ['light', 'heavy', 'heavy'], desc: 'GOOD AT EVERYTHING.' },
   { name: 'VX-7 WYVERN', weapons: 0, shields: 1, special: 1, speed: 1, price: 12000,
-    guns: ['twin', 'ripple', 'bomb'], form: [0.9, 1.4, 1], desc: 'BEST AS A GUARDIAN.' },
+    guns: ['twin', 'ripple', 'bomb'], form: [0.9, 1.4, 1], mounts: ['light', 'heavy', 'heavy'], desc: 'BEST AS A GUARDIAN.' },
   { name: 'VX-8 BASILISK', weapons: 3, shields: -2, special: 0, speed: 1.15, price: 18000,
-    guns: ['laser', 'wave', 'homing'], form: [1.2, 1.2, 1], desc: 'GLASS CANNON. HITS HARD, BREAKS EASY.' },
+    guns: ['laser', 'wave', 'homing'], form: [1.2, 1.2, 1], mounts: ['heavy', 'light', 'heavy'], desc: 'GLASS CANNON. HITS HARD, BREAKS EASY.' },
   { name: 'VX-12 PHOENIX', weapons: 2, shields: 2, special: 2, speed: 1.15, price: 30000,
-    guns: ['laser', 'ripple', 'homing'], form: [1.3, 1.3, 1.3], desc: 'THE LAST WORD IN CHIMERAS.' },
+    guns: ['laser', 'ripple', 'homing'], form: [1.3, 1.3, 1.3], mounts: ['heavy', 'heavy', 'heavy'], desc: 'THE LAST WORD IN CHIMERAS.' },
 ];
 
 Object.assign(Game, {

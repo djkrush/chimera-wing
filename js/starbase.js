@@ -54,6 +54,7 @@ Object.assign(Game, {
     }
     if (U.page === 'shop') {
       const rows = P.market.map(key => {
+        if (key.startsWith('gun:')) return this.gunRow(key.slice(4));
         const u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n);
         const max = u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max;
         const now = u.stat ? ' NOW ' + this.statOf(key) + '.' : ' OWNED ' + n + '/' + u.max + '.';
@@ -87,7 +88,14 @@ Object.assign(Game, {
       ' GUNS: ' + h.guns.map(g => GUNS[g].short).join('/');
   },
 
-  marketShort(P) { return P.market.map(k => UPGRADES[k].short).join(' '); },
+  // A gun part for sale: its price, or OWNED once bought.
+  gunRow(id) {
+    const c = this.camp, G = GUNS[id], owned = c.guns.includes(id);
+    return { label: G.name, right: owned ? 'OWNED' : G.price + ' CR', col: owned ? C.lime : c.money >= G.price ? C.aqua : C.gray,
+      info: G.desc.join(' ') + (G.mount === 'heavy' ? ' HEAVY MOUNT.' : ' LIGHT MOUNT.'), act: () => this.buyGun(id) };
+  },
+
+  marketShort(P) { return [...new Set(P.market.map(k => (k.startsWith('gun:') ? 'GUNS' : UPGRADES[k].short)))].join(' '); },
 
   basePage(page) {
     this.baseUI = { page, sel: 0 };
@@ -130,6 +138,17 @@ Object.assign(Game, {
     this.saveCampaign();
   },
 
+  buyGun(id) {
+    const c = this.camp, G = GUNS[id];
+    if (c.guns.includes(id)) { Sound.sfx('denied'); this.toast('FIT IT IN THE HANGAR'); return; }
+    if (c.money < G.price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
+    c.money -= G.price;
+    c.guns.push(id);
+    Sound.sfx('cash');
+    this.toast(G.name + ' BOUGHT');
+    this.saveCampaign();
+  },
+
   buyHull(i) {
     const c = this.camp, h = HULLS[i];
     if (c.hull === i) return;
@@ -137,6 +156,7 @@ Object.assign(Game, {
       if (c.money < h.price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
       c.money -= h.price;
       c.hulls.push(i);
+      for (const g of h.guns) if (!c.guns.includes(g)) c.guns.push(g);   // a hull comes with its default guns
       Sound.sfx('cash');
     }
     c.hull = i;
@@ -344,7 +364,7 @@ Object.assign(Game, {
     const H = this.hullDef();
     FORMS.forEach((F, f) => {
       NES.text(ctx, F.short, 10 + f * 80, 199, H.form[f] > 1 ? C.lime : H.form[f] < 1 ? C.orange : C.white);
-      NES.text(ctx, GUNS[H.guns[f]].short, 36 + f * 80, 199, C.aqua);
+      NES.text(ctx, GUNS[this.fittedGun(f)].short, 36 + f * 80, 199, C.aqua);
     });
     NES.text(ctx, c.learned.length + ' SPECIALS  ' + c.passives.length + ' PASSIVES', 10, 211, C.gold);
     if ((this.t >> 4) & 1) NES.text(ctx, 'B: BACK', 246, 224, C.gray, { align: 'right' });

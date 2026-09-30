@@ -9,9 +9,10 @@ change how the game plays. `FUTURE.md` lists planned improvements; add ideas the
 - There is no build step, no package manager, no bundler and no test suite. Open `index.html` in a browser.
 - `index.html?stage=N` skips the title screen and drops into a planet's stronghold (`testLeg` in
   `campaign.js`): planet `ceil(N/2)` in `PLANETS` order, odd N = first leg, even N = the boss leg. E.g.
-  2 = Earth's base, 4 = the Mars capital-ship flyover, 168 = the finale. `&hull=N` and
-  `&passives=drone,rear` set up the ship. Test campaigns (`camp.test`) never save, all specials are
-  learned, and every mission on earlier planets counts as cleared.
+  2 = Earth's base, 4 = the Mars capital-ship flyover, 168 = the finale. `&hull=N`,
+  `&passives=drone,rear` and `&fit=charge,swivel,rail` (one gun per form) set up the ship. Test
+  campaigns (`camp.test`) never save, all specials are learned, every gun is owned, and every mission
+  on earlier planets counts as cleared.
 - `index.html?touch` turns on the touch controls on a desktop; clicks act as taps.
 - Serve the folder over HTTP (e.g. `python -m http.server`) for browser automation: extensions can't
   open `file://`. Browsers cache the scripts, so send `Cache-Control: no-store` or change port after edits.
@@ -63,7 +64,7 @@ Campaign flow (`campaign.js`):
 
 ```
 NEW GAME → pilot → newCampaign() → travel → base (autosave) → learn (starter passive)
-base: MISSIONS → startMission(i) → intro (briefing) → hangar (if any specials learned) → sortie
+base: MISSIONS → startMission(i) → intro (briefing) → hangar (guns and special) → sortie
   → startLeg(0) → takeoff → play → clear/result → legDone() → landing → afterLanding()
   → startLeg(1) ... (as many legs as the mission has; a stronghold's last leg has the boss)
   → missionComplete() → debrief → learn (one screen per pending choice) → base
@@ -158,16 +159,21 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 
 - `FORMS`: the player's three forms (speed, hitbox). Every form flies in all four directions; `p.tilt`
   eases toward the stick and `drawShip(..., tilt)` shows bank frames (vertical, `SPR.hulls[h].top.bankR/bankL`)
-  or pitch steps (side). The Battloid's engine glow comes from its feet. What each form fires
-  comes from the hull: `HULLS[h].guns[form]` names a gun in `GUNS` (`weapons.js`); `HULLS[h].form[f]`
-  is the hull's damage multiplier in that form. `fireWeapon()`, `updateBullets()` and
-  `drawPlayerBullet()` live in `weapons.js`; `collide()` calls `bulletHits(b, e)` there (piercing
-  shots carry `pierce` and a `hit` list; wide ones a `rad`).
+  or pitch steps (side). The Battloid's engine glow comes from its feet. What each form fires is a
+  gun part: `fittedGun(form)` reads `camp.fit[hull]` and falls back to the hull's default fit
+  `HULLS[h].guns`. `HULLS[h].mounts[f]` ('light' | 'heavy') limits what fits (`canMount`); `HULLS[h].form[f]`
+  is the hull's damage multiplier in that form. Guns level up (`gunLevel(id)`, 1 to 5 at `GUN_LEVELS`)
+  from the points each form scores (`addGunXP` in `killEnemy`), and `fireWeapon()` reads the level.
+  `triggerGun()` runs every frame (charge meter `p.charge`, swivel angle `p.swivel`) and calls
+  `fireWeapon()`; it, `updateBullets()`, `steerBullet()` and `drawPlayerBullet()` live in `weapons.js`;
+  `collide()` calls `bulletHits(b, e)` there (piercing shots carry `pierce` and a `hit` list; wide ones a
+  `rad`; `bulletEnd(b)` bursts bombs, clusters and charge balls).
 - `ENEMY`: enemy types (hp, points `[normal, acetylated]`, hit radius). A new enemy type needs an entry
   here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
-- `SPECIALS` (in `specials.js`): special weapons, learned at even levels; the hangar lists only
-  `camp.learned`. Ammo = `specialAmmo()`, refilled at every takeoff. Lasting ones keep timers
+- `SPECIALS` (in `specials.js`): special weapons, learned at even levels; the hangar's SPECIAL row lists
+  only `camp.learned` (the row is hidden until one is learned). The hangar (`hangarRow` 0 to 3,
+  `hangarChange(dir)`, `tapHangar`) opens before every sortie. Ammo = `specialAmmo()`, refilled at every takeoff. Lasting ones keep timers
   (`chronoT`, `empT`, `reflectT`, `podT`, `hyperT`, `grav`) reset by `clearSpecialFx()`;
   `specialCollide()` runs their effects on bullets and planes.
 - `PASSIVES` (in `skills.js`): always-on skills, learned at odd levels (`hasPassive(id)`). In-flight
@@ -180,11 +186,12 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   mission, and shields refill to `maxShields()` in `setupStage`.
 - `LEVELS` (in `campaign.js`), `UPGRADES` and `upgradePrice` (in `starbase.js`; `camp.up[key]` counts
   purchases).
-- `Game.camp` is the whole saved campaign (`v: 2`: pilot, hull, owned hulls, `up`, `train`, money, xp,
+- `Game.camp` is the whole saved campaign (`v: 3`: pilot, hull, owned hulls, `up`, `train`, money, xp,
   level, `learned` specials, `passives`, `pending` choices, `cleared` missions, `at` planet, `seen`
-  galaxies, loop, story beats, score, and `opened` systems for converted saves). It is saved as JSON in
-  `localStorage['chimera.save']` by `saveCampaign()` whenever the carrier docks or you buy something.
-  `migrateSave()` converts version 1 saves.
+  galaxies, loop, story beats, score, `guns` owned, `fit[hull]`, `gunXP[id]`, `ord` (ordnance, for M2),
+  and `opened` systems for converted saves). It is saved as JSON in `localStorage['chimera.save']` by
+  `saveCampaign()` whenever the carrier docks, you buy something or you launch from the hangar.
+  `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), then `migrateV2()` (v2 → v3).
 - TET capsules (`tet.js`): acetylated kills may drop one (`dropTet`); collecting it restores a silenced form.
 
 ## Conventions
@@ -225,8 +232,10 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   `drawSpecialFx`/`specialCollide`/`clearSpecialFx` if it lasts over time), and add an icon to
   `SPR.specialIcons` at the same index.
 - **New passive skill:** add it to `PASSIVES` (`skills.js`) and check `hasPassive('id')` where it acts.
-- **New gun:** add it to `GUNS` and a `case` in `fireWeapon()` (`weapons.js`); give new bullet kinds
-  flight in `steerBullet()` and art in `drawPlayerBullet()`. Put it on a hull's `guns`.
+- **New gun:** add it to `GUNS` (`weapons.js`: `price`, `mount`, `gal` = first galaxy that sells it,
+  two `desc` lines, four `lv` effects of 18 characters or fewer) and a `case` in `fireWeapon()` that reads
+  the level `L` (and `gunCap()` if it fires more per shot); give new bullet kinds flight in
+  `steerBullet()` and art in `drawPlayerBullet()`. Markets pick it up from `MARKET_POOL` automatically.
 - **New market upgrade:** add it to `UPGRADES` (`starbase.js`) and `MARKET_POOL` (`world.js`), then read
   `upLevel('key')` where it acts.
 - **New side-mission pattern:** add a `case` to `spawnSidePattern`, add it to the `kinds` list in `initSide`,

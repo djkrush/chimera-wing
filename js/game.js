@@ -208,7 +208,8 @@ const Game = {
   newPlayer() {
     return { x: CX, y: PY, form: 0, nextForm: 0, morphT: 0, fireCd: 0, alive: true, respawnT: 0,
       invuln: 60, battCd: 0, silenced: [false, false, false], silenceT: [0, 0, 0], moving: false, shieldT: 0,
-      tilt: 0 };   // -1..1: bank (vertical stages, left/right) or pitch (side missions, up/down)
+      tilt: 0,     // -1..1: bank (vertical stages, left/right) or pitch (side missions, up/down)
+      charge: 0, swivel: 0 };   // charge shot: frames held; swivel vulcan: 0 = splayed, 1 = forward
   },
 
   get isSide() { return this.stageType === 'side'; },
@@ -878,7 +879,7 @@ const Game = {
     if (diving || pts >= 300) this.popup(e.x, e.y - 4, String(pts), e.acetyl ? C.gold : C.white);
     this.explode(e.x, e.y, e.type === 'methyl' ? 18 : 12);
     Sound.sfx('explode');
-    if (form >= 0) this.formKills[form]++;
+    if (form >= 0) { this.formKills[form]++; this.addGunXP(form, pts); }   // the gun in that form earns the points
     this.stageHits++;
     if (e.type === 'splitter') this.splitEnemy(e);
   },
@@ -970,7 +971,7 @@ const Game = {
     const want = this.isSide ? dy : dx;
     p.tilt += clamp(want - p.tilt, -0.1, 0.1);
 
-    if (canFire && p.morphT === 0 && p.fireCd <= 0 && Input.pressed('fire')) this.fireWeapon();
+    this.triggerGun(canFire);   // weapons.js
     if (canFire && Input.just('special')) this.useSpecial();
   },
 
@@ -1104,8 +1105,7 @@ const Game = {
       }
       if (!b.dead && (this.boss || this.capital)) {
         if (this.boss) this.bossHitTest(b); else this.capitalHitTest(b);
-        if (b.dead && b.kind === 'cluster') this.burstCluster(b);
-        if (b.dead && b.kind === 'bomb') this.bombBlast(b);
+        if (b.dead) this.bulletEnd(b);
       }
     }
     this.specialCollide();   // specials.js: reflect field, force pod, gravity bomb
@@ -1208,6 +1208,7 @@ const Game = {
     if (p.alive && !p.hidden && (p.invuln <= 0 || (this.t >> 2) & 1)) {
       this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide, undefined, p.tilt);
     }
+    this.drawChargeFx(ctx);
     if (p.alive && this.wingT > 0 && (this.wingT > 90 || (this.t >> 2) & 1)) this.drawWingman(ctx);
     this.drawPassives(ctx);   // skills.js: escort drone
     this.drawSpecialFx(ctx, 'over');

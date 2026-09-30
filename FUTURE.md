@@ -21,7 +21,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 
 | # | Milestone | What it adds | Why first |
 |---|---|---|---|
-| M1 | **Loadout** | Guns as parts, new guns sold at markets, guns that level up with use, a hangar that fits guns, save v3 | The core of both problems: markets run out of stock, and progress stops once stats cap |
+| M1 | **Loadout** (shipped, see the README) | Guns as parts, new guns sold at markets, guns that level up with use, a hangar that fits guns, save v3 | The core of both problems: markets run out of stock, and progress stops once stats cap |
 | M2 | **Arsenal and economy** | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, price retune, money missions | Gives credits a use in every galaxy (see Economy) |
 | M3 | **Vertical stages** | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls** | Hull roles and signature moves, four late hulls, pilot perks with a mechanic, unique hull art | New ships to chase in the Magellanic Cloud and Andromeda |
@@ -79,43 +79,6 @@ Rules for tuning:
 Sized for implementation. Everything here must still work with a D-pad, A, B, Select and Start, and with
 touch; screen text is uppercase and wraps at 25 characters.
 
-### M1: guns as parts
-
-- **Data:** `GUNS` (`js/weapons.js`) gains `price`, `mount` (`'light'` or `'heavy'`) and `desc` (two
-  lines of 25 characters). `HULLS[h].guns` stays as the hull's **default fit**. Each hull gains
-  `mounts: [f0, f1, f2]`, the heaviest class each form takes (a light mount takes only light guns; a heavy
-  mount takes either). Heavy guns: `bomb`, `laser`, and new charge or rail guns.
-- **Save:** `camp.guns` lists the guns owned (starting with the default fit of every owned hull);
-  `camp.fit[hull]` is `[gun0, gun1, gun2]`, falling back to `HULLS[hull].guns`.
-- **Firing:** `fireWeapon()` reads `this.fittedGun(form)` instead of `this.hullDef().guns[f]`. The hull's
-  form multiplier (`HULLS[h].form`) still applies, so a Battloid-strong hull stays best in that form.
-- **Markets:** `MARKET_POOL` entries of the form `gun:ripple` list a gun for sale; the shop page shows
-  `OWNED` or the price. Early planets sell light guns, later ones heavy guns. Buying a hull also gives its
-  default guns.
-- **Hangar:** always opens before a sortie, not only when a special is learned. Four rows: FIGHTER,
-  GUARDIAN, BATTLOID, SPECIAL. Up/down picks a row, left/right changes the gun or special on it, A
-  launches. Guns a mount can't take are skipped. Touch: tap a row to pick it, tap its left or right half
-  to change it (`tapHangar`).
-- **New guns** (see the catalog): charge shot, rear rail gun, wall-hugging grenades, swivel vulcan,
-  orbiting shots, spread field. Each needs a `case` in `fireWeapon()`, flight in `steerBullet()` and art
-  in `drawPlayerBullet()`.
-
-### M1: guns level up with use
-
-- **Save:** `camp.gunXP[id]`, points earned with that gun.
-- **Earning:** `killEnemy(e, form)` already knows which form scored the kill. Add the enemy's points to
-  the XP of the gun fitted in that form. Specials and passives earn nothing.
-- **Levels:** five, at 0, 2,000, 6,000, 15,000 and 35,000 XP (tune with a real run). Each gun has its
-  own table of what a level changes, and every level must be visible, as in Darius Twin, where each of
-  the eight upgrades changes the shot's shape:
-  - Twin cannon: faster, a third stream, wider streams, pierces one plane.
-  - Vulcan: tighter spread, more bullets on screen.
-  - Piercing laser: pierces one more plane each level.
-  - Ripple: the ring grows faster and wider.
-  - Homing: three missiles, then four, turning faster.
-- **Display:** the hangar shows `TWIN CANNON LV3` and a bar to the next level; the debrief lists guns
-  that levelled.
-
 ### M2: ordnance
 
 - **Data:** an `ORDNANCE` table: `{ id, name, family, tier, uses, price, hulls }`. Families have tiers,
@@ -128,12 +91,9 @@ touch; screen text is uppercase and wraps at 25 characters.
 - **After the mission:** unused ordnance comes back to stock. Ordnance fired is gone. On a failed mission
   it's all lost, as in U.N. Squadron, so buying is a bet.
 
-### Save version 3
+### Save version 3 (shipped with M1)
 
-- Bump `camp.v` to 3 and add `guns`, `fit`, `gunXP` and `ord` in `newCampaign()`.
-- `continueCampaign()` now accepts only `v === 2` after migrating v1. Make migration a chain: v1 to v2
-  (`migrateSave`), then v2 to v3 (owned guns = the default guns of every owned hull, empty `fit`, `gunXP`
-  and `ord`).
+- `camp.v` is 3 and `newCampaign()` already adds an empty `ord` for ordnance stock; M2 only has to use it.
 
 ## Idea catalog
 
@@ -161,33 +121,30 @@ touch; screen text is uppercase and wraps at 25 characters.
 - **Unique hull art.** The Wyvern, Basilisk and Phoenix reuse the Griffin, Manticore and Hydra airframes
   in new colors. Each should get its own Fighter shape, and every hull its own Guardian and Battloid art.
 
-### Guns (M1)
+### Guns (M4)
 
-- **Guns as parts (Axelay, Gradius III).** Axelay fits one weapon to each of three slots before every
-  stage and unlocks one new weapon per stage; each new weapon suits the stage where it unlocks (Needle
-  Cracker's homing for the city, Explosion Bombs for the pipe mazes). Gradius III's Edit Mode picks one
-  option from each of six categories. Spec above.
-- **New guns:**
-  - *Charge shot:* Gradius III's Energy Laser (tap for small shots, hold for big ones), Thunder Force
-    IV's Thunder Sword (charges while you aren't firing), Strikers 1945's three-level meter that fills
-    more slowly toward level 3.
+Guns as parts, gun levels, the charge shot, the rear rail gun and the swivel vulcan shipped in M1
+(README: Guns). Still to build, each as a `GUNS` entry with a `fireWeapon` case, `steerBullet` flight,
+`drawPlayerBullet` art and four level effects:
+
+- **More guns:**
+  - *Charge shot, Thunder Sword variant* (TF4): charges while you aren't firing, instead of while held.
   - *Hyper beam* (R-Type III): charge fully, then fire a burst of heavy shots for a few seconds until the
     gun overheats and can't charge until it cools.
-  - *Rear rail gun* (TF4 Railgun): fires backward and hits harder the closer you are.
   - *Wall-hugging grenades* (TF4 Snake): fired up and down, they burn along the ground they hit; good
     against turrets on side missions.
   - *Free Way* (TF4): bullets toward where you steer, missiles the opposite way.
-  - *Swivel vulcan* (Axelay Round Vulcan): sweeps forward while fire is held, back when released.
   - *Orbiting shots* (Axelay Morning Star): a ring that circles the ship and also blocks bullets.
   - *Spread field* (Radiant Silvergun): angled shots that burst and hang in the air, blocking missiles.
   - *Lightning lock* (Radiant Silvergun homing plasma): locks two targets and hits harder the longer
     it holds, even through walls.
   - *Rear-guard vulcan* (Gradius Tailgun and 2-Way Back): covers the ship's back.
   - *Diagonal bombs* (Darius Twin secondary): arcing bombs that become four-way diagonal lasers as they level.
-- **Guns level up with use (Radiant Silvergun, Batsugun, Steel Empire, Darius Twin).** Radiant Silvergun
-  turns a weapon's points into its XP, and combined weapons split XP, each part improving a different
-  stat. Batsugun levels its gun every 288 kill points (twice), then gives bombs. Steel Empire's weapons
-  go to level 20 and are kept on death. Spec above. This replaces the old "weapon levels" idea.
+- **Gun XP tuning.** The level thresholds (2,000 to 35,000) are a first guess: time them in a real run.
+  Radiant Silvergun splits XP between combined weapons; boss and capital-ship targets could train the
+  gun too (today only planes do).
+- **The rear rail gun in vertical stages.** It fires down off the bottom of the screen, so it only
+  helps against divers that pass below you. Consider rear attacks (M3) or a shorter-range spread.
 - **In-flight power level (Carrier Air Wing, U.N. Squadron, Darius Twin).** Carrier Air Wing's gun levels
   come at 2, 8, 15, 23 and 31 pickups; U.N. Squadron's planes cap between 3 and 7; Darius Twin drops a
   power-up only from the last of six cubes. Optional on top of gun XP: pickups that raise the gun for the

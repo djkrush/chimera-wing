@@ -45,8 +45,10 @@ const MISSION_KINDS = {
   strike: { name: 'STRONGHOLD', legs: ['boss'], pay: 1.5, desc: 'TWO LEGS AND A BOSS. CLEARS THE PLANET.' },
 };
 
-// Shop stock every market can draw from (prices and effects in starbase.js).
-const MARKET_POOL = ['weapons', 'shields', 'special', 'engine', 'ftr', 'grd', 'btl', 'cooler', 'armor', 'scanner', 'broker'];
+// Shop stock every market can draw from (prices and effects in starbase.js). gun:<id> sells a gun
+// part (weapons.js); a market only draws guns sold in its galaxy (GUNS[id].gal).
+const MARKET_POOL = ['weapons', 'shields', 'special', 'engine', 'ftr', 'grd', 'btl', 'cooler', 'armor', 'scanner', 'broker',
+  ...GUN_IDS.map(id => 'gun:' + id)];
 
 // Galaxies hold systems; systems keep the old sector fields (see CLAUDE.md): boss/capital ids, enemy
 // swaps, extra side patterns, acetylation bonus and the securing bonus. x/y place a galaxy on the
@@ -60,7 +62,7 @@ const GALAXIES = [
         boss: 'bunker', capital: 'dreadnought', acetyl: 0, swap: {}, sideKinds: [], bonus: { money: 1000, xp: 150 },
         planets: [
           { id: 'earth', name: 'EARTH', terrain: 'ocean', sky: [C.navy, C.dgreen, C.brown, C.olive], disc: [C.blue, C.green], ring: 2,
-            missions: ['patrol', 'strike'], market: ['weapons', 'shields', 'special'] },
+            missions: ['patrol', 'strike'], market: ['weapons', 'shields', 'special', 'gun:vulcan'] },
           { id: 'mars', name: 'MARS', terrain: 'desert', sky: [C.maroon, C.rust, C.darkred, C.orange], disc: [C.rust, C.orange], order: 'sv', ring: 3 },
           { id: 'venus', name: 'VENUS', terrain: 'clouds', sky: [C.olive, C.gold, C.brown, C.yellow], disc: [C.gold, C.cream], ring: 1,
             missions: ['bonus', 'strike'] },
@@ -170,7 +172,7 @@ GALAXIES.forEach((G, gi) => {
         P.missions = [...list, 'strike'];
       }
       if (!P.market) {
-        const pool = MARKET_POOL.slice(), n = 3 + Math.floor(r() * 2);
+        const pool = MARKET_POOL.filter(k => !k.startsWith('gun:') || GUNS[k.slice(4)].gal <= gi), n = 3 + Math.floor(r() * 2);
         P.market = [];
         while (P.market.length < n) P.market.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
       }
