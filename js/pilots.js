@@ -49,8 +49,8 @@ Object.assign(Game, {
   updatePilotSelect() {
     this.stateT++;
     const n = PILOTS.length;
-    if (Input.just('up')) { this.pilotSel = (this.pilotSel + n - 1) % n; Sound.sfx('move'); }
-    if (Input.just('down')) { this.pilotSel = (this.pilotSel + 1) % n; Sound.sfx('move'); }
+    if (Input.just('up') || Input.just('left')) { this.pilotSel = (this.pilotSel + n - 1) % n; Sound.sfx('move'); }
+    if (Input.just('down') || Input.just('right')) { this.pilotSel = (this.pilotSel + 1) % n; Sound.sfx('move'); }
     if (Input.just('back') || Input.just('special')) { Sound.sfx('move'); this.setState('title'); return; }
     if (this.stateT > 12 && (Input.just('fire') || Input.just('start'))) {
       this.pilot = this.pilotSel;
@@ -72,28 +72,27 @@ Object.assign(Game, {
     return true;
   },
 
-  drawPilotSelect(ctx) { this.panel(ctx, () => this.drawPilotPage(ctx)); },
-
-  drawPilotPage(ctx) {
+  // Fighting-game style select: one card per pilot across the widescreen, portrait on top.
+  drawPilotSelect(ctx) {
     const center = { align: 'center' };
-    NES.text(ctx, 'CHOOSE YOUR PILOT', 128, 10, C.gold, center);
-    const stats = [['WEAPONS', 'weapons', C.red], ['SHIELDS', 'shields', C.sky], ['SPECIAL', 'special', C.gold]];
+    NES.text(ctx, 'CHOOSE YOUR PILOT', CX, 8, C.gold, { align: 'center', scale: 2 });
+    const stats = [['WPN', 'weapons', C.red], ['SHD', 'shields', C.sky], ['SPC', 'special', C.gold]];
     PILOTS.forEach((pl, i) => {
-      const y = 26 + i * 64, sel = i === this.pilotSel;
-      NES.box(ctx, 8, y, 240, 58, sel ? '#203890' : C.black, sel ? pl.col : C.gray);
-      this.drawFace(ctx, SPR.pilots[i], 12, y + 6, sel ? pl.col : C.gray);
-      if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 2, y + 25, C.gold);
-      NES.text(ctx, pl.name, 56, y + 6, sel ? pl.col : C.lgray);
-      NES.text(ctx, pl.tag, 240, y + 6, sel ? C.white : C.gray, { align: 'right' });
+      const w = 132, x = CX - 205 + i * 139, y = 30, sel = i === this.pilotSel, mid = x + (w >> 1);
+      NES.box(ctx, x, y, w, 178, sel ? '#203890' : C.black, sel ? pl.col : C.gray);
+      this.drawFace(ctx, SPR.pilots[i], mid - 30, y + 8, sel ? pl.col : C.gray);
+      if (sel && (this.t >> 3) & 1) { NES.text(ctx, '>', x + 12, y + 38, C.gold); NES.text(ctx, '<', x + w - 18, y + 38, C.gold); }
+      NES.text(ctx, pl.name, mid, y + 82, sel ? pl.col : C.lgray, center);
+      NES.text(ctx, pl.tag, mid, y + 93, sel ? C.white : C.gray, center);
       stats.forEach(([label, key, col], k) => {
-        const sy = y + 17 + k * 9, v = pl[key];
-        NES.text(ctx, label, 56, sy, sel ? C.white : C.gray);
-        this.drawStatPips(ctx, 114, sy, v, STAT_MAX, sel ? col : C.lgray);
-        NES.text(ctx, String(v), 184, sy, sel ? C.white : C.gray);
+        const sy = y + 108 + k * 11, v = pl[key];
+        NES.text(ctx, label, x + 8, sy, sel ? C.white : C.gray);
+        this.drawStatPips(ctx, x + 36, sy, v, STAT_MAX, sel ? col : C.lgray);
+        NES.text(ctx, String(v), x + w - 10, sy, sel ? C.white : C.gray, { align: 'right' });
       });
-      NES.text(ctx, pl.perk, 56, y + 46, sel ? C.aqua : C.gray);
+      NES.wrap(pl.perk, 15).forEach((l, k) => NES.text(ctx, l, mid, y + 147 + k * 10, sel ? C.aqua : C.gray, center));
     });
-    if ((this.t >> 4) & 1) NES.text(ctx, 'UP/DOWN: CHOOSE   A: FLY', 128, 222, C.white, center);
-    NES.text(ctx, 'B: BACK', 128, 231, C.gray, center);
+    if ((this.t >> 4) & 1) NES.text(ctx, 'LEFT/RIGHT: CHOOSE   A: FLY', CX, 216, C.white, center);
+    NES.text(ctx, 'B: BACK', CX, 228, C.gray, center);
   },
 });

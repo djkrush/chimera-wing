@@ -1369,9 +1369,9 @@ const Game = {
     }
   },
 
-  // A 41 x 46 SNES portrait frame: beveled border in the speaker's color, a dark gradient behind the face.
+  // A 60 x 68 SNES portrait frame: beveled border in the speaker's color around the 56 x 64 portrait.
   drawFace(ctx, img, x, y, col) {
-    NES.box(ctx, x, y, 41, 46, SNES.mix(col, '#000000', 0.72), col);
+    NES.box(ctx, x, y, 60, 68, SNES.mix(col, '#000000', 0.72), col);
     ctx.drawImage(img, x + 2, y + 2);
   },
 
@@ -1379,7 +1379,7 @@ const Game = {
     this.drawFace(ctx, CAST[who].portrait(), x, y, CAST[who].col);
     if (who === 'echo' && (this.t >> 2) & 1) {   // the Echo is a broadcast: add scanlines
       ctx.fillStyle = C.black;
-      for (let j = 4; j < 43; j += 3) ctx.fillRect(x + 3, y + j, 35, 1);
+      for (let j = 4; j < 65; j += 3) ctx.fillRect(x + 2, y + j, 56, 1);
     }
   },
 
@@ -1393,11 +1393,12 @@ const Game = {
     }
   },
 
+  // Dialogue sits in the centered panel; the speaker's portrait goes in the widescreen margin to its left.
   drawRadio(ctx) {
     const r = this.radio;
-    NES.box(ctx, 2, 10, 252, 52, C.black, CAST[r.who].col);   // below the HUD's top row
-    this.drawPortrait(ctx, 5, 13, r.who);
-    r.lines.forEach((l, i) => NES.text(ctx, l, 50, 21 + i * 11, C.white));
+    NES.box(ctx, 2, 10, 252, 42, C.black, CAST[r.who].col);   // below the HUD's top row
+    this.drawPortrait(ctx, -64, 10, r.who);
+    r.lines.forEach((l, i) => NES.text(ctx, l, 12, 17 + i * 11, C.white));
   },
 
   drawIntro(ctx) {
@@ -1412,12 +1413,12 @@ const Game = {
     // Dialogue box sits above the player's ship so it stays visible during the intro.
     const by = 90;
     NES.box(ctx, 4, by, 248, 84, C.black, who.col);
-    this.drawPortrait(ctx, 7, by + 5, I.who);
-    NES.text(ctx, who.name, 51, by + 7, who.col);
+    this.drawPortrait(ctx, -64, by + 8, I.who);
+    NES.text(ctx, who.name, 12, by + 7, who.col);
     let left = I.full ? Infinity : Math.floor(I.t / 1.5);
     I.lines.forEach((l, i) => {
       if (left <= 0) return;
-      NES.text(ctx, l.slice(0, left), 51, by + 20 + i * 10, C.white);
+      NES.text(ctx, l.slice(0, left), 12, by + 20 + i * 10, C.white);
       left -= l.length;
     });
     if (I.pages.length > 1) NES.text(ctx, (I.page + 1) + '/' + I.pages.length, 10, by + 74, C.gray);
@@ -1458,10 +1459,10 @@ const Game = {
     }
     if (this.stateT > 90) {
       const who = CAST[this.villain()];
-      NES.box(ctx, 4, 160, 248, 54, C.black, who.col);
-      this.drawPortrait(ctx, 7, 164, this.villain());
-      NES.text(ctx, who.name, 52, 167, who.col);
-      NES.wrap(VOSS.gameover, 25).forEach((l, i) => NES.text(ctx, l, 52, 180 + i * 10, C.white));
+      NES.box(ctx, 4, 164, 248, 46, C.black, who.col);
+      this.drawPortrait(ctx, -64, 154, this.villain());
+      NES.text(ctx, who.name, 12, 171, who.col);
+      NES.wrap(VOSS.gameover, 25).forEach((l, i) => NES.text(ctx, l, 12, 184 + i * 10, C.white));
     }
   },
 

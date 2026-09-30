@@ -177,6 +177,7 @@ index.html        page + canvas
 js/nes.js         palette, bitmap font, sprite baking, SNES windows, draw helpers
 js/snes.js        SNES rendering: color ramps, shading, glows, color math, Mode 7, parallax
 js/shipyard.js    painter for the carrier, capital ships and boss warships
+js/faces.js       character portraits, painted and pixelized in the SNES fighting-game style
 js/sprites.js     sprite art (hulls top-down + side profile, aircraft, anime portraits, icons)
 js/audio.js       chiptune synth (pulse/triangle/noise) + music sequencer + sound effects
 js/input.js       keyboard + gamepad (standard, generic, hat-switch) + remapping

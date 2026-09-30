@@ -25,7 +25,7 @@ change how the game plays.
 Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load order matters**:
 
 ```
-nes.js → snes.js → shipyard.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js
+nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js
        → scenery.js → specials.js → pilots.js → campaign.js → starbase.js → carrier.js → story.js → tet.js → main.js
 ```
 
@@ -33,6 +33,7 @@ nes.js → snes.js → shipyard.js → sprites.js → audio.js → input.js → 
 |---|---|---|
 | `NES` | `js/nes.js` | 424×240 widescreen size (`NES.W/H`), base palette `NES.C`, shaded 5×7 bitmap font (`NES.text`), `NES.sprite`, draw helpers (`draw`, `drawRot`, `drawFlip`, `disc`, `box` (SNES window), `hilite`, `wrap`) |
 | `SNES` | `js/snes.js` | 15-bit color and 5-shade `ramp`s, `bake` (shaded ASCII sprites), `glow`/`sphere`/`globe`, smooth `drawRot` with scaling, color math (`add`, `half`), HDMA-style `bands`, parallax `layer`/`scrollX`/`scrollY`, Mode 7 `texture`/`mode7` |
+| `FACES` | `js/faces.js` | Character portraits (56×64), painted like SNES fighting-game select screens: shapes drawn in 40×48 units on a 4× canvas (materials with form lighting plus shadow/highlight shapes), reduced to pixels with hand-picked ramps and a silhouette outline, then eyes and glints stamped pixel by pixel. The pilots (`pilot()`) are front views in full flight gear with the mirror visor down over the eyes (helmet, visor, oxygen mask and hose); Mira and Voss are painted front-view faces (`frontNeck`/`frontHead`). `drawFace` frames them at 60×68; dialogue puts the frame in the widescreen margin left of the text box. |
 | `YARD` | `js/shipyard.js` | Painter for the big pre-rendered machines (carrier, capital ships, boss warships): `sheet(w, h)` lays down materials at height levels (`rect`, `poly`, `ellipse`, `mirrorX`, `recolor`), `bake()` bevels, drop-shadows and outlines them; detail helpers `modules`, `plates`, `greebles`, `vent`, `turret`, `windows` |
 | `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Top-down sprites point **up** and the game rotates them. Side-mission sprites are **side profiles**, drawn unrotated. |
 | `Sound` | `js/audio.js` | WebAudio chiptune: `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`, sequencer notes as `"NOTE:LEN"` tokens in sixteenths |

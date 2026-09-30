@@ -314,13 +314,13 @@ Object.assign(Game, {
   },
 
   // XP bar toward the next level.
-  drawXpBar(ctx, x, y) {
+  drawXpBar(ctx, x, y, w = 120) {
     const c = this.camp;
     NES.text(ctx, 'LV ' + c.level, x, y, C.lime);
     const lo = LEVELS[c.level - 1], hi = LEVELS[c.level];
-    if (hi === undefined) { this.drawBar(ctx, x + 40, y + 1, 120, 5, 1, C.lime, '#082008'); NES.text(ctx, 'MAX', x + 192, y, C.lime, { align: 'right' }); return; }
-    this.drawBar(ctx, x + 40, y + 1, 120, 5, (c.xp - lo) / (hi - lo), C.lime, '#082008');
-    NES.text(ctx, String(c.xp), x + 192, y, C.white, { align: 'right' });
+    if (hi === undefined) { this.drawBar(ctx, x + 40, y + 1, w, 5, 1, C.lime, '#082008'); NES.text(ctx, 'MAX', x + w + 72, y, C.lime, { align: 'right' }); return; }
+    this.drawBar(ctx, x + 40, y + 1, w, 5, (c.xp - lo) / (hi - lo), C.lime, '#082008');
+    NES.text(ctx, String(c.xp), x + w + 72, y, C.white, { align: 'right' });
   },
 
   // After the finale's epilogue: the Echo campaign (New Game+). Sectors reset, everything else stays.

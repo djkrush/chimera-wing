@@ -102,72 +102,152 @@ Object.assign(Game, {
   },
 
   // ---- Drawing ------------------------------------------------------------------------
-  // The starbase with the carrier docked alongside. oy shifts it down (behind briefings).
+  // The starbase turning slowly, with the carrier holding station off its side (seen bow-on at an
+  // angle) and a shuttle running between the station's docking bay and the carrier's hangar.
+  // oy shifts the scene down (behind briefings).
   drawBaseScene(ctx, oy = 0) {
     const S = this.sectorDef(), t = this.t;
     ctx.save();
     ctx.translate(0, oy);
     SNES.add(ctx, () => {                              // the sector's star: layered glow and a hot core
-      NES.draw(ctx, SNES.glow(28, SNES.mix(S.col, '#000000', 0.6)), W - 40, 24);
-      NES.draw(ctx, SNES.glow(14, S.col), W - 40, 24);
+      NES.draw(ctx, SNES.glow(28, SNES.mix(S.col, '#000000', 0.6)), W - 40, 88);
+      NES.draw(ctx, SNES.glow(14, S.col), W - 40, 88);
     });
-    NES.draw(ctx, SNES.sphere(6, SNES.mix(S.col, '#ffffff', 0.6)), W - 40, 24);
+    NES.draw(ctx, SNES.sphere(6, SNES.mix(S.col, '#ffffff', 0.6)), W - 40, 88);
     const P = S.planets[0];                            // one of the sector's planets, turning slowly
-    SNES.add(ctx, () => NES.draw(ctx, SNES.glow(40, SNES.mix(this.scenery(P).haze, '#000000', 0.55)), 36, 100));
-    SNES.globe(ctx, this.scenery(P).floor, 36, 100, 34, t * 0.004);
-    const hx = 132, hy = 58, art = this.stationArt();
-    ctx.drawImage(art.back, hx - 82, hy - 32);         // panels, truss and the far half of the ring
-    NES.draw(ctx, SNES.sphere(12, '#98a0b0'), hx, hy);  // hub
-    ctx.fillStyle = '#58b8f0'; ctx.fillRect(hx - 6, hy - 2, 12, 2);
-    ctx.fillStyle = '#2060a0'; ctx.fillRect(hx - 6, hy, 12, 1);
-    ctx.drawImage(art.front, hx - 82, hy - 32);        // the near half of the ring and the docking arm
-    for (let k = 0; k < 4; k++) {                      // lights running round the near half of the ring
-      const a = ((t * 0.01 + k / 4) % 0.5) * TAU;
-      ctx.fillStyle = C.yellow; ctx.fillRect(Math.round(hx + Math.cos(a) * 42), Math.round(hy + Math.sin(a) * 11) - 1, 2, 1);
+    SNES.add(ctx, () => NES.draw(ctx, SNES.glow(36, SNES.mix(this.scenery(P).haze, '#000000', 0.55)), 32, 86));
+    SNES.globe(ctx, this.scenery(P).floor, 32, 86, 30, t * 0.004);
+    const E = this.carrierEpic(), ex = 196, ey = 6;    // the carrier, holding still
+    ctx.drawImage(E.img, ex, ey);
+    const r = 5 + ((t >> 2) & 1);
+    SNES.add(ctx, () => {                              // engine glow off the far stern
+      for (const [x, y] of E.jets) { NES.draw(ctx, SNES.glow(r + 3, '#1840a0'), ex + x, ey + y); NES.draw(ctx, SNES.glow(r - 1, '#60c8f8'), ex + x, ey + y); }
+    });
+    for (const [x, y] of E.lights) { ctx.fillStyle = (t >> 4) & 1 ? C.red : C.darkred; ctx.fillRect(ex + x, ey + y, 1, 1); }
+    const frames = this.stationArt(), k = Math.floor(t / 16) % frames.length, sx = 128, sy = 56;   // the station, turning
+    const art = frames[k];
+    ctx.drawImage(art, sx - (art.width >> 1), sy - 52);
+    const blink = (t >> 4) & 1;
+    ctx.fillStyle = blink ? C.red : C.darkred; ctx.fillRect(sx, sy - 51, 1, 2);
+    // the shuttle: waits in the station's bay, flies an arc to the carrier's hangar and back
+    const dock = [sx + 1, sy + 44], hangar = [ex + E.hangar[0], ey + E.hangar[1]];
+    const T = t % 560, leg = T < 60 ? -1 : T < 260 ? 0 : T < 340 ? -2 : T < 540 ? 1 : -1;
+    if (leg >= 0) {
+      const q = ((T - (leg ? 340 : 60)) / 200), e = q * q * (3 - 2 * q);
+      const [a, b] = leg ? [hangar, dock] : [dock, hangar];
+      const mx = (a[0] + b[0]) / 2, my = Math.max(a[1], b[1]) + 10;   // a shallow arc below the two
+      const x = (1 - e) ** 2 * a[0] + 2 * (1 - e) * e * mx + e * e * b[0], y = (1 - e) ** 2 * a[1] + 2 * (1 - e) * e * my + e * e * b[1];
+      const right = leg === 0;
+      SNES.add(ctx, () => NES.draw(ctx, SNES.glow(2 + (t & 1), '#60c8f8'), x + (right ? -7 : 7), y + 1));
+      if (right) NES.draw(ctx, SPR.shuttle, x, y); else NES.drawFlip(ctx, SPR.shuttle, x, y);
     }
-    ctx.fillStyle = (t >> 4) & 1 ? C.red : C.darkred; ctx.fillRect(hx - 1, hy - 16, 2, 2);
-    this.drawCarrierSide(ctx, 206, 56, false, 0.36);   // docked at the end of the arm
     ctx.restore();
   },
 
-  // The station, pre-rendered with SNES shading in two layers so the hub sits inside the ring.
+  // The carrier in a 3/4 view from ahead: the bow near us at the lower left, the hull running away to
+  // the stern at the upper right and shrinking with distance. Built once from the top-down and
+  // side-profile art, drawn in thin slices with an affine transform each (like Mode 7 scanlines):
+  // the deck on top, the port side below it (shaded), and the island standing up from the deck.
+  carrierEpic() {
+    if (this.epicImg) return this.epicImg;
+    const A = this.carrierArt(), { tw, th, sw, deck } = CAR;
+    const B = [6, 76], L = [168, -52], Wv = [72, -40], D = [0, 24];    // bow corner, length, beam, hull depth
+    const sc = t => 1 - 0.5 * t;                                       // farther is smaller
+    const iw = 264 / tw;                                                // the island's place across the deck
+    const pt = (t, w, h) => [B[0] + t * L[0] + sc(t) * (w * Wv[0] + h * D[0]), B[1] + t * L[1] + sc(t) * (w * Wv[1] + h * D[1])];
+    const lit = SNES.layer(tw, th, g => {                               // the deck catches the light
+      g.drawImage(A.top, 0, 0);
+      g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(200,220,255,0.22)'; g.fillRect(0, 0, tw, th);
+    });
+    const dim = SNES.layer(sw, CAR.sh, g => {                           // the side in shadow
+      g.drawImage(A.side, 0, 0);
+      g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(0,0,24,0.45)'; g.fillRect(0, 0, sw, CAR.sh);
+    });
+    const img = SNES.layer(224, 104, g => {
+      g.imageSmoothingEnabled = false;
+      const N = 60;
+      for (let i = 0; i < N; i++) {                                     // port side, bow to stern (the art is flipped: bow at t = 0)
+        const x0 = sw - (i + 1) * sw / N, t = (i + 0.5) / N, s = sc(t);
+        g.setTransform(-L[0] / sw, -L[1] / sw, s * D[0] / 72, s * D[1] / 72,
+          B[0] + L[0] - s * D[0] * deck / 72, B[1] + L[1] - s * D[1] * deck / 72);
+        g.drawImage(dim, x0, deck, sw / N + 1, CAR.sh - deck, x0, deck, sw / N + 1, CAR.sh - deck);
+      }
+      for (let i = 0; i < N; i++) {                                     // the deck, from the top view (bow at the top of the art)
+        const y0 = i * th / N, t = (i + 0.5) / N, s = sc(t);
+        g.setTransform(s * Wv[0] / tw, s * Wv[1] / tw, L[0] / th, L[1] / th, B[0], B[1]);
+        g.drawImage(lit, 0, y0, tw, th / N + 1, 0, y0, tw, th / N + 1);
+      }
+      for (let i = 0; i < 12; i++) {
+        const x0 = 330 + i * 7, t = (sw - x0 - 3.5) / sw, s = sc(t);
+        g.setTransform(-L[0] / sw, -L[1] / sw, s * D[0] / 72, s * D[1] / 72,
+          B[0] + L[0] + s * iw * Wv[0] - s * D[0] * deck / 72, B[1] + L[1] + s * iw * Wv[1] - s * D[1] * deck / 72);
+        g.drawImage(A.side, x0, 0, 8, deck, x0, 0, 8, deck);
+      }
+      g.setTransform(1, 0, 0, 1, 0, 0);
+    });
+    const P = (t, w, h) => pt(t, w, h).map(Math.round);
+    return (this.epicImg = { img, jets: [P(1, 0.25, 0.4), P(1, 0.5, 0.35), P(1, 0.75, 0.3)], lights: [P(0.36, iw, -1.7)], hangar: P(0.3, 0, 0.45) });
+  },
+
+  // The station, painted by the shipyard (shipyard.js) in frames as it turns: a spindle with a hub
+  // habitat, a habitat ring with four pods on spokes, four solar-array arms on a crossbar that swing
+  // round (edge-on when they point at you), an antenna dish and a lit docking bay. The station has
+  // fourfold symmetry, so a quarter turn loops.
   stationArt() {
     if (this.stationImg) return this.stationImg;
-    const steel = SNES.ramp('#8890a8'), cell = SNES.ramp('#2858c8');
-    const cx = 82, cy = 32;
-    const P = (g, col, x, y, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
-    const ring = (g, front) => {
-      for (let k = 0; k < 512; k++) {
-        const a = k / 512 * TAU, s = Math.sin(a);
-        if ((s >= 0) !== front) continue;
-        const x = Math.round(cx + Math.cos(a) * 42), y = Math.round(cy + s * 11);
-        const r = front ? [steel[4], steel[3], steel[1]] : [steel[2], steel[1], steel[0]];
-        P(g, r[0], x, y - 1); P(g, r[1], x, y); P(g, r[2], x, y + 1);
-        if (front && k % 32 === 0) P(g, '#f8e070', x, y);   // windows
+    const N = 24;
+    return (this.stationImg = Array.from({ length: N }, (_, k) => this.stationFrame(k / N * Math.PI / 2)));
+  },
+
+  stationFrame(a) {
+    const w = 160, h = 104, cx = 80, cy = 52, S = YARD.sheet(w, h);
+    const steel = S.mat('#8890a8'), light = S.mat('#b0b8c8'), dark = S.mat('#50586c'), seam = S.mat('#8890a8', { base: 1 });
+    const cell = S.mat('#2858c8'), cellL = S.mat('#4078e0'), black = S.mat('#080810', { flat: true });
+    const lamp = S.mat('#f8e070', { flat: true }), glass = S.mat('#58c0f8', { flat: true }), red = S.mat('#c03028');
+    const ring = (front, l) => {                       // the torus: outer ellipse minus inner, one half
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const dx = x - cx, dy = y - cy, o = (dx / 72) ** 2 + (dy / 20) ** 2, i = (dx / 60) ** 2 + ((dy - 1) / 12) ** 2;
+        if (o <= 1 && i > 1 && (dy >= 0) === front) S.px(x, y, dy < 2 && dy > -3 && front ? light : steel, l);
       }
     };
-    const back = SNES.layer(164, 56, g => {
-      for (const s of [-1, 1]) {
-        P(g, steel[3], cx + (s < 0 ? -76 : 44), cy - 15, 32, 1); P(g, steel[1], cx + (s < 0 ? -76 : 44), cy - 14, 32, 1);   // truss
-        for (let k = 0; k < 3; k++) {                   // solar panels: lit cells in a dark frame, with a glint
-          const px = cx + s * (48 + k * 9) - (s < 0 ? 8 : 0), py = cy - 20;
-          for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) {
-            const frame = x === 0 || y === 0 || x === 7 || y === 11 || y === 6 || x === 4;
-            P(g, frame ? steel[1] : (x + y) % 9 === 0 ? cell[4] : cell[y < 6 ? 3 : 2], px + x, py + y);
-          }
-        }
-      }
-      P(g, steel[1], cx - 42, cy, 84, 1); P(g, steel[1], cx, cy - 11, 1, 22);   // spokes
-      ring(g, false);
-      SNES.outline(g.canvas);
-    });
-    const front = SNES.layer(164, 56, g => {
-      ring(g, true);
-      P(g, steel[3], cx + 12, cy + 14, 60, 1); P(g, steel[2], cx + 12, cy + 15, 60, 1); P(g, steel[0], cx + 12, cy + 16, 60, 1);
-      for (let x = 20; x < 72; x += 10) P(g, steel[1], cx + x, cy + 14, 1, 3);   // docking arm struts
-      SNES.outline(g.canvas);
-    });
-    return (this.stationImg = { back, front });
+    const line = (x0, y0, x1, y1, m, l) => { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0)); for (let i = 0; i <= n; i++) S.px(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, m, l); };
+    const arms = [0, 1, 2, 3].map(i => a + i * Math.PI / 2), pods = arms.map(q => q + Math.PI / 4);
+    const arm = (q, l) => {                            // a solar array: its length foreshortens as it turns
+      const x1 = cx + Math.cos(q) * 20, x2 = cx + Math.cos(q) * 62, x0 = Math.min(x1, x2), wd = Math.max(1, Math.abs(x2 - x1));
+      line(cx, 13, cx + Math.cos(q) * 62, 13, dark, l);
+      S.rect(x0, 3, wd, 20, dark, l);
+      for (let y = 4; y < 22; y += 2) S.rect(x0 + (wd > 3 ? 1 : 0), y, Math.max(1, wd - 2), 1, (y >> 1) % 3 ? cell : cellL, l);
+    };
+    const pod = (q, l) => {                            // a habitat pod on the ring, on its spoke
+      const x = cx + Math.cos(q) * 66, y = cy + Math.sin(q) * 17, pw = 3 + Math.round(Math.abs(Math.sin(q)) * 4);
+      line(cx, cy, x, y, dark, l);
+      S.rect(x - pw, y - 4, pw * 2 + 1, 8, light, l + 1);
+      S.px(x, y, lamp);
+    };
+    for (const q of arms) if (Math.sin(q) < 0) arm(q, 1);
+    for (const q of pods) if (Math.sin(q) < 0) pod(q, 2);
+    ring(false, 2);
+    S.rect(cx - 8, 6, 17, 92, steel, 4);                                         // spindle
+    YARD.plates(S, cx - 8, 6, 17, 92, steel, light, seam, 17, 8, 3);
+    S.ellipse(cx, cy, 17, 14, light, 5);                                         // hub habitat
+    YARD.windows(S, cx - 12 + Math.round((a / (Math.PI / 2)) * 4), cy - 4, 20, 4, glass, 2, 1);   // windows slide as it turns
+    YARD.windows(S, cx - 12 + Math.round((a / (Math.PI / 2)) * 4), cy + 3, 20, 4, lamp, 2, 1);
+    S.rect(cx - 12, 22, 25, 6, steel, 5); S.rect(cx - 12, 78, 25, 6, steel, 5);  // collars
+    S.rect(cx - 1, 0, 3, 7, dark, 5);                                            // antenna mast
+    const dq = a * 4;                                                            // the dish turns with the station
+    S.ellipse(cx + Math.round(Math.cos(dq) * 7), 4, 2 + Math.round(Math.abs(Math.sin(dq)) * 3), 2, light, 6);
+    S.rect(cx - 11, 92, 23, 10, steel, 5);                                       // docking bay
+    S.rect(cx - 8, 94, 17, 7, black);
+    for (let x = cx - 7; x < cx + 9; x += 3) S.px(x, 95, lamp);
+    S.rect(cx - 12, 100, 3, 2, red, 6); S.rect(cx + 10, 100, 3, 2, red, 6);
+    ring(true, 6);
+    for (let j = 0; j < 16; j++) {                                               // windows round the near side, moving with the turn
+      const q = a + j * Math.PI / 8;
+      if (Math.sin(q) > 0.15) S.px(cx + Math.cos(q) * 66, cy + Math.sin(q) * 17 + 1, lamp);
+    }
+    for (const q of pods) if (Math.sin(q) >= 0) pod(q, 7);
+    for (const q of arms) if (Math.sin(q) >= 0) arm(q, 8);
+    return S.bake({ shadow: 2 });
   },
 
   drawBase(ctx) {
@@ -202,17 +282,17 @@ Object.assign(Game, {
 
   drawStatus(ctx) {
     const c = this.camp, pl = PILOTS[c.pilot];
-    this.drawFace(ctx, SPR.pilots[c.pilot], 8, 129, pl.col);
-    NES.text(ctx, this.hullDef().name, 56, 132, C.white);
-    NES.text(ctx, 'SPEED ' + Math.round(this.speedMul() * 100) + '%', 56, 142, C.lgray);
+    this.drawFace(ctx, SPR.pilots[c.pilot], 8, 128, pl.col);
+    NES.text(ctx, this.hullDef().name, 74, 132, C.white);
+    NES.text(ctx, 'SPEED ' + Math.round(this.speedMul() * 100) + '%', 74, 142, C.lgray);
     this.drawShip(ctx, 0, 226, 140, 0, false, true);
-    this.drawXpBar(ctx, 56, 153);
+    this.drawXpBar(ctx, 74, 153, 96);
     const stats = [['WEAPONS', 'weapons', C.red], ['SHIELDS', 'shields', C.sky], ['SPECIAL', 'special', C.gold]];
     stats.forEach(([label, key, col], k) => {
       const y = 164 + k * 10, v = this.statOf(key);
-      NES.text(ctx, label, 56, y, C.white);
-      this.drawStatPips(ctx, 114, y, v, STAT_CAP, col);
-      NES.text(ctx, String(v), 216, y, C.white);
+      NES.text(ctx, label, 74, y, C.white);
+      this.drawStatPips(ctx, 132, y, v, STAT_CAP, col);
+      NES.text(ctx, String(v), 232, y, C.white);
     });
     NES.text(ctx, 'SPECIALS', 10, 199, C.gold);
     if (!c.learned.length) NES.text(ctx, 'NONE YET. LEARN AT LV 2.', 80, 199, C.gray);
