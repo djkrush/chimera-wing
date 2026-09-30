@@ -1,64 +1,93 @@
 'use strict';
-// Starbase: where the carrier docks in each sector. Pick a planet mission, buy upgrades and hulls,
-// check the pilot's status, or open the galaxy map to travel. Also the LEARN SPECIAL screen that
-// follows a level-up at levels 2, 5 and 8.
-// Menus follow the NES pad: D-pad to choose, A to pick, B to go back.
+// Starbase: the orbital station over each planet, where the carrier docks. Fly the planet's missions,
+// shop at its market (every planet stocks different upgrades, and some have a shipyard), check the
+// pilot's status and skills, or open the star map to travel.
+// Menus follow the NES pad: D-pad to choose, A to pick, B to go back. Rows can also be tapped.
 
-const UPGRADES = [
-  { key: 'weapons', label: 'WEAPONS +1', desc: 'SHOTS HIT HARDER.' },
-  { key: 'shields', label: 'SHIELDS +1', desc: 'TAKE ONE MORE HIT.' },
-  { key: 'special', label: 'SPECIAL +1', desc: 'ONE MORE SPECIAL PER LEG.' },
-];
-const upgradePrice = n => 600 * (n + 1);   // each purchase of the same stat costs more
+// Everything a market can sell. stat: raises a pilot stat (capped at STAT_CAP). max: how many times
+// it can be bought. Prices rise with each purchase of the same thing.
+const UPGRADES = {
+  weapons: { label: 'WEAPONS +1', short: 'WPN', desc: 'SHOTS HIT HARDER.', stat: true, base: 600 },
+  shields: { label: 'SHIELDS +1', short: 'SHD', desc: 'TAKE ONE MORE HIT.', stat: true, base: 600 },
+  special: { label: 'SPECIAL +1', short: 'SPC', desc: 'ONE MORE SPECIAL PER LEG.', stat: true, base: 600 },
+  engine: { label: 'ENGINE TUNE', short: 'ENG', desc: '+5% SPEED IN EVERY FORM.', max: 4, base: 900 },
+  ftr: { label: 'FIGHTER GUNS', short: 'FTR', desc: '+20% FIGHTER DAMAGE.', max: 3, base: 800 },
+  grd: { label: 'GUARDIAN GUNS', short: 'GRD', desc: '+20% GUARDIAN DAMAGE.', max: 3, base: 800 },
+  btl: { label: 'BATTLOID GUNS', short: 'BTL', desc: '+20% BATTLOID DAMAGE.', max: 3, base: 800 },
+  cooler: { label: 'GUN COOLERS', short: 'COOL', desc: 'EVERY GUN FIRES 10% FASTER.', max: 3, base: 1200 },
+  armor: { label: 'ARMOR WEAVE', short: 'ARM', desc: 'BATTLOID ARMOR REBOOTS 25% FASTER.', max: 2, base: 1000 },
+  scanner: { label: 'TET SCANNER', short: 'TET', desc: 'GOLD PLANES DROP MORE TET CAPSULES.', max: 2, base: 700 },
+  broker: { label: 'TRADE LICENSE', short: 'PAY', desc: '+10% PAY FROM EVERY MISSION.', max: 3, base: 1500 },
+};
+const upgradePrice = (key, n) => UPGRADES[key].base * (n + 1);
+const MENU_ROWS = 7;   // visible rows in a starbase list; longer lists scroll
 
 Object.assign(Game, {
-  baseUI: null, learnSel: 0,
+  baseUI: null,
 
   // Rows for the current page: { label, right, col, act, info }.
   baseItems() {
-    const U = this.baseUI, c = this.camp, S = this.sectorDef();
+    const U = this.baseUI, c = this.camp, P = this.planetHere();
     const back = { label: 'BACK', act: () => this.basePage('main') };
     if (U.page === 'main') {
       return [
-        { label: 'MISSIONS', act: () => this.basePage('missions'), info: 'FLY A MISSION IN ' + S.name + '.' },
-        { label: 'SHOP', act: () => this.basePage('shop'), info: 'UPGRADES AND SHIP HULLS.' },
-        { label: 'STATUS', act: () => this.basePage('status'), info: 'PILOT, SHIP AND SPECIALS.' },
-        { label: 'GALAXY MAP', act: () => this.openMap(), info: 'TRAVEL TO ANOTHER SECTOR.' },
+        { label: 'MISSIONS', act: () => this.basePage('missions'), info: 'FLY A MISSION ON ' + P.name + '.' },
+        { label: 'MARKET', act: () => this.basePage('shop'), info: 'SELLS: ' + this.marketShort(P) + (P.hulls.length ? ' AND A HULL.' : '.') },
+        { label: 'STATUS', act: () => this.basePage('status'), info: 'PILOT, SHIP AND STATS.' },
+        { label: 'SKILLS', act: () => this.basePage('skills'), info: 'SPECIALS AND PASSIVE SKILLS.' },
+        { label: 'STAR MAP', act: () => this.openMap(), info: 'FLY TO ANOTHER PLANET, SYSTEM OR GALAXY.' },
         { label: 'SAVE AND QUIT', act: () => { this.saveCampaign(); this.toTitle(); }, info: 'PROGRESS SAVES AT EVERY DOCKING.' },
       ];
     }
     if (U.page === 'missions') {
-      return [...S.planets.map((P, i) => {
-        const done = c.cleared[P.id];
-        const flyover = P.order === 'sv';
-        const boss = flyover ? CAPITALS[P.capital || S.capital].name : BOSSES[P.boss || S.boss].name;
-        const how = flyover ? 'SIDE, THEN FLYOVER: ' : (P.approach === 'challenge' ? 'BONUS ' : '') + 'VERTICAL, THEN SIDE: ';
-        return { label: P.name, right: done ? 'CLEAR' : 'NEW', col: done ? C.lime : C.gold,
-          act: () => this.startMission(i), info: how + boss + (done ? '. HALF PAY.' : '.') };
+      return [...P.missions.map((kind, i) => {
+        const K = MISSION_KINDS[kind], done = this.missionDone(P, i), open = this.missionOpen(P, i);
+        let info = K.desc;
+        if (kind === 'strike') {
+          const boss = P.order === 'sv' ? CAPITALS[P.capital || this.systemDef().capital].name : BOSSES[P.boss || this.systemDef().boss].name;
+          info = (open ? 'BOSS: ' : 'FLY THE OTHERS FIRST. BOSS: ') + boss + '.';
+        }
+        const locked = () => { Sound.sfx('denied'); this.toast('FLY THE OTHER MISSIONS FIRST'); };
+        return { label: K.name, right: done ? 'CLEAR' : open ? 'NEW' : 'LOCKED', col: done ? C.lime : open ? C.gold : C.gray,
+          act: () => (open ? this.startMission(i) : locked()), info: info + (done ? ' HALF PAY.' : '') };
       }), back];
     }
     if (U.page === 'shop') {
-      const rows = UPGRADES.map(u => {
-        const max = this.statOf(u.key) >= STAT_CAP, price = upgradePrice(c.up[u.key]);
+      const rows = P.market.map(key => {
+        const u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n);
+        const max = u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max;
+        const now = u.stat ? ' NOW ' + this.statOf(key) + '.' : ' OWNED ' + n + '/' + u.max + '.';
         return { label: u.label, right: max ? 'MAX' : price + ' CR', col: max ? C.gray : c.money >= price ? C.white : C.gray,
-          info: u.desc + ' NOW ' + this.statOf(u.key) + '.', act: () => this.buyUpgrade(u.key) };
+          info: u.desc + now, act: () => this.buyUpgrade(key) };
       });
-      HULLS.forEach((h, i) => {
-        const owned = c.hulls.includes(i), sold = SECTORS.some(q => q.id === S.id && q.hull === i);
-        if (!owned && !sold) return;
-        const mods = ['WPN', 'SHD', 'SPC'].map((t, k) => {
-          const v = h[['weapons', 'shields', 'special'][k]];
-          return v ? t + (v > 0 ? '+' : '') + v : '';
-        }).filter(Boolean).join(' ');
+      const hulls = [...new Set([...P.hulls, ...c.hulls])];   // this shipyard's hulls, plus the ones you own
+      hulls.forEach(i => {
+        const h = HULLS[i], owned = c.hulls.includes(i);
         rows.push({ label: h.name, right: i === c.hull ? 'IN USE' : owned ? 'EQUIP' : h.price + ' CR',
           col: i === c.hull ? C.lime : owned || c.money >= h.price ? C.aqua : C.gray,
-          info: (mods || 'NO STAT CHANGES') + ' SPEED ' + Math.round(h.speed * 100) + '%',
-          act: () => this.buyHull(i) });
+          info: this.hullInfo(h), act: () => this.buyHull(i) });
       });
+      return [...rows, back];
+    }
+    if (U.page === 'skills') {
+      const rows = [
+        ...c.passives.map(id => { const s = PASSIVE_BY_ID[id]; return { label: s.name, right: 'PASSIVE', col: s.col, info: s.desc.join(' ') }; }),
+        ...c.learned.map(i => { const s = SPECIALS[i]; return { label: s.name, right: 'SPECIAL', col: s.color, info: s.desc.join(' ') }; }),
+      ];
+      if (!rows.length) rows.push({ label: 'NONE YET', info: 'LEVEL UP TO LEARN SKILLS.' });
       return [...rows, back];
     }
     return [back];   // status
   },
+
+  // A hull's strengths and guns, for the two-line info box.
+  hullInfo(h) {
+    const best = h.form.indexOf(Math.max(...h.form)), even = h.form.every(v => v === h.form[0]);
+    return (even ? 'ALL-ROUNDER' : 'BEST AS ' + FORMS[best].name) + '. SPEED ' + Math.round(h.speed * 100) + '%.' +
+      ' GUNS: ' + h.guns.map(g => GUNS[g].short).join('/');
+  },
+
+  marketShort(P) { return P.market.map(k => UPGRADES[k].short).join(' '); },
 
   basePage(page) {
     this.baseUI = { page, sel: 0 };
@@ -70,19 +99,33 @@ Object.assign(Game, {
     const U = this.baseUI, items = this.baseItems(), n = items.length;
     if (Input.just('up')) { U.sel = (U.sel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { U.sel = (U.sel + 1) % n; Sound.sfx('move'); }
+    U.sel = Math.min(U.sel, n - 1);
     if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage('main'); return; }
-    if (this.stateT > 10 && (Input.just('fire') || Input.just('start'))) {
-      Sound.sfx('select');
-      items[U.sel].act();
-    }
+    if (this.stateT > 10 && (Input.just('fire') || Input.just('start'))) this.baseAct();
+  },
+
+  baseAct() {
+    const it = this.baseItems()[this.baseUI.sel];
+    if (!it.act) return;
+    Sound.sfx('select');
+    it.act();
+  },
+
+  // Tap a row to pick it; tap the picked row again to use it. x, y are in the menu panel.
+  tapBase(x, y) {
+    const U = this.baseUI, items = this.baseItems();
+    if (U.page === 'status') { this.basePage('main'); return; }
+    const top = this.listTop(items.length, U.sel, MENU_ROWS), i = top + Math.floor((y - 139) / 10);
+    if (y < 139 || i >= Math.min(items.length, top + MENU_ROWS)) return;
+    if (i === U.sel) this.baseAct(); else { U.sel = i; Sound.sfx('move'); }
   },
 
   buyUpgrade(key) {
-    const c = this.camp, price = upgradePrice(c.up[key]);
-    if (this.statOf(key) >= STAT_CAP) { Sound.sfx('denied'); return; }
+    const c = this.camp, u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n);
+    if (u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max) { Sound.sfx('denied'); return; }
     if (c.money < price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
     c.money -= price;
-    c.up[key]++;
+    c.up[key] = n + 1;
     Sound.sfx('cash');
     this.saveCampaign();
   },
@@ -106,15 +149,15 @@ Object.assign(Game, {
   // angle) and a shuttle running between the station's docking bay and the carrier's hangar.
   // oy shifts the scene down (behind briefings).
   drawBaseScene(ctx, oy = 0) {
-    const S = this.sectorDef(), t = this.t;
+    const S = this.systemDef(), t = this.t;
     ctx.save();
     ctx.translate(0, oy);
-    SNES.add(ctx, () => {                              // the sector's star: layered glow and a hot core
+    SNES.add(ctx, () => {                              // the system's star: layered glow and a hot core
       NES.draw(ctx, SNES.glow(28, SNES.mix(S.col, '#000000', 0.6)), W - 40, 88);
       NES.draw(ctx, SNES.glow(14, S.col), W - 40, 88);
     });
     NES.draw(ctx, SNES.sphere(6, SNES.mix(S.col, '#ffffff', 0.6)), W - 40, 88);
-    const P = S.planets[0];                            // one of the sector's planets, turning slowly
+    const P = this.planetHere();                       // the planet below the station, turning slowly
     SNES.add(ctx, () => NES.draw(ctx, SNES.glow(36, SNES.mix(this.scenery(P).haze, '#000000', 0.55)), 32, 86));
     SNES.globe(ctx, this.scenery(P).floor, 32, 86, 30, t * 0.004);
     const E = this.carrierEpic(), ex = 196, ey = 6;    // the carrier, holding still
@@ -250,32 +293,36 @@ Object.assign(Game, {
     return S.bake({ shadow: 2 });
   },
 
+
   drawBase(ctx) {
-    const S = this.sectorDef(), U = this.baseUI, c = this.camp, items = this.baseItems();
+    const P = this.planetHere(), S = this.systemDef(), c = this.camp;
     this.drawBaseScene(ctx);
-    NES.text(ctx, S.base, 6, 4, C.white);
+    NES.text(ctx, P.name + ' ORBIT', 6, 4, C.white);
     NES.text(ctx, S.name + (c.loop ? ' ECHO ' + c.loop : ''), 6, 13, S.col);
+    NES.text(ctx, this.galaxyDef().name, 6, 22, C.gray);
     this.panel(ctx, () => this.drawBaseMenu(ctx));
   },
 
   drawBaseMenu(ctx) {
-    const S = this.sectorDef(), U = this.baseUI, c = this.camp, items = this.baseItems();
+    const S = this.systemDef(), U = this.baseUI, c = this.camp, items = this.baseItems();
     NES.box(ctx, 4, 112, 248, 124, C.black, S.col);
     NES.text(ctx, c.money + ' CR', 10, 117, C.gold);
     NES.text(ctx, 'LV ' + c.level, 128, 117, C.lime, { align: 'center' });
     NES.text(ctx, PILOTS[c.pilot].name, 246, 117, PILOTS[c.pilot].col, { align: 'right' });
     ctx.fillStyle = SNES.mix(S.col, C.black, 0.5); ctx.fillRect(7, 126, 242, 1);
     if (U.page === 'status') { this.drawStatus(ctx); return; }
-    const title = { main: 'STARBASE', missions: 'MISSIONS', shop: 'SHOP' }[U.page];
+    const title = { main: S.base, missions: 'MISSIONS', shop: 'MARKET', skills: 'SKILLS' }[U.page];
     NES.text(ctx, title, 128, 130, C.gold, { align: 'center' });
-    const step = items.length > 7 ? 9 : 11;
-    items.forEach((it, i) => {
-      const y = 142 + i * step, sel = i === U.sel;
-      if (sel) NES.hilite(ctx, 10, y - 2, 236, step - 1);
+    const top = this.listTop(items.length, U.sel, MENU_ROWS);
+    items.slice(top, top + MENU_ROWS).forEach((it, j) => {
+      const i = top + j, y = 141 + j * 10, sel = i === U.sel;
+      if (sel) NES.hilite(ctx, 10, y - 2, 236, 10);
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 12, y, C.gold);
       NES.text(ctx, it.label, 22, y, sel ? C.white : it.col === C.gray ? C.gray : C.lgray);
       if (it.right) NES.text(ctx, it.right, 242, y, it.col || C.white, { align: 'right' });
     });
+    if (top > 0) NES.text(ctx, '...', 230, 130, C.gray);
+    if (top + MENU_ROWS < items.length) NES.text(ctx, '...', 230, 206, C.gray);
     const info = items[U.sel].info;
     if (info) NES.wrap(info, 30).slice(0, 2).forEach((l, i) => NES.text(ctx, l, 10, 214 + i * 9, C.aqua));
   },
@@ -291,58 +338,15 @@ Object.assign(Game, {
     stats.forEach(([label, key, col], k) => {
       const y = 164 + k * 10, v = this.statOf(key);
       NES.text(ctx, label, 74, y, C.white);
-      this.drawStatPips(ctx, 132, y, v, STAT_CAP, col);
-      NES.text(ctx, String(v), 232, y, C.white);
+      this.drawStatPips(ctx, 132, y, v / 2, STAT_CAP / 2, col);   // one pip per two points
+      NES.text(ctx, String(v), 242, y, C.white, { align: 'right' });
     });
-    NES.text(ctx, 'SPECIALS', 10, 199, C.gold);
-    if (!c.learned.length) NES.text(ctx, 'NONE YET. LEARN AT LV 2.', 80, 199, C.gray);
-    c.learned.forEach((idx, i) => {
-      NES.draw(ctx, SPR.specialIcons[idx], 84 + i * 50, 202);
-      NES.text(ctx, SPECIALS[idx].short, 92 + i * 50, 199, SPECIALS[idx].color);
+    const H = this.hullDef();
+    FORMS.forEach((F, f) => {
+      NES.text(ctx, F.short, 10 + f * 80, 199, H.form[f] > 1 ? C.lime : H.form[f] < 1 ? C.orange : C.white);
+      NES.text(ctx, GUNS[H.guns[f]].short, 36 + f * 80, 199, C.aqua);
     });
+    NES.text(ctx, c.learned.length + ' SPECIALS  ' + c.passives.length + ' PASSIVES', 10, 211, C.gold);
     if ((this.t >> 4) & 1) NES.text(ctx, 'B: BACK', 246, 224, C.gray, { align: 'right' });
-  },
-
-  // ---- Learn a special (after reaching level 2, 5 or 8) ----------------------------------
-  openLearn() {
-    this.setState('learn');
-    this.learnSel = 0;
-    Sound.sfx('levelup');
-  },
-
-  learnable() { return SPECIALS.map((s, i) => i).filter(i => !this.camp.learned.includes(i)); },
-
-  updateLearn() {
-    this.stateT++;
-    const L = this.learnable(), n = L.length;
-    if (Input.just('up')) { this.learnSel = (this.learnSel + n - 1) % n; Sound.sfx('move'); }
-    if (Input.just('down')) { this.learnSel = (this.learnSel + 1) % n; Sound.sfx('move'); }
-    if (this.stateT < 20 || !(Input.just('fire') || Input.just('start'))) return;
-    const c = this.camp;
-    c.learned.push(L[this.learnSel]);
-    c.learnQ--;
-    this.lastSpecial = L[this.learnSel];
-    Sound.sfx('restore');
-    this.toast(SPECIALS[L[this.learnSel]].name + ' LEARNED');
-    if (c.learnQ > 0 && this.learnable().length) this.openLearn();
-    else { c.learnQ = 0; this.leaveDebrief(); }
-  },
-
-  drawLearn(ctx) {
-    const center = { align: 'center' }, L = this.learnable();
-    NES.box(ctx, 2, 2, 252, 236, C.black, C.lime);
-    NES.text(ctx, 'LEVEL ' + this.camp.level + '!', 128, 20, C.lime, { align: 'center', scale: 2, shadow: C.dgreen });
-    NES.text(ctx, 'LEARN A NEW SPECIAL ATTACK', 128, 44, C.white, center);
-    NES.text(ctx, 'YOU KEEP IT FOR GOOD.', 128, 54, C.lgray, center);
-    L.forEach((idx, i) => {
-      const s = SPECIALS[idx], y = 74 + i * 16, sel = i === this.learnSel;
-      if (sel) NES.hilite(ctx, 22, y - 4, 212, 15);
-      if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 24, y, C.gold);
-      NES.draw(ctx, SPR.specialIcons[idx], 40, y + 3);
-      NES.text(ctx, s.name, 52, y, sel ? s.color : C.gray);
-    });
-    const s = SPECIALS[L[this.learnSel]];
-    if (s) s.desc.forEach((l, i) => NES.text(ctx, l, 128, 180 + i * 10, C.aqua, center));
-    if ((this.t >> 4) & 1) NES.text(ctx, 'SPACE / A: LEARN', 128, 222, C.white, center);
   },
 });

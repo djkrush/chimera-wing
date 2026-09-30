@@ -1,14 +1,16 @@
 'use strict';
-// Side-scrolling assaults (the second leg of every planet mission), in the style of U.N. Squadron.
-// The ship faces right and flies freely. Enemy squads arrive on a timed script (with extra
-// patterns per sector). An assault ends at the sector's boss base (bosses.js); a side approach
-// just ends when its script has played out.
+// Side-scrolling stages, in the style of U.N. Squadron. The ship faces right and flies freely.
+// Enemy squads arrive on a timed script (with extra patterns per system). A stronghold's assault ends
+// at the system's boss base (bosses.js); other side legs just end when their script has played out.
+// A GROUND RAID (this.raid) swaps much of the air traffic for tank columns and missile sites.
 
 Object.assign(Game, {
   initSide() {
     this.scroll = 0;
     const s = this.stage;
-    const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam', ...this.sectorSideKinds()];
+    const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam', ...this.systemSideKinds()];
+    if (s >= 4) kinds.push('tankCol');
+    if (this.raid) kinds.push('tankCol', 'tankCol', 'tankCol', 'sam', 'sam', 'sam');
     const events = [{ t: 700, kind: 'methyl' }, { t: 1700, kind: 'methyl' }];
     // ~45-55 seconds before the boss; a side approach (no boss) is a bit shorter
     const dur = (this.legBoss ? 2400 : 1900) + Math.min(s, 12) * 60;
@@ -74,6 +76,11 @@ Object.assign(Game, {
         for (let i = 0; i < n; i++) this.spawnSideEnemy('sam', 'ground', W + 14 + i * 40, SIDE_GROUND - 8);
         break;
       }
+      case 'tankCol': {   // a column of tanks rolling along the ground, guns raised
+        const n = randi(2, 3 + (this.raid ? 1 : 0));
+        for (let i = 0; i < n; i++) this.spawnSideEnemy('tank', 'tank', W + 14 + i * 34, SIDE_GROUND - 6);
+        break;
+      }
       case 'methyl':
         this.spawnSideEnemy('methyl', 'methyl', W + 12, randi(40, 170));
         break;
@@ -90,8 +97,9 @@ Object.assign(Game, {
 
   spawnSideEnemy(type, beh, x, y, extra = {}) {
     const s = this.stage;
-    const hp = { fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2, splitter: 2, drone: 1, armored: 6 + Math.floor(s / 5) }[type];
-    const acetyl = type !== 'sam' && s >= 2 && Math.random() < this.acetylChance();
+    const hp = Math.round({ fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2, splitter: 2, drone: 1,
+      armored: 6 + Math.floor(s / 5), tank: 3 + Math.floor(s / 6) }[type] * this.hpMul());
+    const acetyl = type !== 'sam' && type !== 'tank' && s >= 2 && Math.random() < this.acetylChance();
     const base = beh === 'rear' ? 2.8 : Math.min(1.8 + s * 0.05, 3);
     const e = {
       type, hp, maxHp: hp, x, y, vx: 0, vy: 0, state: 'side', beh, st: 0,
@@ -101,7 +109,7 @@ Object.assign(Game, {
       fireAt: s >= 2 && Math.random() < 0.5 ? randi(40, 110) : 0,
       ...extra,
     };
-    if (type === 'sam') e.face = 0;
+    if (type === 'sam' || type === 'tank') e.face = 0;
     this.enemies.push(e);
     return e;
   },
@@ -141,6 +149,12 @@ Object.assign(Game, {
         e.vx = this.scrollLock ? 0 : -1.5;   // moves with the ground
         e.vy = 0;
         if (e.x < W - 8 && e.x > 30 && e.st % Math.max(70, 110 - this.stage * 4) === 0) this.enemyFire(e);
+        break;
+      case 'tank':   // drives slowly right against the scroll, so it crawls across the screen
+        e.vx = (this.scrollLock ? 0 : -1.5) + 0.5;
+        e.vy = 0;
+        if (e.x < W - 8 && e.x > 20 && e.st % Math.max(60, 100 - this.stage * 3) === 30) this.enemyFire(e);
+        if (this.scrollLock && e.x > W + 20) e.dead = true;
         break;
       case 'methyl':
         this.updateSideMethyl(e);

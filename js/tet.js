@@ -7,7 +7,8 @@ Object.assign(Game, {
   dropTet(e) {
     const p = this.player;
     const need = p.silenced.some(s => s);
-    if (Math.random() >= (need ? 0.6 : 0.2)) return;
+    const more = (this.hasPassive('magnet') ? 1.5 : 1) * (1 + 0.25 * this.upLevel('scanner'));   // TET MAGNET, TET SCANNER
+    if (Math.random() >= (need ? 0.6 : 0.2) * more) return;
     const [vx, vy] = this.orient(0, 0.7);
     this.pickups.push({ x: e.x, y: e.y, vx, vy, t: 0 });
   },
@@ -18,6 +19,8 @@ Object.assign(Game, {
       q.t++;
       q.x += q.vx;
       q.y += q.vy;
+      const d = Math.hypot(p.x - q.x, p.y - q.y);
+      if (this.hasPassive('magnet') && p.alive && d < 90 && d > 1) { q.x += (p.x - q.x) / d * 2.5; q.y += (p.y - q.y) / d * 2.5; }
       if (q.x < -8 || q.x > W + 8 || q.y > H + 8) q.dead = true;
       else if (p.alive && Math.abs(q.x - p.x) < 13 && Math.abs(q.y - p.y) < 13) { q.dead = true; this.collectTet(q); }
     }

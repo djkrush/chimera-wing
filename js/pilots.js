@@ -13,19 +13,27 @@ const PILOTS = [
     perk: 'DOUBLE SPECIAL AMMO.' },
 ];
 const STAT_MAX = 8;
-const STAT_CAP = 12;   // pilot + hull + starbase upgrades never go past this
+const STAT_CAP = 16;   // pilot + hull + starbase upgrades + level-up training never go past this
 
 // Ship hulls. The pilot flies one hull at a time. Its modifiers add to the pilot's stats, and speed
-// scales every form. Starbases sell the others (see `hull` in SECTORS, campaign.js).
+// scales every form. Each hull has its own gun for each form (weapons.js: GUNS) and its own strengths:
+// form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID. Planet markets sell them (P.hulls in
+// world.js). Keep the order: saves store the index, and HULL_ART (sprites.js) follows it.
 const HULLS = [
   { name: 'VX-3 CHIMERA', weapons: 0, shields: 0, special: 0, speed: 1, price: 0,
-    desc: 'THE ORIGINAL. BALANCED.' },
-  { name: 'VX-5 MANTICORE', weapons: 2, shields: -1, special: 0, speed: 1.05, price: 4000,
-    desc: 'FORWARD-SWEPT STRIKER.' },
-  { name: 'VX-6 GRIFFIN', weapons: 0, shields: 3, special: -1, speed: 0.9, price: 4000,
-    desc: 'HEAVY ARMOR, THREE ENGINES.' },
+    guns: ['twin', 'spread', 'homing'], form: [1, 1, 1], desc: 'THE ORIGINAL. BALANCED.' },
+  { name: 'VX-5 MANTICORE', weapons: 1, shields: -1, special: 0, speed: 1.1, price: 4000,
+    guns: ['vulcan', 'spread', 'homing'], form: [1.4, 1, 0.8], desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
+  { name: 'VX-6 GRIFFIN', weapons: 0, shields: 3, special: -1, speed: 0.9, price: 5000,
+    guns: ['laser', 'bomb', 'vulcan'], form: [0.9, 1, 1.4], desc: 'HEAVY ARMOR. BEST AS A BATTLOID.' },
   { name: 'VX-9 HYDRA', weapons: 1, shields: 1, special: 1, speed: 1.1, price: 9000,
-    desc: 'BEST AT EVERYTHING.' },
+    guns: ['wave', 'ripple', 'homing'], form: [1.1, 1.1, 1.1], desc: 'GOOD AT EVERYTHING.' },
+  { name: 'VX-7 WYVERN', weapons: 0, shields: 1, special: 1, speed: 1, price: 12000,
+    guns: ['twin', 'ripple', 'bomb'], form: [0.9, 1.4, 1], desc: 'BEST AS A GUARDIAN.' },
+  { name: 'VX-8 BASILISK', weapons: 3, shields: -2, special: 0, speed: 1.15, price: 18000,
+    guns: ['laser', 'wave', 'homing'], form: [1.2, 1.2, 1], desc: 'GLASS CANNON. HITS HARD, BREAKS EASY.' },
+  { name: 'VX-12 PHOENIX', weapons: 2, shields: 2, special: 2, speed: 1.15, price: 30000,
+    guns: ['laser', 'ripple', 'homing'], form: [1.3, 1.3, 1.3], desc: 'THE LAST WORD IN CHIMERAS.' },
 ];
 
 Object.assign(Game, {
@@ -33,13 +41,22 @@ Object.assign(Game, {
 
   pilotDef() { return PILOTS[this.pilot]; },
   hullDef() { return HULLS[this.camp ? this.camp.hull : 0]; },
-  // Effective stat: pilot + hull + upgrades bought at starbases.
+  // Effective stat: pilot + hull + upgrades bought at starbases + points trained at level-ups.
   statOf(key) {
-    const up = this.camp ? this.camp.up[key] : 0;
-    return clamp(this.pilotDef()[key] + this.hullDef()[key] + up, 1, STAT_CAP);
+    const c = this.camp, extra = c ? (c.up[key] || 0) + (c.train[key] || 0) : 0;
+    return clamp(this.pilotDef()[key] + this.hullDef()[key] + extra, 1, STAT_CAP);
   },
-  gunPower() { return this.statOf('weapons') / 4; },
-  speedMul() { return this.hullDef().speed; },
+  upLevel(key) { return this.camp ? this.camp.up[key] || 0 : 0; },
+  hasPassive(id) { return !!this.camp && this.camp.passives.includes(id); },
+  // Shot damage for a form: the weapons stat, the hull's strength in that form and the form's gun upgrade.
+  gunPower(form = this.player.form) {
+    return this.statOf('weapons') / 4 * this.hullDef().form[form] * (1 + 0.2 * this.upLevel(['ftr', 'grd', 'btl'][form]));
+  },
+  speedMul() { return this.hullDef().speed * (1 + 0.05 * this.upLevel('engine')); },
+  maxShields() { return this.statOf('shields') + (this.hasPassive('hull') ? 2 : 0); },
+  specialAmmo() { return this.statOf('special') + (this.hasPassive('ammo') ? 1 : 0); },
+  // Frames the Battloid's armor needs to reboot after soaking a hit.
+  battMax() { return Math.round(600 * (this.hasPassive('armor') ? 0.5 : 1) * (1 - 0.25 * this.upLevel('armor'))); },
 
   openPilotSelect() {
     this.setState('pilot');
@@ -52,16 +69,23 @@ Object.assign(Game, {
     if (Input.just('up') || Input.just('left')) { this.pilotSel = (this.pilotSel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down') || Input.just('right')) { this.pilotSel = (this.pilotSel + 1) % n; Sound.sfx('move'); }
     if (Input.just('back') || Input.just('special')) { Sound.sfx('move'); this.setState('title'); return; }
-    if (this.stateT > 12 && (Input.just('fire') || Input.just('start'))) {
-      this.pilot = this.pilotSel;
-      Sound.sfx('select');
-      this.newCampaign(this.pilot);
-    }
+    if (this.stateT > 12 && (Input.just('fire') || Input.just('start'))) this.pilotPick();
+  },
+
+  pilotPick() {
+    this.pilot = this.pilotSel;
+    Sound.sfx('select');
+    this.newCampaign(this.pilot);
   },
 
   // Shields soak hits. Returns false when there were none left and the ship went down.
   takeHit() {
     const p = this.player;
+    if (this.shields <= 0 && this.hasPassive('second') && !this.secondUsed) {   // SECOND WIND: once per leg
+      this.secondUsed = true;
+      this.shields = 1;
+      this.popup(p.x, p.y - 26, 'SECOND WIND', C.gold);
+    }
     if (this.shields <= 0) { this.killPlayer(); return false; }
     this.shields--;
     p.invuln = 120;

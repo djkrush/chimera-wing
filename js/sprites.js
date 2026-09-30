@@ -296,6 +296,13 @@ const SPR = (() => {
       pal: { W: C.cream, G: C.olive, B: C.aqua, R: C.green, K: C.gray } },
     { top: [HYDRA_FIGHTER, GUARDIAN, BATTLOID], side: [HYDRA_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
       pal: { W: C.ice, G: C.teal, B: C.gold, R: C.cyan, K: C.teal } },
+    // The later hulls share airframes with the first four, in their own colors (see FUTURE.md).
+    { top: [GRIFFIN_FIGHTER, GUARDIAN, BATTLOID], side: [GRIFFIN_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.mint, G: C.green, B: C.gold, R: C.dgreen, K: C.teal } },
+    { top: [MANTICORE_FIGHTER, GUARDIAN, BATTLOID], side: [MANTICORE_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.lavender, G: C.purple, B: C.pink, R: C.magenta, K: C.violet } },
+    { top: [HYDRA_FIGHTER, GUARDIAN, BATTLOID], side: [HYDRA_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.red, G: C.maroon, B: C.gold, R: C.yellow, K: C.darkred } },
   ];
   // How a form looks once Dr. Voss has methylated (silenced) it.
   const silencedMap = { W: C.pink, G: C.purple, B: C.lime, R: C.magenta, K: C.purple };
@@ -388,6 +395,34 @@ const SPR = (() => {
     'KKKKKKKKKKKKKKKKKKKKKKKK',
     'KLKKLKKLKKLKKLKKLKKLKKLK',
     '.KKKKKKKKKKKKKKKKKKKKKK.',
+  ];
+
+  // Tank for side-scrolling ground raids: a tracked hull with its gun raised toward the sky, facing
+  // left (side profile), plus a top-down view for completeness.
+  const TANK_SIDE = [
+    '.....R................',
+    '......L...............',
+    '.......L..............',
+    '........L.............',
+    '.........LDDDD........',
+    '.......DDDDDDDDD......',
+    '....DDDLLLLLLLLDDD....',
+    '..DDDDDDDDDDDDDDDDDDD.',
+    '.DDLLLLLLLLLLLLLLLLDDD',
+    'KKKKKKKKKKKKKKKKKKKKKK',
+    'KLKKLKKLKKLKKLKKLKKLKK',
+    '.KKKKKKKKKKKKKKKKKKKK.',
+  ];
+  const TANK = [
+    '....RR....',
+    '....LL....',
+    '....LL....',
+    '.KKDLLDKK.',
+    '.KDDLLDDK.',
+    '.KDLLLLDK.',
+    '.KDLLLLDK.',
+    '.KDDDDDDK.',
+    '.KKDDDDKK.',
   ];
 
   // Splitter (Alpha Centauri): breaks in two when shot down.
@@ -529,6 +564,7 @@ const SPR = (() => {
     splitter: { rows: SPLITTER, side: SPLITTER_SIDE, normal: { D: C.cyan, L: C.white, R: C.red, C: C.gold } },
     drone: { rows: DRONE, side: DRONE_SIDE, normal: { D: C.olive, L: C.yellow, C: C.orange, R: C.red } },
     armored: { rows: ARMORED, side: ARMORED_SIDE, normal: { D: C.rust, L: C.cream, K: C.gray, C: C.sky, R: C.red } },
+    tank: { rows: TANK, side: TANK_SIDE, normal: { D: C.olive, L: C.yellow, K: C.gray, R: C.red } },
   };
   // Two frames each: engine exhaust alternates orange/yellow.
   const frames = (rows, pal) => [B(rows, { ...pal, E: C.orange }), B(rows, { ...pal, E: C.yellow })];
@@ -554,6 +590,12 @@ const SPR = (() => {
     { W: C.white, B: C.sky, R: C.red });
   // WINGMAN special's drone, top-down and side profile
   const wingPal = { W: C.sky, B: C.white, R: C.red, G: C.blue, K: C.navy };
+  // DRONE ESCORT passive's drone: the same airframe in green
+  const escortPal = { W: C.lime, B: C.white, R: C.gold, G: C.green, K: C.dgreen };
+  const escort = B(SNES.mirror(['.......W', '......WW', '......WB', '.....WWB', '....GWWW', '..GGWWWR',
+    'GGWWWWWW', 'RRWWWWWW', '...GWWWW', '....GWWG', '....RR.K']), escortPal);
+  const escortSide = B(['.GG..............', '.GWG.......BB....', 'KKWWWWWWWWWBBWW..', 'KKRRRRRRRRWWWWWWW',
+    '.KWWWWWWWWWWWWW..', '...GGGGGGGGG.....'], escortPal);
   const wing = B(SNES.mirror(['.......W', '......WW', '......WB', '.....WWB', '....GWWW', '..GGWWWR',
     'GGWWWWWW', 'RRWWWWWW', '...GWWWW', '....GWWG', '....RR.K']), wingPal);
   const wingSide = B(['.GG..............', '.GWG.......BB....', 'KKWWWWWWWWWBBWW..', 'KKRRRRRRRRWWWWWWW',
@@ -577,11 +619,18 @@ const SPR = (() => {
     B(['.CCC.', 'C...C', 'C.W.C', 'C...C', '.CCC.'], { C: C.lime, W: C.aqua }),
     B(['.LLL.', 'L.W.L', 'LWWWL', 'L.W.L', '.LLL.'], { L: C.lime, W: C.white }),
     B(['..W..', '.WBW.', 'WWWWW', '..W..', '.W.W.'], { W: C.sky, B: C.white }),
+    B(['.W.W.', 'WWWWW', '.W.W.', 'WWWWW', 'R.R.R'], { W: C.lgray, R: C.orange }),
+    B(['.CCC.', 'C.W.C', 'C.WWC', 'C...C', '.CCC.'], { C: C.periwinkle, W: C.white }),
+    B(['..WW.', '.WW..', 'WWWWW', '..WW.', '.WW..'], { W: C.ice }),
+    B(['W.W.W', '.....', 'W.R.W', '.....', 'W.W.W'], { W: C.white, R: C.sky }),
+    B(['.VVV.', 'V...V', 'V.K.V', 'V...V', '.VVV.'], { V: C.violet, K: C.purple }),
+    B(['.OOO.', 'OYWYO', 'OWWWO', 'OYWYO', '.OOO.'], { O: C.orange, Y: C.yellow, W: C.white }),
+    B(['..Y..', '.YWY.', 'YWWWY', '.YWY.', '..Y..'], { Y: C.gold, W: C.white }),
   ];
 
   return {
     hulls,
-    enemy, ebullet, missile, life, wing, wingSide, shuttle, shieldPip, shieldPipOff, tet, specialIcons,
+    enemy, ebullet, missile, life, wing, wingSide, escort, escortSide, shuttle, shieldPip, shieldPipOff, tet, specialIcons,
     // portraits come from the portrait painter (faces.js), baked on first use
     get portrait() { return FACES.voss; }, get mira() { return FACES.mira; }, get pilots() { return FACES.pilots; },
   };

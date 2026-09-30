@@ -36,7 +36,7 @@ const rgbOf = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 
 Object.assign(Game, {
   // Scenery for planet P (default: the current mission's planet, or Earth on the title screen).
-  scenery(P = this.mission ? this.mission.planet : SECTORS[0].planets[0]) {
+  scenery(P = this.mission ? this.mission.planet : PLANET_BY_ID.earth) {
     this.sceneCache = this.sceneCache || {};
     return this.sceneCache[P.id] || (this.sceneCache[P.id] = this.buildScenery(P));
   },

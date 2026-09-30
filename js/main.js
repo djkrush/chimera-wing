@@ -6,10 +6,11 @@
   const ctx = canvas.getContext('2d', { alpha: false });
   ctx.imageSmoothingEnabled = false;
 
-  // Scale the 424x240 screen by whole numbers for crisp pixels.
+  // Scale the 424x240 screen by whole numbers for crisp pixels. On a phone, fill the screen instead:
+  // every pixel counts there, and the touch buttons sit over the edges.
   function resize() {
     const fit = Math.min(window.innerWidth / NES.W, window.innerHeight / NES.H);
-    const s = fit >= 1 ? Math.floor(fit) : fit;
+    const s = fit >= 1 && !Touch.on ? Math.floor(fit) : fit;
     canvas.style.width = NES.W * s + 'px';
     canvas.style.height = NES.H * s + 'px';
   }
@@ -17,6 +18,8 @@
   resize();
 
   for (const ev of ['keydown', 'mousedown', 'touchstart']) window.addEventListener(ev, () => Sound.unlock());
+  // Mouse clicks pick things on the maps and menus, like taps (touch.js handles real touches).
+  canvas.addEventListener('click', e => { if (!Touch.on) Touch.tapAt(e.clientX, e.clientY); });
   window.addEventListener('keydown', e => {
     if (e.code === 'KeyM') {
       Sound.toggleMute();
@@ -33,7 +36,7 @@
   Game.init();
   // Dev shortcut: index.html?stage=N jumps into a mission leg (see testLeg in campaign.js).
   const q = new URLSearchParams(location.search);
-  if (q.has('stage')) Game.testLeg(Math.max(1, parseInt(q.get('stage'), 10) || 1));
+  if (q.has('stage')) Game.testLeg(Math.max(1, parseInt(q.get('stage'), 10) || 1), q);
 
   const STEP = 1000 / 60;
   let last = performance.now(), acc = 0;

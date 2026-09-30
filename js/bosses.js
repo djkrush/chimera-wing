@@ -2,7 +2,7 @@
 // Side-mission bosses: grounded warships. At the end of an assault a battleship, Star Destroyer or
 // drone carrier sits on its landing legs, bow toward you, and the scroll stops when it arrives. To win,
 // destroy every target on it: gun turrets, missile launchers, fighter hangars, radar masts and reactor
-// cores. Each sector's ship adds a twist through its shield rule, and some rebuild a turret. Vertical
+// cores. Each system's ship adds a twist through its shield rule, and some rebuild a turret. Vertical
 // boss fights are capital-ship flyovers (capital.js).
 //
 // The hull is painted once by the shipyard (shipyard.js), BASE_W x BASE_H with its bottom row on the
@@ -42,6 +42,25 @@ const BOSSES = {
   twins: { name: 'IMPRINT KEEP', style: 'destroyer', layout: 'std', shield: 'swapTurret', launch: 'fighter', hp: 0.65,
     pal: { hull: '#4c64a8', deck: '#2c3c70', metal: '#98a8d8', trim: '#80d0f8' },
     intro: 'ONLY ONE PARENT GETS TO SPEAK AT A TIME. GUESS WHICH.' },
+  // ---- Magellanic Cloud and Andromeda (tougher through hpMul in campaign.js) ----
+  hdac: { name: 'HDAC FORTRESS', style: 'battleship', layout: 'std', shield: 'turrets', launch: 'fighter', hp: 0.7,
+    pal: { hull: '#a08038', deck: '#6c5424', metal: '#d8c080', trim: '#f0e0a0' },
+    intro: 'MY FORTRESS STRIPS ACETYL MARKS. CLOSED CHROMATIN, CLOSED SKIES.' },
+  dnmt3: { name: 'DNMT3 FOUNDRY', style: 'destroyer', layout: 'std', shield: 'turrets', launch: 'splitter', hp: 0.7,
+    pal: { hull: '#3c7c9c', deck: '#24506c', metal: '#88c0d8', trim: '#f8f0c0' },
+    regrow: true, intro: 'DNMT1 ONLY COPIES. MY FOUNDRY WRITES NEW MARKS FROM SCRATCH.' },
+  remodeler: { name: 'THE REMODELER', style: 'carrier', layout: 'hive', shield: 'launch', launch: 'drone', hp: 0.7,
+    pal: { hull: '#4c8c4c', deck: '#2c5c34', metal: '#98c890', trim: '#d8f080' },
+    intro: 'MY REMODELER SLIDES ITS ARMOR LIKE NUCLEOSOMES. NOTHING STAYS OPEN.' },
+  ctcf: { name: 'CTCF BARRIER', style: 'battleship', layout: 'twinCore', shield: 'swapCore', launch: 'fighter', hp: 0.75,
+    pal: { hull: '#5c6cb0', deck: '#384478', metal: '#a8b4e0', trim: '#f8d878' },
+    intro: 'CTCF KEEPS ENHANCERS FROM THE WRONG GENES. MINE KEEPS YOU OUT.' },
+  hp1: { name: 'HP1 BASTION', style: 'destroyer', layout: 'std', shield: 'swapTurret', launch: 'splitter', hp: 0.75,
+    pal: { hull: '#7c6c5c', deck: '#4c4038', metal: '#c0b098', trim: '#e84830' },
+    intro: 'HP1 HOLDS HETEROCHROMATIN SHUT. MY BASTION HOLDS THIS WORLD THE SAME WAY.' },
+  sirtuin: { name: 'SIRTUIN SPIRE', style: 'carrier', layout: 'hive', shield: 'launch', launch: 'drone', hp: 0.75,
+    pal: { hull: '#a0506c', deck: '#6c3048', metal: '#e098b0', trim: '#fce0a8' },
+    regrow: true, intro: 'SIRTUINS RUN ON NAD+. MY SPIRE RUNS ON YOUR PATIENCE.' },
   citadel: { name: "VOSS'S CITADEL", style: 'battleship', layout: 'std', shield: 'turrets', launch: 'methyl', hp: 1.1,
     pal: { hull: '#6c58a0', deck: '#403468', metal: '#a898d0', trim: '#e070d0' },
     regrow: true, fast: true, intro: 'MY CITADEL. EVERY WEAPON YOU HAVE SEEN, ALL AT ONCE.' },
@@ -168,7 +187,7 @@ Object.assign(Game, {
 
   makeBoss(id) {
     const def = BOSSES[id], art = this.bossArt(id);
-    const m = def.hp * (1 + Math.max(0, this.stage - 3) * 0.05);   // gentle growth with progress
+    const m = def.hp * (1 + Math.max(0, this.stage - 3) * 0.05) * this.hpMul();   // gentle growth with progress
     const parts = [];
     for (const [kind, n] of Object.entries(BASE_LAYOUTS[def.layout])) {
       art.slots[kind].slice(0, n).forEach(([x, y]) => {

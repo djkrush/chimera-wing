@@ -2,12 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Chimera Wing</title>
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
   body { display: flex; align-items: center; justify-content: center; }
   canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+  /* touch controls (js/touch.js) */
+  body.touchmode { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .touch { position: fixed; inset: 0; z-index: 2; touch-action: none; }
+  .tbtn { position: absolute; display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    font: bold 5vmin monospace; color: rgba(255, 255, 255, 0.8); background: rgba(40, 80, 200, 0.28);
+    border: 2px solid rgba(160, 200, 255, 0.55); box-sizing: border-box; }
+  .tbtn.down { background: rgba(120, 180, 255, 0.55); }
+  .ta { width: 20vmin; height: 20vmin; right: 3vmin; bottom: 6vmin; background: rgba(200, 40, 40, 0.3); border-color: rgba(255, 160, 160, 0.6); }
+  .tb { width: 15vmin; height: 15vmin; right: 25vmin; bottom: 3vmin; }
+  .tx { width: 15vmin; height: 15vmin; right: 7vmin; bottom: 29vmin; }
+  .tstart { width: 18vmin; height: 8vmin; right: 3vmin; top: 3vmin; border-radius: 4vmin; font-size: 3vmin; }
+  .tstick { position: absolute; width: 26vmin; height: 26vmin; margin: -13vmin 0 0 -13vmin; border-radius: 50%;
+    border: 2px solid rgba(160, 200, 255, 0.45); background: rgba(40, 80, 200, 0.15); display: none; }
+  .tstick.show { display: block; }
+  .tknob { position: absolute; left: 50%; top: 50%; width: 11vmin; height: 11vmin; border-radius: 50%;
+    background: rgba(160, 200, 255, 0.5); transform: translate(-50%, -50%); }
+  .trotate { display: none; }
+  @media (orientation: portrait) {
+    body.touchmode .trotate { display: flex; position: fixed; inset: 0; z-index: 3; background: #000; color: #f8b800;
+      font: bold 6vw monospace; align-items: center; justify-content: center; text-align: center; padding: 10vw; }
+  }
 </style>
 </head>
 <body>
@@ -25,12 +47,17 @@
 <script src="js/side.js"></script>
 <script src="js/scenery.js"></script>
 <script src="js/specials.js"></script>
+<script src="js/weapons.js"></script>
 <script src="js/pilots.js"></script>
+<script src="js/skills.js"></script>
+<script src="js/world.js"></script>
 <script src="js/campaign.js"></script>
+<script src="js/starmap.js"></script>
 <script src="js/starbase.js"></script>
 <script src="js/carrier.js"></script>
 <script src="js/story.js"></script>
 <script src="js/tet.js"></script>
+<script src="js/touch.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

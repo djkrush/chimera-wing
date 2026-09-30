@@ -1,8 +1,10 @@
 'use strict';
 // Story campaign: two-voice briefings before each planet mission, story beats that follow your
-// progress, the epilogue, and the Echo campaign (New Game+).
-// Each planet briefing says why we fight there and what the boss is. Voss's personal story is told
-// in STORY_BEATS, keyed to how many sectors you have cleared, so it stays in order on any route.
+// progress, galaxy arrivals, the epilogue, and the Echo campaign (New Game+).
+// A story planet's STRONGHOLD briefing (PLANET_STORY) says why we fight there and what the boss is.
+// Every other mission gets a field briefing: Mira sets up the mission, adds a science note from
+// FIELD_NOTES, and Voss answers. Voss's personal story is told in STORY_BEATS, keyed to how many
+// systems you have secured, so it stays in order on any route.
 // Every science line is meant to be accurate. Check new ones before adding them.
 
 // Speakers. The briefing box and in-game radio take their border color and portrait from here.
@@ -32,7 +34,7 @@ const PLANET_STORY = {
     ['mira', 'I SHOULD TELL YOU. HELENA AND I RAN A LAB TOGETHER. WE STUDIED HOW CELLS CHOOSE WHAT TO BECOME.'],
     ['mira', 'WADDINGTON PICTURED A CELL AS A BALL ROLLING DOWN A HILLSIDE OF VALLEYS. EACH VALLEY IS A FATE: SKIN, NERVE, MUSCLE.'],
     ['mira', 'POLYCOMB PROTEINS KEEP A CELL IN ITS VALLEY BY HOLDING THE WRONG GENES SILENT. SHE USES THEM TO KEEP PILOTS LOYAL.'],
-    ['mira', "HER PILOTS OVER VENUS ARE A CONTROL GROUP. THEY WON'T FIRE. HIT ALL 40, THEN TAKE HER BUNKER."],
+    ['mira', 'HER BUNKER HOLDS VENUS. ITS PILOTS ARE LOYAL TO THE LAST. BREAK THROUGH AND TAKE IT.'],
     ['voss', 'A NEURON NEVER WAKES UP AS A LIVER CELL. MY PILOTS WILL NEVER WAKE UP AT ALL.'],
   ] },
   // ---- ALPHA CENTAURI ----
@@ -46,7 +48,7 @@ const PLANET_STORY = {
     ['mira', 'IDENTICAL TWINS SHARE ONE GENOME, YET THEIR METHYLATION DRIFTS APART AS THEY AGE. LIFE LEAVES MARKS.'],
     ['mira', 'TOLIMAN AND RIGIL KENTAURUS ARE TWIN STARS. HER DNMT1 COPIER KEEPS BOTH FLEETS MARKED THE SAME.'],
     ['mira', 'THE COPIER REBUILDS ONE LOST TURRET, SO KEEP HITTING IT.'],
-    ['voss', 'ANOTHER CONTROL GROUP. HOLD FIRE, PILOTS. LET THE SUBJECT PERFORM.'],
+    ['voss', 'TWINS DRIFT APART. MY FLEETS NEVER WILL.'],
   ] },
   // ---- BARNARD'S STAR ----
   hive: { title: 'HISTONE ACETYLATION', pages: [
@@ -71,13 +73,13 @@ const PLANET_STORY = {
   calico: { title: 'X-INACTIVATION', pages: [
     ['mira', "A TORTOISESHELL CAT'S PATCHES ARE EPIGENETIC. IN EACH FEMALE CELL, ONE X CHROMOSOME IS SHUT DOWN AT RANDOM."],
     ['mira', 'HER X-INACTIVATOR HAS TWO CORES. WHICH ONE SHUTS DOWN IS RANDOM, SO HIT WHICHEVER IS OPEN.'],
-    ['voss', 'CONTROL GROUP THREE. DO TRY TO BE INTERESTING.'],
+    ['voss', 'HEADS OR TAILS, PILOT. DO TRY TO BE INTERESTING.'],
   ] },
   // ---- TAU CETI ----
   taue: { title: 'THE HUNGER WINTER', pages: [
     ['mira', 'IN THE DUTCH HUNGER WINTER OF 1944 TO 1945, A FAMINE STRUCK THE WESTERN NETHERLANDS.'],
     ['mira', 'SIXTY YEARS LATER, PEOPLE EXPOSED TO THAT FAMINE BEFORE BIRTH STILL HAD DIFFERENT METHYLATION ON GENES LIKE IGF2.'],
-    ['mira', 'HER TAU CETI BASE KEEPS HER OLDEST FILES. IT IS THE IMPRINT KEEP: ONLY ONE TURRET IS OPEN AT A TIME.'],
+    ['mira', 'HER BASE ON THIS ICE WORLD KEEPS HER OLDEST FILES. THE IMPRINT KEEP: ONE TURRET OPEN AT A TIME.'],
     ['voss', 'HUNGER IS A TEACHER, PILOT. IT WRITES LESSONS THAT OUTLIVE THE STUDENT.'],
   ] },
   tauf: { title: 'GENOMIC IMPRINTING', pages: [
@@ -101,18 +103,75 @@ const PLANET_STORY = {
   ] },
 };
 
-// Voss's story, told in order no matter which route you fly. Keyed by sectors cleared: each beat
+// Voss's story, told in order no matter which route you fly. Keyed by systems secured: each beat
 // plays once, at the start of the next briefing.
 const STORY_BEATS = {
   2: [
     ['mira', "I FOUND HELENA'S FILES. HER MOTHER WAS IN THE WOMB DURING THE DUTCH HUNGER WINTER, THE FAMINE OF 1944 TO 1945."],
     ['voss', 'FAMINE WROTE ON MY MOTHER BEFORE SHE COULD BREATHE. NOBODY ASKED HER. FROM NOW ON, I DO THE WRITING.'],
   ],
-  3: [
-    ['mira', 'SHE IS PULLING HER FLEET BACK TO EPSILON ERIDANI. WHATEVER SHE IS BUILDING, IT IS THERE.'],
+  6: [
+    ['mira', 'SHE IS PULLING HER FLEET BACK TO ANDROMEDA. WHATEVER SHE IS BUILDING, IT IS THERE.'],
     ['voss', 'YAMANAKA WON A NOBEL PRIZE FOR RESETTING CELLS. I WILL SETTLE FOR RESETTING THE WORLD.'],
   ],
 };
+
+// Mira's briefing on the carrier's first jump into a galaxy.
+const GALAXY_STORY = {
+  lmc: { title: 'THE SECOND FLEET', pages: [
+    ['mira', 'THE LARGE MAGELLANIC CLOUD: A SMALL GALAXY ORBITING OUR OWN, ABOUT 160,000 LIGHT-YEARS FROM EARTH.'],
+    ['mira', 'VOSS BUILT HER SECOND FLEET HERE, ROUND THE TARANTULA NEBULA. HER BASES ARE TOUGHER, AND SO ARE HER PLANES.'],
+    ['voss', 'YOU FOLLOWED ME OUT OF THE GALAXY? HOW TOUCHING. MY WRITERS HAVE BEEN BUSY.'],
+  ] },
+  andromeda: { title: 'THE LAST GALAXY', pages: [
+    ['mira', 'ANDROMEDA. TWO AND A HALF MILLION LIGHT-YEARS FROM HOME, AND HER CITADEL IS AT ITS HEART.'],
+    ['mira', 'THE CORE OF ANDROMEDA HAS A DOUBLE NUCLEUS, P1 AND P2. HER TRANSMITTER IS HIDDEN THERE.'],
+    ['voss', 'ALL THIS WAY, JUST TO BE SILENCED. I DO ADMIRE PERSISTENCE.'],
+  ] },
+};
+
+// Field briefings: Mira's opening line for each mission kind (a function of planet and boss name).
+const MISSION_LINES = {
+  patrol: P => 'PATROL OVER ' + P.name + '. HER SQUADRONS ARE FORMING UP OVERHEAD. BREAK THEM BEFORE THEY DIVE.',
+  intercept: P => 'INTERCEPT. HER FIGHTERS ARE RUNNING CARGO ACROSS ' + P.name + '. CUT THEM OFF.',
+  raid: P => 'GROUND RAID. HER TANKS AND MISSILE SITES ARE DUG IN ON ' + P.name + '. FLY LOW AND HIT THEM HARD.',
+  bonus: P => 'HER PILOTS OVER ' + P.name + " ARE A CONTROL GROUP. THEY WON'T FIRE. HIT ALL 40 FOR A BONUS.",
+  strike: (P, boss) => 'HER STRONGHOLD ON ' + P.name + ' IS THE ' + boss + '. TAKE IT DOWN AND THE PLANET IS OURS.',
+};
+
+// Science notes for field briefings: [title, fact].
+const FIELD_NOTES = [
+  ['THE FIFTH BASE', 'METHYLATED CYTOSINE, 5-METHYLCYTOSINE, IS SO COMMON IT IS SOMETIMES CALLED THE FIFTH BASE OF DNA.'],
+  ['WRITERS AND COPIERS', 'DNMT3A AND DNMT3B WRITE NEW METHYL MARKS. DNMT1 COPIES THE OLD ONES EVERY TIME DNA IS COPIED.'],
+  ['ERASERS', 'TET ENZYMES TURN 5-METHYLCYTOSINE INTO 5-HYDROXYMETHYLCYTOSINE: THE FIRST STEP TOWARD REMOVING THE MARK.'],
+  ['DEACETYLASES', 'HISTONE DEACETYLASES, OR HDACS, STRIP ACETYL GROUPS AND CLOSE CHROMATIN. SOME CANCER DRUGS BLOCK THEM.'],
+  ['THE HISTONE CODE', 'HISTONE TAILS CAN CARRY MANY MARKS AT ONCE: METHYL, ACETYL, PHOSPHATE, UBIQUITIN. SOME CALL IT A CODE.'],
+  ['ON AND OFF MARKS', 'H3K4ME3 MARKS ACTIVE PROMOTERS. H3K27ME3, LAID DOWN BY POLYCOMB, MARKS GENES KEPT SILENT.'],
+  ['READERS', 'BROMODOMAINS ARE PROTEIN PARTS THAT GRAB ACETYL MARKS. PROTEINS WITH THEM GATHER AT ACTIVE GENES.'],
+  ['REMODELERS', 'CHROMATIN REMODELERS BURN ATP TO SLIDE NUCLEOSOMES ALONG DNA, OPENING OR HIDING STRETCHES OF IT.'],
+  ['LOOPS', 'CTCF AND COHESIN FOLD DNA INTO LOOPS THAT HELP KEEP ENHANCERS PAIRED WITH THE RIGHT GENES.'],
+  ['EPIGENETIC CLOCKS', 'EPIGENETIC CLOCKS ESTIMATE AGE FROM METHYLATION AT HUNDREDS OF CPG SITES.'],
+  ['THE BIG RESET', 'SOON AFTER FERTILIZATION MOST METHYL MARKS ARE WIPED AND REWRITTEN. IMPRINTED GENES KEEP THEIRS.'],
+  ['HOT AND COLD', 'IN RED-EARED SLIDER TURTLES, NEST TEMPERATURE SETS THE SEX. COOL NESTS MAKE MALES.'],
+  ['TURTLE SWITCH', 'IN THOSE TURTLES A HISTONE DEMETHYLASE, KDM6B, IS NEEDED FOR THE MALE PATH.'],
+  ['MOSTLY MARKED', 'MOST CPG SITES IN THE HUMAN GENOME ARE METHYLATED, BUT CPG ISLANDS AT PROMOTERS USUALLY ARE NOT.'],
+  ['HP1', 'HP1 PROTEINS BIND METHYLATED HISTONE H3 AT LYSINE 9 AND HELP PACK DNA INTO SILENT HETEROCHROMATIN.'],
+  ['SIRTUINS', 'SIRTUINS ARE DEACETYLASES THAT NEED NAD+ TO WORK. IN YEAST, SIR2 KEEPS SOME GENES SILENT.'],
+  ['THE LAMINA', 'MUCH SILENT HETEROCHROMATIN SITS AGAINST THE NUCLEAR LAMINA, A MESH LINING THE EDGE OF THE NUCLEUS.'],
+  ['PRC2', 'THE POLYCOMB COMPLEX PRC2 PUTS THREE METHYL GROUPS ON HISTONE H3 AT LYSINE 27, A MARK FOR SILENCE.'],
+];
+
+// Voss's answer at the end of a field briefing.
+const VOSS_TAUNTS = [
+  'ANOTHER PLANET, ANOTHER GENOME TO EDIT. NOT THE LETTERS, PILOT. JUST THE VOLUME.',
+  'MY PILOTS DO NOT HESITATE. HESITATION IS A GENE I SWITCHED OFF.',
+  'YOU FLY WELL. SHAME ABOUT YOUR PROMOTERS.',
+  'I WRITE, DNMT1 COPIES, AND THE WHOLE FLEET REMEMBERS.',
+  'CLOSED CHROMATIN IS QUIET CHROMATIN. I LIKE QUIET.',
+  'EVERY PLANET YOU FREE, I WILL MARK AGAIN.',
+  'MIRA STILL TALKS TOO MUCH. SOME GENES SHOULD STAY SILENT.',
+  'FLY FASTER, PILOT. MY METHYLATORS ARE PATIENT.',
+];
 
 const EPILOGUE = [
   ['mira', 'CORE DOWN! SENDING THE TET WAVE... HER METHYL MARKS ARE COMING OFF. PILOTS ARE WAKING UP ALL OVER THE WORLD.'],
@@ -161,21 +220,31 @@ Object.assign(Game, {
   // Object.assign would copy a getter's value instead of the getter.)
   villain() { return this.camp && this.camp.loop > 0 ? 'echo' : 'voss'; },
 
-  // Title and pages for a planet's briefing, with any story beat that is due first.
-  planetBriefing(S, P) {
-    const c = this.camp;
-    let B = PLANET_STORY[P.id];
+  // Title and pages for a mission's briefing, with any story beat that is due first.
+  planetBriefing(S, P, kind) {
+    const c = this.camp, k = PLANETS.indexOf(P) * 3 + P.missions.indexOf(kind);
+    let B = kind === 'strike' && PLANET_STORY[P.id];
     if (c.loop > 0) {
-      const k = SECTORS.flatMap(q => q.planets).indexOf(P) + (c.loop - 1) * 3;
-      const [topic, fact] = LOOP_TOPICS[k % LOOP_TOPICS.length];
-      B = { title: topic, pages: [['mira', fact], ['echo', ECHO_LINES[k % ECHO_LINES.length]]] };
+      const n = k + (c.loop - 1) * 3, [topic, fact] = LOOP_TOPICS[n % LOOP_TOPICS.length];
+      B = { title: topic, pages: [['mira', MISSION_LINES[kind](P, this.missionBossName(P))], ['mira', fact],
+        ['echo', ECHO_LINES[n % ECHO_LINES.length]]] };
+    } else if (!B) {
+      const [topic, fact] = FIELD_NOTES[k % FIELD_NOTES.length];
+      B = { title: topic, pages: [['mira', MISSION_LINES[kind](P, this.missionBossName(P))], ['mira', fact],
+        ['voss', VOSS_TAUNTS[k % VOSS_TAUNTS.length]]] };
     }
-    const done = this.sectorsCleared();
+    const done = this.systemsSecured();
     const beats = [];
     for (const [n, pages] of Object.entries(STORY_BEATS)) {
       if (c.loop === 0 && done >= +n && !c.beats.includes(+n)) { c.beats.push(+n); beats.push(...pages); }
     }
     return { title: B.title, pages: [...beats, ...B.pages] };
+  },
+
+  // The boss at the end of a planet's stronghold.
+  missionBossName(P) {
+    const S = SYSTEM_BY_ID[P.sys];
+    return P.order === 'sv' ? CAPITALS[P.capital || S.capital].name : BOSSES[P.boss || S.boss].name;
   },
 
   // Shows pages of dialogue in the 'intro' state. done() runs after the last page.

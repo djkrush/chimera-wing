@@ -1,7 +1,9 @@
 'use strict';
-// Special weapons. The pilot learns them at levels 2, 5 and 8 (campaign.js) and equips one
-// learned special before each mission. Every takeoff rearms it with as many uses as the
-// SPECIAL stat (pilots.js).
+// Special weapons. The pilot learns one at every even level (skills.js) and equips one learned special
+// before each mission. Every takeoff rearms it with as many uses as the SPECIAL stat (pilots.js).
+// The later ones come from the classics: Macross's missile swarms (BARRAGE), R-Type's Force (FORCE
+// POD), DoDonPachi's hyper mode (HYPER), and the bullet-cancelling and time-slowing bombs of many
+// modern shooters.
 
 const SPECIALS = [
   { id: 'laser', name: 'THUNDER LASER', short: 'LSR', color: C.aqua,
@@ -16,10 +18,29 @@ const SPECIALS = [
     desc: ['RESTORES EVERY SILENCED', 'FORM AND STOPS BEAMS.'] },
   { id: 'wingman', name: 'WINGMAN', short: 'WNG', color: C.sky,
     desc: ['A DRONE FLIES WITH YOU FOR', '10 SECONDS AND COPIES SHOTS.'] },
+  { id: 'barrage', name: 'MISSILE BARRAGE', short: 'BRG', color: C.lgray,
+    desc: ['12 HOMING MISSILES FAN OUT', 'AND HUNT DOWN TARGETS.'] },
+  { id: 'chrono', name: 'CHRONO FIELD', short: 'CHR', color: C.periwinkle,
+    desc: ['FOR 5 SECONDS THE ENEMY', 'MOVES AT HALF SPEED.'] },
+  { id: 'emp', name: 'EMP BLAST', short: 'EMP', color: C.ice,
+    desc: ['ERASES BULLETS. NO ENEMY', 'GUN FIRES FOR 5 SECONDS.'] },
+  { id: 'reflect', name: 'REFLECT FIELD', short: 'RFL', color: C.white,
+    desc: ['4 SECONDS: BULLETS THAT', 'COME CLOSE BOUNCE BACK.'] },
+  { id: 'gravity', name: 'GRAVITY BOMB', short: 'GRV', color: C.violet,
+    desc: ['A SMALL BLACK HOLE PULLS', 'IN PLANES AND BULLETS.'] },
+  { id: 'pod', name: 'FORCE POD', short: 'POD', color: C.orange,
+    desc: ['12 SECONDS: A POD AHEAD OF', 'YOU BLOCKS AND SHOOTS.'] },
+  { id: 'hyper', name: 'HYPER MODE', short: 'HYP', color: C.gold,
+    desc: ['6 SECONDS: DOUBLE FIRE', 'RATE, +50% DAMAGE.'] },
 ];
 
 Object.assign(Game, {
   hangarSel: 0,
+
+  // Timers and objects of the specials that last a while. Cleared at every takeoff and docking.
+  clearSpecialFx() {
+    this.chronoT = 0; this.empT = 0; this.reflectT = 0; this.podT = 0; this.hyperT = 0; this.grav = null;
+  },
 
   openHangar() {
     this.setState('hangar');
@@ -31,13 +52,15 @@ Object.assign(Game, {
     const L = this.camp.learned, n = L.length;
     if (Input.just('up')) { this.hangarSel = (this.hangarSel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { this.hangarSel = (this.hangarSel + 1) % n; Sound.sfx('move'); }
-    if (this.stateT > 12 && (Input.just('fire') || Input.just('start') || Input.just('special'))) {
-      const sel = L[this.hangarSel];
-      this.lastSpecial = sel;
-      this.special = { idx: sel, ammo: this.statOf('special'), cd: 0 };
-      Sound.sfx('select');
-      this.startSortie();
-    }
+    if (this.stateT > 12 && (Input.just('fire') || Input.just('start') || Input.just('special'))) this.launchHangar();
+  },
+
+  launchHangar() {
+    const sel = this.camp.learned[this.hangarSel];
+    this.lastSpecial = sel;
+    this.special = { idx: sel, ammo: this.specialAmmo(), cd: 0 };
+    Sound.sfx('select');
+    this.startSortie();
   },
 
   useSpecial() {
@@ -81,6 +104,55 @@ Object.assign(Game, {
         sp.cd = 30;
         Sound.sfx('oneup');
         break;
+      case 'barrage':
+        for (let i = 0; i < 12; i++) {
+          const hd = -Math.PI / 2 + (i - 5.5) * 0.26;
+          this.shoot(0, -4, Math.cos(hd) * 1.5, Math.sin(hd) * 1.5,
+            { hd, spd: 1.5, kind: 'missile', dmg: 2 * this.gunPower(), form: -1, life: 160, target: null });
+        }
+        sp.cd = 40;
+        Sound.sfx('missile');
+        break;
+      case 'chrono':
+        this.chronoT = 300;
+        sp.cd = 40;
+        Sound.sfx('charge');
+        break;
+      case 'emp':
+        this.empT = 300;
+        for (const b of this.eBul) this.spark(b.x, b.y, C.ice, 1);
+        this.eBul = [];
+        for (const e of this.enemies) {   // jammed beams shut off too
+          if (e.state === 'beam') e.beamT = Math.max(e.beamT, 160);
+          if (e.phase === 'beam') e.beamT = Math.max(e.beamT, 150);
+        }
+        if (this.boss && this.boss.beamT > 0) { this.boss.beamT = 0; this.boss.beamCd = 200; }
+        this.crushT = 6;
+        sp.cd = 45;
+        Sound.sfx('boom');
+        break;
+      case 'reflect':
+        this.reflectT = 240;
+        sp.cd = 30;
+        Sound.sfx('restore');
+        break;
+      case 'gravity': {
+        const [ox, oy] = this.orient(0, -80);
+        this.grav = { x: clamp(p.x + ox, 20, W - 20), y: clamp(p.y + oy, 20, H - 30), t: 180 };
+        sp.cd = 45;
+        Sound.sfx('charge');
+        break;
+      }
+      case 'pod':
+        this.podT = 720;
+        sp.cd = 30;
+        Sound.sfx('transform');
+        break;
+      case 'hyper':
+        this.hyperT = 360;
+        sp.cd = 30;
+        Sound.sfx('levelup');
+        break;
     }
   },
 
@@ -100,6 +172,44 @@ Object.assign(Game, {
 
   // Where the Wingman drone flies: behind and to one side of the ship.
   wingOffset() { return this.orient(-26, 10); },
+  // The Force Pod rides just ahead of the nose.
+  podOffset() { return this.orient(0, -22); },
+
+  // The lasting specials that touch bullets and planes (called from collide()).
+  specialCollide() {
+    const p = this.player;
+    if (!p.alive) return;
+    if (this.reflectT > 0) {   // REFLECT FIELD: close bullets turn round and become ours
+      for (const b of this.eBul) {
+        if (b.dead || Math.hypot(b.x - p.x, b.y - p.y) > 26) continue;
+        b.dead = true;
+        this.pBul.push({ x: b.x, y: b.y, vx: -b.vx * 1.6, vy: -b.vy * 1.6, kind: 'spread', dmg: this.gunPower(), form: -1 });
+      }
+    }
+    if (this.podT > 0) {       // FORCE POD: blocks bullets, grinds planes it touches
+      const [ox, oy] = this.podOffset(), x = p.x + ox, y = p.y + oy;
+      for (const b of this.eBul) if (!b.dead && Math.hypot(b.x - x, b.y - y) < 8) { b.dead = true; this.spark(b.x, b.y, C.orange, 2); }
+      if (this.t % 4 === 0) for (const e of this.enemies) if (!e.dead && Math.hypot(e.x - x, e.y - y) < 14) this.damageEnemy(e, 0.5 * this.gunPower(), -1);
+    }
+    const G = this.grav;
+    if (G) {                    // GRAVITY BOMB: pulls in flying planes and bullets, crushes what reaches the middle
+      for (const b of this.eBul) {
+        const dx = G.x - b.x, dy = G.y - b.y, d = Math.hypot(dx, dy);
+        if (d < 10) b.dead = true; else if (d < 110) { b.x += dx / d * 2; b.y += dy / d * 2; }
+      }
+      for (const e of this.enemies) {
+        if (e.dead) continue;
+        const dx = G.x - e.x, dy = G.y - e.y, d = Math.hypot(dx, dy);
+        if (e.state !== 'form' && e.beh !== 'ground' && e.beh !== 'tank' && d < 100 && d > 2) { e.x += dx / d * 1.2; e.y += dy / d * 1.2; }
+        if (d < 20 && this.t % 4 === 0) this.damageEnemy(e, 0.6 * this.gunPower(), -1);
+      }
+      if (this.t % 6 === 0) {
+        const B = this.boss;
+        if (B && !B.dying && !B.entering) for (const pt of B.parts) if (!pt.dead && Math.hypot(pt.x - G.x, pt.y - G.y) < 40 + pt.r) this.damageBossPart(pt, 1, -1, pt.x, pt.y);
+        for (const q of this.capitalOnScreen()) if (Math.hypot(q.x - G.x, q.y - G.y) < 40 + q.r) this.damageCapTarget(q, 1, -1, q.x, q.y);
+      }
+    }
+  },
 
   drawWingman(ctx) {
     const p = this.player, [wx, wy] = this.wingOffset();
@@ -142,6 +252,8 @@ Object.assign(Game, {
     if (this.crushT > 0) this.crushT--;
     if (this.wingT > 0) this.wingT--;
     if (this.tetT > 0) this.tetT--;
+    for (const k of ['chronoT', 'empT', 'reflectT', 'podT', 'hyperT']) if (this[k] > 0) this[k]--;
+    if (this.grav && --this.grav.t <= 0) { this.explode(this.grav.x, this.grav.y, 16, [C.violet, C.purple, C.white]); this.grav = null; }
     const L = this.laser;
     if (!L) return;
     if (--L.t <= 0 || !p.alive) { this.laser = null; return; }
@@ -167,6 +279,34 @@ Object.assign(Game, {
       ctx.fillStyle = C.white;
       if (this.isSide) ctx.fillRect(x + 8, y - 1, W, 3); else ctx.fillRect(x - 1, 0, 3, y - 8);
       return;
+    }
+    if (this.chronoT > 0 && (this.chronoT > 60 || (this.t >> 2) & 1)) {   // a blue cast over the world
+      SNES.half(ctx, () => { ctx.fillStyle = '#1830a0'; ctx.fillRect(0, 0, W, H); }, 0.18);
+    }
+    if (this.empT > 0 && this.t % 3 === 0) for (const e of this.enemies) if (Math.random() < 0.2) this.spark(e.x, e.y, C.ice, 1);
+    if (p.alive && this.reflectT > 0 && (this.reflectT > 60 || (this.t >> 2) & 1)) {
+      for (let k = 0; k < 24; k++) {
+        const a = k / 24 * TAU - this.t * 0.1;
+        ctx.fillStyle = k % 3 ? C.white : C.lgray;
+        ctx.fillRect(Math.round(p.x + Math.cos(a) * 22), Math.round(p.y + Math.sin(a) * 22), 1, 1);
+      }
+    }
+    if (p.alive && this.podT > 0 && (this.podT > 90 || (this.t >> 2) & 1)) {
+      const [ox, oy] = this.podOffset(), x = p.x + ox, y = p.y + oy;
+      SNES.add(ctx, () => NES.draw(ctx, SNES.glow(6 + ((this.t >> 2) & 1), '#a04810'), x, y));
+      NES.draw(ctx, SNES.sphere(4, C.orange), x, y);
+      ctx.fillStyle = C.white; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 2, 2, 1);
+    }
+    if (p.alive && this.hyperT > 0 && this.t % 3 === 0) this.spark(p.x + rand(-6, 6), p.y + rand(-6, 6), C.gold, 1);
+    const G = this.grav;
+    if (G) {                                     // a black core in a swirl of violet
+      for (let k = 0; k < 30; k++) {
+        const a = k / 30 * TAU + this.t * 0.15, r = 8 + ((k * 7 + this.t) % 24);
+        ctx.fillStyle = k % 2 ? C.violet : C.purple;
+        ctx.fillRect(Math.round(G.x + Math.cos(a) * r), Math.round(G.y + Math.sin(a) * r), 1, 1);
+      }
+      NES.disc(ctx, G.x, G.y, 6, C.black);
+      NES.disc(ctx, G.x, G.y, 3, '#100020');
     }
     if (p.alive && p.shieldT > 0 && (p.shieldT > 60 || (this.t >> 2) & 1)) {
       for (let k = 0; k < 20; k++) {
@@ -197,23 +337,32 @@ Object.assign(Game, {
   },
 
   drawHangar(ctx) {
-    const center = { align: 'center' };
-    NES.box(ctx, 16, 30, 224, 172, C.black, C.gold);
+    const center = { align: 'center' }, L = this.camp.learned, top = this.listTop(L.length, this.hangarSel, 5), H = this.hullDef();
+    NES.box(ctx, 16, 30, 224, 176, C.black, C.gold);
     NES.text(ctx, 'HANGAR: MISSION LOADOUT', 128, 38, C.gold, center);
     NES.text(ctx, 'PICK ONE SPECIAL WEAPON.', 128, 52, C.white, center);
-    NES.text(ctx, 'REARMED AT EVERY TAKEOFF.', 128, 62, C.lgray, center);
-    const L = this.camp.learned;
-    L.forEach((idx, i) => {
-      const s = SPECIALS[idx], y = 80 + i * 17;
-      const sel = i === this.hangarSel;
-      if (sel) NES.hilite(ctx, 22, y - 4, 212, 15);
+    NES.text(ctx, H.guns.map(g => GUNS[g].short).join(' / '), 128, 64, C.lgray, center);
+    L.slice(top, top + 5).forEach((idx, j) => {
+      const i = top + j, s = SPECIALS[idx], y = 82 + j * 13, sel = i === this.hangarSel;
+      if (sel) NES.hilite(ctx, 22, y - 3, 212, 13);
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 24, y, C.gold);
       NES.draw(ctx, SPR.specialIcons[idx], 40, y + 3);
       NES.text(ctx, s.name, 52, y, sel ? C.white : C.gray);
-      NES.text(ctx, 'X' + this.statOf('special'), 228, y, sel ? s.color : C.gray, { align: 'right' });
+      NES.text(ctx, 'X' + this.specialAmmo(), 228, y, sel ? s.color : C.gray, { align: 'right' });
     });
-    SPECIALS[L[this.hangarSel]].desc.forEach((l, i) => NES.text(ctx, l, 128, 152 + i * 10, C.aqua, center));
-    NES.text(ctx, 'FIRE IT WITH: C KEY / PAD B', 128, 176, C.lgray, center);
-    if ((this.t >> 4) & 1) NES.text(ctx, 'SPACE / A: LAUNCH', 128, 189, C.white, center);
+    if (L.length > 5) NES.text(ctx, (this.hangarSel + 1) + '/' + L.length, 234, 64, C.gray, { align: 'right' });
+    SPECIALS[L[this.hangarSel]].desc.forEach((l, i) => NES.text(ctx, l, 128, 158 + i * 10, C.aqua, center));
+    NES.text(ctx, 'FIRE IT WITH: C KEY / PAD B', 128, 180, C.lgray, center);
+    if ((this.t >> 4) & 1) NES.text(ctx, 'SPACE / A: LAUNCH', 128, 193, C.white, center);
   },
+
+  // Tap a row to pick it; tap the picked row again to launch.
+  tapHangar(x, y) {
+    const L = this.camp.learned, i = this.listTop(L.length, this.hangarSel, 5) + Math.floor((y - 79) / 13);
+    if (i < 0 || i >= L.length || y < 79 || y > 79 + 13 * 5) return;
+    if (i === this.hangarSel) this.launchHangar(); else { this.hangarSel = i; Sound.sfx('move'); }
+  },
+
+  // First visible row of a scrolling list of n rows showing vis at a time, keeping sel in view.
+  listTop(n, sel, vis) { return clamp(sel - (vis >> 1), 0, Math.max(0, n - vis)); },
 });

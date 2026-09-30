@@ -35,6 +35,7 @@ const ENEMY = {
   splitter: { name: 'SPLITTER', hp: 2, pts: [120, 240], hit: 11 },
   drone: { name: 'DRONE', hp: 1, pts: [30, 60], hit: 6 },
   armored: { name: 'ARMORED', hp: 5, pts: [250, 500], hit: 13 },
+  tank: { name: 'TANK', hp: 3, pts: [250, 250], hit: 11 },
 };
 
 // Dr. Helena Voss: rogue epigeneticist. Her science is real; her ethics are not.
@@ -187,6 +188,8 @@ const Game = {
     this.boss = null; this.radio = null; this.radioQ = []; this.pickups = []; this.paused = false;
     this.stageType = 'normal'; this.special = null; this.laser = null; this.crushT = 0;
     this.mission = null; this.carrier = null; this.capital = null; this.inBase = false; this.wingT = 0; this.tetT = 0;
+    this.raid = false; this.camp = null;
+    this.clearSpecialFx();
     Sound.playSong(Sound.SONGS.title);
   },
 
@@ -224,8 +227,10 @@ const Game = {
     p.silenced = [false, false, false];
     p.silenceT = [0, 0, 0];
     p.shieldT = 0; p.alive = true; p.hidden = false; p.morphT = 0; p.invuln = 0;
-    this.shields = this.statOf('shields');   // repaired on the carrier before every takeoff
-    if (this.special) this.special.ammo = this.statOf('special');   // and rearmed
+    this.shields = this.maxShields();   // repaired on the carrier before every takeoff
+    if (this.special) this.special.ammo = this.specialAmmo();   // and rearmed
+    this.clearSpecialFx();
+    this.resetPassives();
     this.placePlayer();
     this.pickups = []; this.radioQ = []; this.radio = null;
   },
@@ -263,7 +268,7 @@ const Game = {
     if (this.score >= this.nextExtra) {
       // Score bonus: repair one shield (instead of an extra ship).
       this.nextExtra = this.nextExtra === 20000 ? 70000 : this.nextExtra + 70000;
-      if (this.shields < this.statOf('shields')) {
+      if (this.shields < this.maxShields()) {
         this.shields++;
         this.popup(this.player.x, this.player.y - 20, 'SHIELD +1', C.lime);
         Sound.sfx('oneup');
@@ -323,7 +328,7 @@ const Game = {
     if (this.paused) { this.updateGameMenu(); return; }
     const st = this.state;
     this.updateStars(st === 'intro' || st === 'hangar' || st === 'sortie' ? 3 : st === 'takeoff' || st === 'landing' ? 2 : 1);
-    if (this.isSide && !this.inMenu() && !this.scrollLock) this.scroll += 1.5;   // a boss base stops the scroll
+    if (this.isSide && !this.inMenu() && !this.scrollLock && !(this.chronoT > 0 && (this.t & 1))) this.scroll += 1.5;   // a boss base stops the scroll
     if (this.radio && --this.radio.t <= 0) this.radio = this.radioQ.shift() || null;
     switch (this.state) {
       case 'title': this.updateTitle(); break;
@@ -372,7 +377,10 @@ const Game = {
     if (Input.just('up')) { this.gameMenuSel = (this.gameMenuSel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { this.gameMenuSel = (this.gameMenuSel + 1) % n; Sound.sfx('move'); }
     if (Input.just('start') || Input.just('back') || Input.just('special')) { this.paused = false; Sound.sfx('select'); return; }
-    if (!Input.just('fire')) return;
+    if (Input.just('fire')) this.gameMenuPick();
+  },
+
+  gameMenuPick() {
     Sound.sfx('select');
     const item = this.gameMenuItems()[this.gameMenuSel];
     if (item === 'RESUME') this.paused = false;
@@ -389,14 +397,16 @@ const Game = {
     this.menu = Math.min(this.menu, n - 1);
     if (Input.just('up')) { this.menu = (this.menu + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { this.menu = (this.menu + 1) % n; Sound.sfx('move'); }
-    if (this.stateT > 20 && (Input.just('fire') || Input.just('start'))) {
-      Sound.sfx('select');
-      const item = items[this.menu];
-      if (item === 'CONTINUE') this.continueCampaign();
-      else if (item === 'NEW GAME') this.openPilotSelect();
-      else if (item === 'CONTROLLER SETUP') this.openSetup();
-      else { this.howPage = 0; this.setState('howto'); }
-    }
+    if (this.stateT > 20 && (Input.just('fire') || Input.just('start'))) this.titlePick();
+  },
+
+  titlePick() {
+    Sound.sfx('select');
+    const item = this.titleItems()[this.menu];
+    if (item === 'CONTINUE') this.continueCampaign();
+    else if (item === 'NEW GAME') this.openPilotSelect();
+    else if (item === 'CONTROLLER SETUP') this.openSetup();
+    else { this.howPage = 0; this.setState('howto'); }
   },
 
   titleItems() {
@@ -466,13 +476,19 @@ const Game = {
   updatePlay() {
     if (Input.just('start') || Input.just('back')) { this.openGameMenu(); return; }
     this.stateT++;
-    this.updateFormation();
-    this.updateSpawns();
-    if (this.isSide) this.updateSide();
+    const slow = this.chronoT > 0 && (this.t & 1);   // CHRONO FIELD: the enemy runs at half speed
+    if (!slow) {
+      this.updateFormation();
+      this.updateSpawns();
+      if (this.isSide) this.updateSide();
+    }
     this.updatePlayer(true);
-    this.updateEnemies();
-    if (this.boss) this.updateBoss();
-    if (this.capital) this.updateCapital();
+    this.updatePassives();   // skills.js
+    if (!slow) {
+      this.updateEnemies();
+      if (this.boss) this.updateBoss();
+      if (this.capital) this.updateCapital();
+    }
     this.updateBullets();
     this.updateSpecial();
     this.collide();
@@ -583,7 +599,7 @@ const Game = {
     const path = PATHS[s.path];
     const chall = this.stageType === 'challenge';
     const type = this.mixType(s.type);
-    const hp = chall ? 1 : ENEMY[type].hp;
+    const hp = chall ? 1 : Math.round(ENEMY[type].hp * this.hpMul());
     const e = {
       type, hp, maxHp: hp, x: path[0].x, y: path[0].y, vx: 0, vy: 1,
       ang: Math.atan2(path[4].y - path[0].y, path[4].x - path[0].x) + Math.PI / 2,
@@ -773,7 +789,7 @@ const Game = {
 
   enemyFire(e) {
     const p = this.player;
-    if (this.stageType === 'challenge' || !p.alive) return;
+    if (this.stageType === 'challenge' || !p.alive || this.empT > 0) return;
     if (this.eBul.length > 10 + this.stage) return;
     const sp = Math.min(2 + this.stage * 0.08, 3.4);
     let a = Math.atan2(p.y - e.y, p.x - e.x);
@@ -784,6 +800,7 @@ const Game = {
 
   spreadShot(x, y, n, gap, sp) {
     const p = this.player;
+    if (this.empT > 0) return;   // EMP BLAST jams every gun
     const base = p.alive ? Math.atan2(p.y - y, p.x - x) : Math.PI / 2;
     for (let i = 0; i < n; i++) {
       const a = base + (i - (n - 1) / 2) * gap;
@@ -792,6 +809,7 @@ const Game = {
   },
 
   ringShot(x, y, n, sp, phase) {
+    if (this.empT > 0) return;
     for (let i = 0; i < n; i++) {
       const a = phase + (i / n) * TAU;
       this.eBul.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp });
@@ -824,8 +842,8 @@ const Game = {
     if (e.type === 'splitter') this.splitEnemy(e);
   },
 
-  // Chance a new plane is acetylated (gold). Some sectors field more of them.
-  acetylChance() { return Math.min(0.08 + this.stage * 0.02, 0.35) + this.sectorDef().acetyl; },
+  // Chance a new plane is acetylated (gold). Some systems field more of them.
+  acetylChance() { return Math.min(0.08 + this.stage * 0.02, 0.35) + this.systemDef().acetyl; },
 
   // DNMT1 copies a methylation pattern onto both new DNA strands: a Splitter breaks into two MiGs.
   splitEnemy(e) {
@@ -924,35 +942,9 @@ const Game = {
     this.pBul.push(b);
     if (this.wingT > 0 && extra.form >= 0) {   // WINGMAN special: the drone copies every shot
       const [wx, wy] = this.wingOffset();
-      this.pBul.push({ ...b, x: b.x + wx, y: b.y + wy });
+      this.pBul.push({ ...b, x: b.x + wx, y: b.y + wy, hit: b.hit && [] });
     }
-  },
-
-  fireWeapon() {
-    const p = this.player, k = this.gunPower();
-    const mine = this.pBul.filter(b => b.form === p.form).length;
-    if (p.form === 0) {
-      if (mine > 4) return;
-      for (const ox of [-3, 3]) this.shoot(ox, -6, 0, -6, { kind: 'shot', dmg: k, form: 0 });
-      p.fireCd = 9; this.shots += 2;
-      Sound.sfx('shoot');
-    } else if (p.form === 1) {
-      if (mine > 9) return;
-      for (const a of [-0.22, 0, 0.22]) {
-        this.shoot(0, -6, Math.sin(a) * 5, -Math.cos(a) * 5, { kind: 'spread', dmg: k, form: 1 });
-      }
-      p.fireCd = 15; this.shots += 3;
-      Sound.sfx('spread');
-    } else {
-      if (mine > 4) return;
-      for (const s of [-1, 1]) {
-        const hd = -Math.PI / 2 + s * 0.9;
-        this.shoot(s * 6, -4, Math.cos(hd) * 1.2, Math.sin(hd) * 1.2,
-          { hd, spd: 1.2, kind: 'missile', dmg: 2 * k, form: 2, life: 150, target: null });
-      }
-      p.fireCd = 26; this.shots += 2;
-      Sound.sfx('missile');
-    }
+    return b;
   },
 
   hitPlayer() {
@@ -962,7 +954,7 @@ const Game = {
       // Battloid armor soaks the hit, then the robot is forced back into a flight form.
       const nf = this.nextAvailable(2, 1);
       if (nf < 0) { this.takeHit(); return; }   // nowhere to morph: the shields take it
-      p.battCd = 600;
+      p.battCd = this.battMax();
       p.invuln = 90;
       this.morphTo(nf);
       this.explode(p.x, p.y, 10, [C.white, C.lgray, C.gray]);
@@ -987,6 +979,15 @@ const Game = {
   silenceForm(src) {
     const p = this.player;
     if (p.shieldT > 0) { this.spark(p.x, p.y, C.aqua, 6); return; }   // Gene Shield blocks beams
+    if (this.hasPassive('genelock') && !this.lockUsed) {                 // GENE LOCK: the first beam each leg
+      this.lockUsed = true;
+      if (src !== 'boss') src.beamT = Math.max(src.beamT, 160);
+      p.invuln = 60;
+      this.popup(p.x, p.y - 18, 'GENE LOCK', C.pink);
+      this.spark(p.x, p.y, C.pink, 8);
+      Sound.sfx('armor');
+      return;
+    }
     const remaining = [0, 1, 2].filter(f => !p.silenced[f]);
     if (remaining.length <= 1) {
       // Last form silenced: the shields take the hit and reboot the whole genome.
@@ -1046,50 +1047,25 @@ const Game = {
     return best;
   },
 
-  updateBullets() {
-    for (const b of this.pBul) {
-      if (b.kind === 'missile') {
-        if (!b.target || !this.targetable(b.target)) b.target = this.findTarget(b.x, b.y);
-        if (b.target) b.hd += clamp(angDiff(b.hd, Math.atan2(b.target.y - b.y, b.target.x - b.x)), -0.12, 0.12);
-        b.spd = Math.min(4.5, b.spd + 0.12);
-        b.vx = Math.cos(b.hd) * b.spd;
-        b.vy = Math.sin(b.hd) * b.spd;
-        if (--b.life <= 0) b.dead = true;
-        if (this.t % 2 === 0) this.parts.push({ x: b.x, y: b.y, vx: 0, vy: 0.2, life: 10, max: 10, cols: [C.gray, C.lgray], sz: 1 });
-      } else if (b.life !== undefined && --b.life <= 0) {
-        b.dead = true;
-        if (b.kind === 'cluster') this.burstCluster(b);   // fuse ran out: burst in the air
-      }
-      b.x += b.vx; b.y += b.vy;
-      if (b.y < -10 || b.y > H + 10 || b.x < -10 || b.x > W + 10) b.dead = true;
-    }
-    for (const b of this.eBul) {
-      b.x += b.vx; b.y += b.vy;
-      if (b.y < -10 || b.y > H + 10 || b.x < -10 || b.x > W + 10) b.dead = true;
-    }
-    this.pBul = this.pBul.filter(b => !b.dead);
-    this.eBul = this.eBul.filter(b => !b.dead);
-  },
-
   collide() {
     const p = this.player;
     for (const b of this.pBul) {
       if (b.dead) continue;
       for (const e of this.enemies) {
         if (e.dead) continue;
-        const hr = ENEMY[e.type].hit;
-        if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - e.y) < hr + 2) {
-          b.dead = true;
-          this.damageEnemy(e, b.dmg, b.form);
-          if (b.kind === 'cluster') this.burstCluster(b);
+        const hr = ENEMY[e.type].hit + (b.rad || 0);
+        if (Math.abs(b.x - e.x) < hr && Math.abs(b.y - e.y) < hr + 2 && !(b.hit && b.hit.includes(e))) {
+          this.bulletHits(b, e);   // weapons.js
           break;
         }
       }
       if (!b.dead && (this.boss || this.capital)) {
         if (this.boss) this.bossHitTest(b); else this.capitalHitTest(b);
         if (b.dead && b.kind === 'cluster') this.burstCluster(b);
+        if (b.dead && b.kind === 'bomb') this.bombBlast(b);
       }
     }
+    this.specialCollide();   // specials.js: reflect field, force pod, gravity bomb
     if (p.alive && p.shieldT > 0) {
       // Gene Shield: destroys bullets and rams enemies instead of taking hits.
       for (const b of this.eBul) {
@@ -1168,29 +1144,12 @@ const Game = {
     for (const e of this.enemies) this.drawEnemy(ctx, e);
     this.drawPickups(ctx);
     this.drawSpecialFx(ctx, 'under');
-    for (const b of this.pBul) {
-      const bx = Math.round(b.x), by = Math.round(b.y);
-      if (b.kind === 'shot') {   // a glowing bolt: additive halo, then a hot core
-        const horiz = Math.abs(b.vx) > Math.abs(b.vy);
-        SNES.add(ctx, () => NES.draw(ctx, SNES.glow(3, '#907020'), bx, by));
-        ctx.fillStyle = C.yellow;
-        if (horiz) ctx.fillRect(bx - 3, by, 7, 1); else ctx.fillRect(bx, by - 3, 1, 7);
-        ctx.fillStyle = C.white;
-        if (horiz) ctx.fillRect(bx + 1, by, 3, 1); else ctx.fillRect(bx, by - 3, 1, 3);
-      } else if (b.kind === 'spread') {
-        ctx.fillStyle = C.aqua; ctx.fillRect(bx - 1, by - 1, 2, 2);
-      } else if (b.kind === 'cluster') {
-        NES.disc(ctx, bx, by, 2, (this.t >> 2) & 1 ? C.orange : C.red);
-      } else if (b.kind === 'frag') {
-        ctx.fillStyle = (this.t >> 1) & 1 ? C.yellow : C.orange; ctx.fillRect(bx - 1, by - 1, 2, 2);
-      } else {
-        NES.drawRot(ctx, SPR.missile, b.x, b.y, b.hd + Math.PI / 2);
-      }
-    }
+    for (const b of this.pBul) this.drawPlayerBullet(ctx, b);   // weapons.js
     SNES.add(ctx, () => { for (const b of this.eBul) NES.draw(ctx, SNES.glow(4, (this.t >> 2) & 1 ? '#c01830' : '#a01050'), b.x, b.y); });
     for (const b of this.eBul) NES.draw(ctx, SPR.ebullet, b.x, b.y);
     if (p.alive && !p.hidden && (p.invuln <= 0 || (this.t >> 2) & 1)) this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide);
     if (p.alive && this.wingT > 0 && (this.wingT > 90 || (this.t >> 2) & 1)) this.drawWingman(ctx);
+    this.drawPassives(ctx);   // skills.js: escort drone
     this.drawSpecialFx(ctx, 'over');
     this.drawParticles(ctx);
     this.drawHUD(ctx);
@@ -1258,7 +1217,7 @@ const Game = {
         : e.acetyl ? set.acetyl[f] : set.normal[f];
     if (e.beamExt > 0) this.drawMethylBeam(ctx, e);
     if (e.holding >= 0) NES.draw(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].side.silenced[e.holding], e.x + 34, e.y);
-    if (e.type !== 'sam' && e.vx > 0.3 && e.phase !== 'out') NES.drawFlip(ctx, img, e.x, e.y);
+    if (e.type !== 'sam' && e.type !== 'tank' && e.vx > 0.3 && e.phase !== 'out') NES.drawFlip(ctx, img, e.x, e.y);
     else NES.draw(ctx, img, e.x, e.y);
   },
 
@@ -1332,7 +1291,7 @@ const Game = {
     }
 
     // shield pips; with none left the next hit is fatal
-    const maxSh = this.statOf('shields');
+    const maxSh = this.maxShields();
     if (!this.shields && p.alive) { if ((this.t >> 3) & 1) NES.text(ctx, 'DANGER', 4, 231, C.red); }
     else for (let i = 0; i < maxSh; i++) NES.draw(ctx, i < this.shields ? SPR.shieldPip : SPR.shieldPipOff, 7 + i * 6, 234);
 
@@ -1348,7 +1307,7 @@ const Game = {
       NES.text(ctx, FORMS[f].short, x, y, col);
       if (p.silenced[f]) { ctx.fillStyle = C.magenta; ctx.fillRect(x - 1, y + 3, 23, 1); }
       if (f === 2 && p.battCd > 0 && !p.silenced[f]) {
-        ctx.fillStyle = C.orange; ctx.fillRect(x, y + 8, Math.ceil(21 * (1 - p.battCd / 600)), 1);
+        ctx.fillStyle = C.orange; ctx.fillRect(x, y + 8, Math.ceil(21 * (1 - p.battCd / this.battMax())), 1);
       }
     }
     NES.text(ctx, 'LV', W - 42, 231, C.red);
@@ -1509,7 +1468,7 @@ const Game = {
         glowCols.forEach((col, i) => { ctx.fillStyle = col; ctx.fillRect(x, Math.round(top) - 8 + i * 2, 1, 2); });
       }
     });
-    SNES.globe(ctx, this.scenery(SECTORS[0].planets[0]).floor, cx, cy, r, t * 0.0015);
+    SNES.globe(ctx, this.scenery(PLANET_BY_ID.earth).floor, cx, cy, r, t * 0.0015);
     for (const [x, ph] of [[14, 0], [44, 60], [W - 15, 40], [W - 45, 100]]) this.drawHelix(ctx, x, t * 0.5 + ph);
     this.panel(ctx, () => this.drawTitleMenu(ctx));
   },
@@ -1551,7 +1510,7 @@ const Game = {
     if (Sound.locked && (t >> 5) & 1) NES.text(ctx, 'PRESS A KEY FOR SOUND', 128, 210, C.white, { align: 'center' });
     else if (pad) NES.text(ctx, ('PAD: ' + pad).slice(0, 28), 128, 210, C.lime, { align: 'center' });
     else NES.text(ctx, 'PAD: PRESS ANY BUTTON', 128, 210, C.lgray, { align: 'center' });
-    NES.text(ctx, 'Z FIRE  C SPECIAL  X MORPH', 128, 225, C.white, { align: 'center' });
+    NES.text(ctx, Touch.on ? 'TAP TO CHOOSE, TAP AGAIN TO GO' : 'Z FIRE  C SPECIAL  X MORPH', 128, 225, C.white, { align: 'center' });
   },
 
   drawHowto(ctx) { this.panel(ctx, () => this.drawHowtoPage(ctx)); },
@@ -1588,18 +1547,16 @@ const Game = {
         });
     } else if (pg === 3) {
       T('THE CAMPAIGN', 128, 10, C.gold, { align: 'center' });
-      ['YOUR CARRIER FLIES FROM STAR', 'TO STAR. EVERY PLANET HAS TWO', 'LEGS: A VERTICAL APPROACH,',
-        'THEN A SIDE ASSAULT AND BOSS.', 'CLEAR A SECTOR TO OPEN MORE.', 'SPEND CREDITS AT STARBASES.']
-        .forEach((l, i) => T(l, 8, 24 + i * 10, i < 4 ? C.white : C.lgray));
-      T('SPECIAL WEAPONS', 128, 90, C.gold, { align: 'center' });
-      T('LEARN ONE AT LV 2, 5 AND 8:', 8, 102, C.lgray);
-      SPECIALS.forEach((s, i) => {
-        const y = 116 + i * 11;
-        NES.draw(ctx, SPR.specialIcons[i], 14, y + 3);
-        T(s.name, 26, y, s.color);
-      });
-      T('AMMO = YOUR SPECIAL STAT,', 128, 186, C.pink, { align: 'center' });
-      T('REFILLED AT EVERY TAKEOFF.', 128, 196, C.pink, { align: 'center' });
+      ['3 GALAXIES, 12 STAR SYSTEMS,', '84 PLANETS. FLY YOUR CARRIER', 'ANYWHERE THE STAR MAP ALLOWS.',
+        'EVERY PLANET HAS MISSIONS AND', 'A MARKET. CLEAR HALF A SYSTEM', 'TO OPEN THE NEXT ONE.']
+        .forEach((l, i) => T(l, 8, 24 + i * 10, i < 3 ? C.white : C.lgray));
+      T('LEVEL UP', 128, 90, C.gold, { align: 'center' });
+      ['EVERY LEVEL: TRAIN A STAT +1,', 'THEN LEARN A SPECIAL (EVEN', 'LEVELS) OR A PASSIVE SKILL', '(ODD LEVELS).']
+        .forEach((l, i) => T(l, 8, 102 + i * 10, C.white));
+      SPECIALS.forEach((s, i) => NES.draw(ctx, SPR.specialIcons[i], 20 + (i % 13) * 17, 150));
+      T('SPECIAL AMMO = SPECIAL STAT,', 128, 166, C.pink, { align: 'center' });
+      T('REFILLED AT EVERY TAKEOFF.', 128, 176, C.pink, { align: 'center' });
+      T('PASSIVE SKILLS ARE ALWAYS ON.', 128, 192, C.lime, { align: 'center' });
     } else if (pg === 1) {
       T('THE VX-3 CHIMERA', 128, 10, C.gold, { align: 'center' });
       const rows = [
@@ -1607,6 +1564,7 @@ const Game = {
         ['GUARDIAN', 'THREE-WAY SPREAD SHOT.', 'CAN CLIMB AND DIVE.'],
         ['BATTLOID', 'HOMING MISSILES. SLOW.', 'ARMOR SURVIVES ONE HIT.'],
       ];
+      T('OTHER HULLS CARRY OTHER GUNS.', 128, 170, C.aqua, { align: 'center' });
       rows.forEach(([n, a, b], f) => {
         const y = 34 + f * 48;
         this.drawShip(ctx, f, 24, y + 10, 0, true);

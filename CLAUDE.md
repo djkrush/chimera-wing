@@ -2,15 +2,19 @@
 
 Guidance for working on **Chimera Wing**, a Galaga / U.N. Squadron-style shooter with NES-style graphics,
 written in plain browser JavaScript. `README.md` covers gameplay, controls and story. Read it before you
-change how the game plays.
+change how the game plays. `FUTURE.md` lists planned improvements; add ideas there.
 
 ## Running and testing
 
 - There is no build step, no package manager, no bundler and no test suite. Open `index.html` in a browser.
-- `index.html?stage=N` skips the title screen and drops into a mission leg (`testLeg` in `campaign.js`):
-  planet `ceil(N/2)` in map order, odd N = approach, even N = assault. E.g. 2 = Earth's base,
-  4 = the Mars capital-ship flyover, 5 = Venus challenge approach, 26 = the finale. Test campaigns
-  (`camp.test`) never save, all specials are learned, and earlier planets count as cleared.
+- `index.html?stage=N` skips the title screen and drops into a planet's stronghold (`testLeg` in
+  `campaign.js`): planet `ceil(N/2)` in `PLANETS` order, odd N = first leg, even N = the boss leg. E.g.
+  2 = Earth's base, 4 = the Mars capital-ship flyover, 168 = the finale. `&hull=N` and
+  `&passives=drone,rear` set up the ship. Test campaigns (`camp.test`) never save, all specials are
+  learned, and every mission on earlier planets counts as cleared.
+- `index.html?touch` turns on the touch controls on a desktop; clicks act as taps.
+- Serve the folder over HTTP (e.g. `python -m http.server`) for browser automation: extensions can't
+  open `file://`. Browsers cache the scripts, so send `Cache-Control: no-store` or change port after edits.
 - Scripted tests write to the real `localStorage` of that browser (`chimera.save`, `chimera.hi`).
   Remove what you added when you're done.
 - An automated or background browser tab throttles `requestAnimationFrame`, so simulated key presses
@@ -26,7 +30,8 @@ Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load orde
 
 ```
 nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js
-       → scenery.js → specials.js → pilots.js → campaign.js → starbase.js → carrier.js → story.js → tet.js → main.js
+       → scenery.js → specials.js → weapons.js → pilots.js → skills.js → world.js → campaign.js → starmap.js
+       → starbase.js → carrier.js → story.js → tet.js → touch.js → main.js
 ```
 
 | Global | File | Role |
@@ -37,9 +42,11 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 | `YARD` | `js/shipyard.js` | Painter for the big pre-rendered machines (carrier, capital ships, boss warships): `sheet(w, h)` lays down materials at height levels (`rect`, `poly`, `ellipse`, `mirrorX`, `recolor`), `bake()` bevels, drop-shadows and outlines them; detail helpers `modules`, `plates`, `greebles`, `vent`, `turret`, `windows` |
 | `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Top-down sprites point **up** and the game rotates them. Side-mission sprites are **side profiles**, drawn unrotated. |
 | `Sound` | `js/audio.js` | WebAudio chiptune: `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`, sequencer notes as `"NOTE:LEN"` tokens in sixteenths |
-| `Input` | `js/input.js` | Keyboard and gamepad merged into abstract actions: `Input.pressed(a)`, `Input.just(a)`. Actions: `left right up down fire special transform prevForm start back form1-3`. Per-pad remaps live in `localStorage['chimera.padmap']`. |
+| `Input` | `js/input.js` | Keyboard, gamepad and touch merged into abstract actions: `Input.pressed(a)`, `Input.just(a)`. Actions: `left right up down fire special transform prevForm start back form1-3`. Per-pad remaps live in `localStorage['chimera.padmap']`. Touch feeds `Input.setVirtual(a, on)` (held) and `Input.pulse(a)` (one frame). |
+| `Touch` | `js/touch.js` | Touch controls (DOM overlay): floating joystick in flight, A/B/X/START buttons, taps elsewhere go to `Game.tap(x, y)`. On for Android/Samsung UAs, `?touch`, or the first touch. `Touch.on` switches `main.js` to fill-the-screen scaling. |
+| world data | `js/world.js` | `GALAXIES` → systems → planets, flattened into `SYSTEMS`, `PLANETS` and the `*_BY_ID` maps. Also `MISSION_KINDS`, `MARKET_POOL`, `TERRAIN_PAL`, `seededRand`. Loads after `game.js` (uses `C`, `TAU`). |
 | `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, HUD and rendering |
-| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/pilots.js`, `js/campaign.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
+| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/weapons.js`, `js/pilots.js`, `js/skills.js`, `js/campaign.js`, `js/starmap.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js`, `js/touch.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
 | boot | `js/main.js` | Scales the canvas to whole-number sizes, sets global hotkeys, runs a **fixed 60 Hz** accumulator loop (`Input.update(); Game.update();` per tick, `Game.draw(ctx)` per frame) |
 
 ### Game state machine
@@ -53,24 +60,42 @@ them to `drawMenuScreen`). While `inBase` is set, `intro`/`hangar` draw over the
 Campaign flow (`campaign.js`):
 
 ```
-NEW GAME → pilot → newCampaign() → travel → base (autosave)
+NEW GAME → pilot → newCampaign() → travel → base (autosave) → learn (starter passive)
 base: MISSIONS → startMission(i) → intro (briefing) → hangar (if any specials learned) → sortie
-  → startLeg('approach') → takeoff → play → clear/result → legDone() → landing → afterLanding()
-  → startLeg('assault')  → takeoff → play → boss → clear → landing → missionComplete()
-  → debrief → learn (if a level-up earned a special) → base
+  → startLeg(0) → takeoff → play → clear/result → legDone() → landing → afterLanding()
+  → startLeg(1) ... (as many legs as the mission has; a stronghold's last leg has the boss)
+  → missionComplete() → debrief → learn (one screen per pending choice) → base
       (finale: debrief → startEnding() → epilogue → startNewGamePlus() → travel → base)
-base: GALAXY MAP → map → travel → base      gameover / ABORT MISSION → missionFailed() → base
+base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT MISSION → missionFailed() → base
 ```
+
+- **Where you are:** `camp.at` is the planet the carrier orbits. `planetHere()`, `systemDef()` and
+  `galaxyDef()` resolve it (or the mission's planet during a mission). `arriveBase()` runs pending
+  level-up choices first, then a galaxy's arrival briefing (`GALAXY_STORY`) on the first visit.
+- **Missions** (`makeMission(P, i)`): `{ planet, mi, kind, legs: [{ type, boss }], leg }`. Kinds are in
+  `MISSION_KINDS` (`world.js`); a leg type is `normal | challenge | side | raid | capital` (`raid` is a
+  side stage with `this.raid` set). Progress lives in `camp.cleared['planetId:missionIndex']`.
+- **Unlocking:** a planet's stronghold opens when its other missions are done (`missionOpen`); a system
+  is secured at half its planets cleared (`systemSecured`), which opens linked systems (`systemOpen`);
+  a galaxy opens when every system of the previous one is secured (`galaxyOpen`).
+- **Star map** (`starmap.js`): `mapUI = { level: 0 universe | 1 galaxy | 2 system, gal, sys, sel, zoom }`.
+  `mapItems(level)` lists what can be picked; `tapMap` handles clicks and taps; travel plays on the
+  smallest map level that shows both ends.
+- **Level-ups** (`skills.js`): `gainLevels()` pushes `'stat'` and `'special'`/`'passive'` into
+  `camp.pending`; `openLearn()` shows them one by one (three random offers each) and ends in
+  `leaveDebrief()`.
 
 ### Story (`js/story.js`)
 
 - `CAST` lists the speakers: `mira` (the ally, aqua), `voss` (the villain, pink) and `echo` (the villain in
   the Echo campaign, magenta). `Game.villain()` picks Voss or the Echo from `camp.loop`.
-- `PLANET_STORY[planetId]` holds each planet's title and pages. A page is `[speaker, text]`. Each briefing
-  says why we fight there and what the boss is.
+- `PLANET_STORY[planetId]` holds a story planet's stronghold briefing. A page is `[speaker, text]`. Each
+  says why we fight there and what the boss is. Every other mission gets a field briefing built by
+  `planetBriefing(S, P, kind)`: Mira's `MISSION_LINES[kind]`, a science note from `FIELD_NOTES`, and a
+  line from `VOSS_TAUNTS` (or `LOOP_TOPICS`/`ECHO_LINES` in the Echo campaign).
 - `STORY_BEATS[n]` tells Voss's personal story. Beat `n` plays once, before the next briefing after
-  `n` sectors are cleared, so it stays in order on any route. `planetBriefing(S, P)` puts it together
-  (and uses `LOOP_TOPICS`/`ECHO_LINES` in the Echo campaign).
+  `n` systems are secured, so it stays in order on any route. `GALAXY_STORY[galaxyId]` plays on the
+  carrier's first arrival in a galaxy.
 - `startBriefing(label, title, pages, done)` runs any sequence of pages in the `intro` state. Fire
   finishes the typing and then turns the page. Start skips to `done()`.
 - In-game radio: `say(text, who = villain, queued = false)`. With `queued`, the message waits in `radioQ`
@@ -79,12 +104,13 @@ base: GALAXY MAP → map → travel → base      gameover / ABORT MISSION → m
 
 ### Stage types
 
-Each leg has an explicit type, set by `setupStage(type)`. The planet's `order` picks the pair:
-`'vs'` (default) = vertical approach (`normal`, or the planet's `approach`, e.g. `challenge`), then a
-`side` assault ending at a boss base; `'sv'` = `side` approach (no boss), then a `capital` flyover.
-`Game.legBoss` is true on the assault leg (side.js only adds the boss event then). `Game.isSide` is a
-getter on `stageType`. `this.stage` is a difficulty number from `difficulty(leg)` (it grows with planets
-cleared, not with the route), and the enemy formulas scale with it.
+Each leg has an explicit type, set by `setupStage(type)`. A stronghold's planet `order` picks its pair:
+`'vs'` = vertical approach (`normal`, or the planet's `approach`), then a `side` assault ending at a
+boss base; `'sv'` = `side` approach (no boss), then a `capital` flyover. Other missions are a single
+leg (`MISSION_KINDS`). `Game.legBoss` is true on a boss leg (side.js only adds the boss event then).
+`Game.isSide` is a getter on `stageType`. `this.stage` is a difficulty number from `difficulty(boss)`:
+it grows with the system's `tier` (its place in the galaxy chain) and the planet's place in its system,
+like open-world zones. `hpMul()` makes enemies and bosses tougher in later galaxies.
 
 - **Vertical stages:** wave layouts (`buildNormalWaves`, `buildChallengeWaves`), spline flight paths
   (`PATH_DEFS` → `PATHS`), formation slots, dives, methylator beams.
@@ -94,9 +120,11 @@ cleared, not with the route), and the enemy formulas scale with it.
   in a side mission is drawn in **side profile**: `drawShip(..., side)` uses `SPR.hulls[h].side`,
   `drawSideEnemy` uses `SPR.enemy[type].side` (facing left, flipped with `NES.drawFlip` when flying right),
   and the boss is a grounded warship drawn side-on.
-- **Sectors:** `SECTORS` in `campaign.js` gives each sector its planets, links, boss, enemy `swap`s
-  (`mixType`), extra `sideKinds`, `acetyl` bonus and the hull its shop sells. Planets carry their
-  side-mission background colors (`sky`).
+- **Systems:** each system in `GALAXIES` (`world.js`) gives its planets, links, boss, capital, enemy
+  `swap`s (`mixType`), extra `sideKinds`, `acetyl` bonus and securing `bonus`. Planets carry their
+  side-mission colors (`sky`), map colors (`disc`), `terrain`, `missions`, `market` (upgrade keys) and
+  `hulls` (their shipyard). Generated planets are `[name, terrain code]`; `seededRand(P.id)` fills in
+  the rest, so they never change between runs (don't reorder them: saves key missions by planet id).
 - **Boss warships** (`bosses.js`, side missions): grounded warships on landing legs, bow left.
   `BOSSES[id]` picks a hull `style` (`BASE_STYLES`: battleship, destroyer, carrier), a palette, how many
   targets of each kind it mounts (`BASE_LAYOUTS`: turrets, launchers, hangars, radars, cores) and a
@@ -113,7 +141,7 @@ cleared, not with the route), and the enemy formulas scale with it.
   targets be hit) and, when a pass ends with targets left, `spin` (seen from far away, it turns 180
   degrees) before the next zoom. `capitalToScreen(lx, ly)` maps hull coordinates to the screen.
   Specials and homing missiles reach its targets through `capitalOnScreen()`/`damageCapTarget()`.
-  The planet's `boss`/`capital` field or the sector's picks the id.
+  The planet's `boss`/`capital` field or the system's picks the id.
 - **Carrier** (`carrier.js`): drawn to scale with the ship (`CAR`: a 360×720 top view, a 580-wide side
   profile). `startTakeoff()` lifts the ship on the deck elevator and catapults it off the bow while the
   camera follows; `startLanding()` brings the carrier in stern first, the ship touches down on the wires,
@@ -126,20 +154,33 @@ cleared, not with the route), and the enemy formulas scale with it.
 
 ### Key data tables (at the top of `game.js`)
 
-- `FORMS`: the player's three forms (speed, `free` = can climb/dive, hitbox).
+- `FORMS`: the player's three forms (speed, `free` = can climb/dive, hitbox). What each form fires
+  comes from the hull: `HULLS[h].guns[form]` names a gun in `GUNS` (`weapons.js`); `HULLS[h].form[f]`
+  is the hull's damage multiplier in that form. `fireWeapon()`, `updateBullets()` and
+  `drawPlayerBullet()` live in `weapons.js`; `collide()` calls `bulletHits(b, e)` there (piercing
+  shots carry `pierce` and a `hit` list; wide ones a `rad`).
 - `ENEMY`: enemy types (hp, points `[normal, acetylated]`, hit radius). A new enemy type needs an entry
   here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
-- `SPECIALS` (in `specials.js`): special weapons. The pilot learns them at `LEARN_LEVELS` (2, 5, 8); the
-  hangar lists only `camp.learned`. Ammo = the `special` stat, refilled at every takeoff.
-- `PILOTS` and `HULLS` (in `pilots.js`): `statOf(key)` = pilot + hull + `camp.up` upgrades, capped at
-  `STAT_CAP`. `weapons` is the shot damage multiplier (`statOf('weapons') / 4`, via `gunPower()`), the
-  hull's `speed` scales every form (`speedMul()`). There are no lives: `Game.shields` soaks hits through
-  `takeHit()`, one more hit at 0 fails the mission, and shields refill in `setupStage`.
-- `SECTORS`, `LEVELS`, `LEARN_LEVELS` (in `campaign.js`), `UPGRADES` and prices (in `starbase.js`).
-- `Game.camp` is the whole saved campaign (pilot, hull, owned hulls, upgrades, money, xp, level, learned
-  specials, cleared planets, current sector, loop, story beats seen, score). It is saved as JSON in
+- `SPECIALS` (in `specials.js`): special weapons, learned at even levels; the hangar lists only
+  `camp.learned`. Ammo = `specialAmmo()`, refilled at every takeoff. Lasting ones keep timers
+  (`chronoT`, `empT`, `reflectT`, `podT`, `hyperT`, `grav`) reset by `clearSpecialFx()`;
+  `specialCollide()` runs their effects on bullets and planes.
+- `PASSIVES` (in `skills.js`): always-on skills, learned at odd levels (`hasPassive(id)`). In-flight
+  ones run in `updatePassives()`; others hook in where they act (`takeHit`, `silenceForm`, `battMax`,
+  `maxShields`, `specialAmmo`, rewards, `tet.js`). Per-leg flags reset in `resetPassives()`.
+- `PILOTS` and `HULLS` (in `pilots.js`): `statOf(key)` = pilot + hull + `camp.up` upgrades +
+  `camp.train` (level-up points), capped at `STAT_CAP` (16). `gunPower(form)` = `weapons / 4` times the
+  hull's form multiplier and the form's gun upgrade; `speedMul()` = hull speed and engine upgrades.
+  There are no lives: `Game.shields` soaks hits through `takeHit()`, one more hit at 0 fails the
+  mission, and shields refill to `maxShields()` in `setupStage`.
+- `LEVELS` (in `campaign.js`), `UPGRADES` and `upgradePrice` (in `starbase.js`; `camp.up[key]` counts
+  purchases).
+- `Game.camp` is the whole saved campaign (`v: 2`: pilot, hull, owned hulls, `up`, `train`, money, xp,
+  level, `learned` specials, `passives`, `pending` choices, `cleared` missions, `at` planet, `seen`
+  galaxies, loop, story beats, score, and `opened` systems for converted saves). It is saved as JSON in
   `localStorage['chimera.save']` by `saveCampaign()` whenever the carrier docks or you buy something.
+  `migrateSave()` converts version 1 saves.
 - TET capsules (`tet.js`): acetylated kills may drop one (`dropTet`); collecting it restores a silenced form.
 
 ## Conventions
@@ -164,8 +205,9 @@ cleared, not with the route), and the enemy formulas scale with it.
 - Keep the style: short methods on `Game`, compact one-line statements, and brief comments that explain *why*.
 - Wrap all `localStorage` access in try/catch (keys: `chimera.hi`, `chimera.padmap`, `chimera.save`).
   If you change the shape of `Game.camp`, bump its `v` and handle old saves in `continueCampaign`.
-- Keep the game playable with only a D-pad, A, B, Select and Start (NES-style pads). Put keyboard-only
-  extras (like `back`) on top of that; don't make them required.
+- Keep the game playable with only a D-pad, A, B, Select and Start (NES-style pads), and with touch
+  (joystick, A, B, X, START and taps). Put keyboard-only extras (like `back`) on top of that; don't make
+  them required. New menus should accept taps: add a case to `Game.tap` (`touch.js`).
 - Theme: the enemies, mechanics and story are built on real epigenetics (methylation, acetylation, histones,
   TET enzymes, imprinting and so on). The villain can be evil, but her science has to be right: check every
   fact you add, and don't invent biology (no "aggression genes").
@@ -174,21 +216,33 @@ cleared, not with the route), and the enemy formulas scale with it.
 
 - **New sound effect:** add an entry to `SFX` in `audio.js`, then call `Sound.sfx('name')`.
 - **New special weapon:** add it to `SPECIALS`, handle its `id` in `useSpecial()` (plus `updateSpecial`/
-  `drawSpecialFx` if it lasts over time), and add an icon to `SPR.specialIcons` at the same index.
+  `drawSpecialFx`/`specialCollide`/`clearSpecialFx` if it lasts over time), and add an icon to
+  `SPR.specialIcons` at the same index.
+- **New passive skill:** add it to `PASSIVES` (`skills.js`) and check `hasPassive('id')` where it acts.
+- **New gun:** add it to `GUNS` and a `case` in `fireWeapon()` (`weapons.js`); give new bullet kinds
+  flight in `steerBullet()` and art in `drawPlayerBullet()`. Put it on a hull's `guns`.
+- **New market upgrade:** add it to `UPGRADES` (`starbase.js`) and `MARKET_POOL` (`world.js`), then read
+  `upLevel('key')` where it acts.
 - **New side-mission pattern:** add a `case` to `spawnSidePattern`, add it to the `kinds` list in `initSide`,
   and add a `beh` case in `updateSideEnemy` if it needs new movement.
 - **New story beat:** edit `PLANET_STORY` (per planet), `STORY_BEATS` (Voss's arc) or
   `LOOP_TOPICS`/`ECHO_LINES` (Echo campaign) in `story.js`. For a one-off radio tip, add it to `HINTS`
   and call `this.hint('key')` where it happens.
-- **New planet:** add it to a sector's `planets` in `SECTORS` (id, name, `sky`, `disc`, optional
-  `order`, `approach`, `boss`, `capital`) and add its briefing to `PLANET_STORY`.
-- **New sector:** add it to `SECTORS` with `x/y` on the map and `links` in **both** directions.
+- **New planet:** add `['NAME', 'terrain code']` to a system's `planets` in `world.js` (a generated
+  planet), or a full object (id, name, terrain, `sky`, `disc`, optional `order`, `approach`, `boss`,
+  `capital`, `missions`, `market`, `hulls`, `ring`) with a stronghold briefing in `PLANET_STORY`. At most
+  ten planets per system. Add new planets at the end of a list: `?stage=N` counts them in order.
+- **New system:** add it to a galaxy's `systems` with `x/y` on the galaxy map and `links` in **both**
+  directions. The galaxy's first system is its entry point.
+- **New galaxy:** add it to `GALAXIES` with `x/y` on the universe map, `col` and `arms` colors.
+- **Text length:** briefing pages wrap at 25 characters, 6 lines; radio lines and boss intros 3 lines.
+  Mission lines are built from planet and boss names, so check long names against `MISSION_LINES`.
 - **New boss warship:** add an entry to `BOSSES` (name, `style`, `pal`, `layout`, `shield`, `launch`, `hp`,
   intro), plus a layout to `BASE_LAYOUTS`, a hull to `BASE_STYLES` or a rule to `updateBossShields` if needed.
 - **New capital ship:** add an entry to `CAPITALS` (name, `style`, size, palette, target counts, `launch`
   type, intro). A new `CAP_STYLES` hull must return at least as many slots as the ship mounts.
-- **New hull:** add it to `HULLS` (`pilots.js`) and `HULL_ART` (`sprites.js`, same index, with top-down
-  and side-profile rows), and set a sector's `hull` to sell it.
+- **New hull:** add it to `HULLS` (`pilots.js`, with `guns` and `form`) and `HULL_ART` (`sprites.js`,
+  same index, with top-down and side-profile rows), and put its index in a planet's `hulls` to sell it.
 - **New system in its own file:** use the `Object.assign(Game, {...})` mixin pattern and add a
   `<script>` tag after `game.js` in `index.html`.
 

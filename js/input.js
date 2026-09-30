@@ -22,6 +22,8 @@ const Input = (() => {
   const DEADZONE = 0.4;
 
   const keys = new Set();
+  const virt = {};          // on-screen touch controls (touch.js): action -> held
+  let pulses = new Set();   // one-frame presses (a tap on the screen)
   let keysNow = new Set(), keysPrev = new Set();
   let cur = {}, prev = {};
   let mappings = {};
@@ -76,6 +78,9 @@ const Input = (() => {
     cur = {};
     for (const k of keys) { const a = KEYMAP[k]; if (a) cur[a] = true; }
     for (const p of pads()) readPad(p, cur);
+    for (const a in virt) if (virt[a]) cur[a] = true;
+    for (const a of pulses) cur[a] = true;
+    pulses = new Set();
     keysPrev = keysNow;
     keysNow = new Set(keys);
   }
@@ -85,6 +90,9 @@ const Input = (() => {
     pressed: a => !!cur[a],
     just: a => !!cur[a] && !prev[a],
     keyJust: code => keysNow.has(code) && !keysPrev.has(code),
+    setVirtual(a, on) { virt[a] = on; },
+    clearVirtual() { for (const a in virt) virt[a] = false; },
+    pulse(a) { pulses.add(a); },
     pads,
     // Indices of currently held buttons on the first connected pad (for remapping).
     rawButtons() {

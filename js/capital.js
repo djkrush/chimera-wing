@@ -25,6 +25,25 @@ const CAPITALS = {
   imprint: { name: 'IMPRINT CRUISER', style: 'twin', w: 380, len: 820, turrets: 10, hangars: 2, cores: 2, launch: 'fighter',
     pal: { hull: '#4c64a8', deck: '#2c3c70', metal: '#98a8d8', trim: '#80d0f8' },
     intro: 'THIS CRUISER ANSWERS TO ONE PARENT ONLY. ME.' },
+  // ---- Magellanic Cloud and Andromeda ----
+  deacetylase: { name: 'HDAC DREADNOUGHT', style: 'battleship', w: 260, len: 900, turrets: 9, hangars: 2, cores: 1, launch: 'fighter',
+    pal: { hull: '#a08038', deck: '#6c5424', metal: '#d8c080', trim: '#f0e0a0' },
+    intro: 'EVERY ACETYL MARK IT PASSES, IT STRIPS. EVERY GENE GOES QUIET.' },
+  writer: { name: 'DNMT3 WRITER', style: 'destroyer', w: 400, len: 860, turrets: 10, hangars: 2, cores: 2, launch: 'splitter',
+    pal: { hull: '#3c7c9c', deck: '#24506c', metal: '#88c0d8', trim: '#f8f0c0' },
+    intro: 'A WRITER, NOT A COPIER. IT PUTS DOWN MARKS NOBODY HAS SEEN BEFORE.' },
+  prc2: { name: 'PRC2 CARRIER', style: 'carrier', w: 380, len: 860, turrets: 8, hangars: 4, cores: 1, launch: 'drone',
+    pal: { hull: '#4c8c4c', deck: '#2c5c34', metal: '#98c890', trim: '#d8f080' },
+    intro: 'POLYCOMB KEEPS A CELL IN ITS VALLEY. THIS CARRIER KEEPS YOU IN YOURS.' },
+  loop: { name: 'COHESIN LOOPER', style: 'twin', w: 400, len: 880, turrets: 10, hangars: 2, cores: 2, launch: 'fighter',
+    pal: { hull: '#5c6cb0', deck: '#384478', metal: '#a8b4e0', trim: '#f8d878' },
+    intro: 'COHESIN PULLS DNA INTO LOOPS. MY LOOPER WILL LOOP YOU TOO.' },
+  lamina: { name: 'LAMINA ARK', style: 'carrier', w: 380, len: 900, turrets: 8, hangars: 4, cores: 2, launch: 'drone',
+    pal: { hull: '#7c6c5c', deck: '#4c4038', metal: '#c0b098', trim: '#e84830' },
+    intro: 'SILENT DNA HUGS THE NUCLEAR LAMINA. MY ARK HUGS THIS PLANET.' },
+  silencer: { name: 'SIRTUIN CRUISER', style: 'twin', w: 380, len: 900, turrets: 10, hangars: 2, cores: 2, launch: 'splitter',
+    pal: { hull: '#a0506c', deck: '#6c3048', metal: '#e098b0', trim: '#fce0a8' },
+    intro: 'A DEACETYLASE WITH GUNS. IT SILENCES WHATEVER IT FLIES OVER.' },
   nucleosome: { name: 'NUCLEOSOME DREADNOUGHT', style: 'destroyer', w: 420, len: 960, turrets: 12, hangars: 3, cores: 2, launch: 'splitter',
     pal: { hull: '#6c58a0', deck: '#403468', metal: '#a898d0', trim: '#e070d0' },
     intro: 'MY DREADNOUGHT RUNS ON HISTONE CORES. WRAPPED TIGHT, KEPT QUIET.' },
@@ -203,7 +222,7 @@ Object.assign(Game, {
   },
 
   makeCapital(id) {
-    const def = CAPITALS[id], art = this.capitalArt(id), k = 1 + this.stage * 0.06, L = art.lay;
+    const def = CAPITALS[id], art = this.capitalArt(id), k = (1 + this.stage * 0.06) * this.hpMul(), L = art.lay;
     this.lastBossName = def.name;
     const T = [
       ...L.turrets.slice(0, def.turrets).map(([lx, ly, big]) => ({ kind: 'turret', lx, ly, big, r: big ? 9 : 7, hp: big ? 7 : 4 })),
@@ -279,7 +298,7 @@ Object.assign(Game, {
           const n = q.big ? 3 : 1;
           for (let i = 0; i < n; i++) {
             const b = a + (i - (n - 1) / 2) * 0.12;
-            this.eBul.push({ x: q.x + Math.cos(a) * 14, y: q.y + Math.sin(a) * 14, vx: Math.cos(b) * sp, vy: Math.sin(b) * sp });
+            if (!(this.empT > 0)) this.eBul.push({ x: q.x + Math.cos(a) * 14, y: q.y + Math.sin(a) * 14, vx: Math.cos(b) * sp, vy: Math.sin(b) * sp });
           }
           this.spark(q.x + Math.cos(a) * 16, q.y + Math.sin(a) * 16, C.yellow, 3);
         }

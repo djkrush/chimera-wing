@@ -1,111 +1,79 @@
 'use strict';
-// Sector campaign. The space carrier travels between star systems (sectors) on a galaxy map and
-// docks at each sector's starbase (starbase.js). Every planet is a mission with two legs:
-//   approach: a vertical Galaga-style stage   assault: a side-scrolling stage that ends in a boss
+// Open-world campaign. The space carrier flies between planets (world.js has the galaxies, systems
+// and planets; starmap.js has the maps and travel) and docks at each planet's orbital station
+// (starbase.js). Every planet offers a few missions. A mission is one or more legs:
+//   normal / challenge: a vertical Galaga-style stage     side / raid: a side-scrolling stage
+//   the STRONGHOLD: two legs ending in a boss (order 'vs' = vertical approach, then a side assault
+//   ending at a boss warship (bosses.js); 'sv' = side approach, then a capital-ship flyover (capital.js))
 // The ship takes off from the carrier before each leg and lands on it after (carrier.js).
-// Clearing every planet in a sector pays a bonus and opens the sectors linked to it.
-// order 'vs' = vertical approach, then a side-scrolling assault that ends in the side boss (bosses.js).
-// order 'sv' = side-scrolling approach, then a vertical flyover of a capital ship (capital.js).
 
-// sky: side-mission background [far mountains, near hills, ground, ground stripes]
-// disc: planet colors [body, band] for the map and cutscenes
-// terrain: scenery style (scenery.js): ocean, desert, clouds, hive, fields, ice or tech
-// boss / capital: the sector's side boss and capital ship (a planet can override either)
-// swap: enemy types this sector swaps in, as [new type, chance]
-// sideKinds: extra side-mission patterns (side.js) added to the usual mix
-const SECTORS = [
-  { id: 'sol', name: 'SOL', short: 'SOL', base: 'LUNA STATION', x: 28, y: 108, col: C.gold,
-    links: ['acen', 'barn'], boss: 'bunker', capital: 'dreadnought', hull: -1, acetyl: 0, swap: {}, sideKinds: [],
-    bonus: { money: 1000, xp: 150 },
-    planets: [
-      { id: 'earth', name: 'EARTH', sky: [C.navy, C.dgreen, C.brown, C.olive], disc: [C.blue, C.green], terrain: 'ocean' },
-      { id: 'mars', name: 'MARS', sky: [C.maroon, C.rust, C.darkred, C.orange], disc: [C.rust, C.orange], terrain: 'desert', order: 'sv' },
-      { id: 'venus', name: 'VENUS', sky: [C.olive, C.gold, C.brown, C.yellow], disc: [C.gold, C.cream], terrain: 'clouds',
-        approach: 'challenge' },
-    ] },
-  { id: 'acen', name: 'ALPHA CENTAURI', short: 'ALPHA CEN', base: 'CENTAURI GATE', x: 146, y: 60, col: C.orange,
-    links: ['sol', 'sirius'], boss: 'copier', capital: 'replicator', hull: 1, acetyl: 0,
-    swap: { fighter: [['splitter', 0.35]] }, sideKinds: ['splitterLine', 'splitterLine'],
-    bonus: { money: 1500, xp: 200 },
-    planets: [
-      { id: 'proxima', name: 'PROXIMA B', sky: [C.darkred, C.maroon, C.brown, C.red], disc: [C.red, C.orange], terrain: 'desert', order: 'sv' },
-      { id: 'toliman', name: 'TOLIMAN', sky: [C.teal, C.dgreen, C.olive, C.cyan], disc: [C.teal, C.cyan], terrain: 'ocean',
-        approach: 'challenge' },
-    ] },
-  { id: 'barn', name: "BARNARD'S STAR", short: 'BARNARD', base: 'HIVEWATCH', x: 146, y: 156, col: C.red,
-    links: ['sol', 'tau'], boss: 'queen', capital: 'ark', hull: 2, acetyl: 0.1,
-    swap: { fighter: [['drone', 0.5]] }, sideKinds: ['droneSwarm', 'droneSwarm'],
-    bonus: { money: 1500, xp: 200 },
-    planets: [
-      { id: 'hive', name: 'BARNARD B', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.olive, C.gold], terrain: 'hive' },
-      { id: 'nectar', name: 'NECTAR', sky: [C.olive, C.gold, C.brown, C.cream], disc: [C.gold, C.yellow], terrain: 'hive', order: 'sv' },
-    ] },
-  { id: 'sirius', name: 'SIRIUS', short: 'SIRIUS', base: 'DOG STAR DOCK', x: 278, y: 60, col: C.ice,
-    links: ['acen', 'tau', 'eps'], boss: 'xinact', capital: 'barr', hull: 3, acetyl: 0.2,
-    swap: {}, sideKinds: ['bomber', 'bomber'],
-    bonus: { money: 2000, xp: 250 },
-    planets: [
-      { id: 'agouti', name: 'AGOUTI PRIME', sky: [C.brown, C.olive, C.maroon, C.gold], disc: [C.gold, C.brown], terrain: 'fields', order: 'sv' },
-      { id: 'calico', name: 'CALICO', sky: [C.gray, C.rust, C.brown, C.orange], disc: [C.orange, C.lgray], terrain: 'fields',
-        approach: 'challenge' },
-    ] },
-  { id: 'tau', name: 'TAU CETI', short: 'TAU CETI', base: 'CETI ANCHORAGE', x: 278, y: 156, col: C.yellow,
-    links: ['barn', 'sirius', 'eps'], boss: 'twins', capital: 'imprint', hull: 3, acetyl: 0,
-    swap: { bomber: [['armored', 0.4]] }, sideKinds: ['armoredPair'],
-    bonus: { money: 2000, xp: 250 },
-    planets: [
-      { id: 'taue', name: 'TAU CETI E', sky: [C.navy, C.blue, C.gray, C.lgray], disc: [C.lgray, C.sky], terrain: 'ice' },
-      { id: 'tauf', name: 'TAU CETI F', sky: [C.navy, C.violet, C.purple, C.lavender], disc: [C.violet, C.lavender], terrain: 'ice', order: 'sv' },
-    ] },
-  { id: 'eps', name: 'EPSILON ERIDANI', short: 'EPS ERI', base: 'ERIDANI ROADS', x: 396, y: 108, col: C.pink,
-    links: ['sirius', 'tau'], boss: 'citadel', capital: 'nucleosome', hull: -1, acetyl: 0.1,
-    swap: { fighter: [['splitter', 0.2], ['drone', 0.2]], bomber: [['armored', 0.3]] },
-    sideKinds: ['splitterLine', 'droneSwarm', 'armoredPair'],
-    bonus: { money: 3000, xp: 300 },
-    planets: [
-      { id: 'aegir', name: 'AEGIR', sky: [C.purple, C.violet, C.navy, C.lavender], disc: [C.violet, C.pink], terrain: 'ocean', order: 'sv' },
-      { id: 'citadel', name: 'THE CITADEL', sky: [C.maroon, C.purple, C.black, C.magenta], disc: [C.magenta, C.purple], terrain: 'tech' },
-    ] },
-];
-const SECTOR_BY_ID = Object.fromEntries(SECTORS.map(S => [S.id, S]));
-
-// XP needed to reach each level (index 0 = level 1). New specials are learned at LEARN_LEVELS.
-const LEVELS = [0, 150, 450, 800, 1200, 1700, 2300, 3000, 3800, 4700];
-const LEARN_LEVELS = [2, 5, 8];
+// XP needed to reach each level (index 0 = level 1). Every level-up trains a stat, then teaches a
+// special (even levels) or a passive skill (odd levels); see skills.js.
+const LEVELS = Array.from({ length: 30 }, (_, i) => Math.round((100 * i + 45 * i * i) / 10) * 10);
+const round10 = v => Math.round(v / 10) * 10;
 
 Object.assign(Game, {
-  mapSel: 0, travel: null, debrief: null,
+  debrief: null,
 
   // ---- Lookups --------------------------------------------------------------------
-  sectorDef() { return SECTOR_BY_ID[this.mission ? this.mission.sector : this.camp ? this.camp.sector : 'sol']; },
+  hereId() { return this.mission ? this.mission.planet.id : this.camp ? this.camp.at : 'earth'; },
+  planetHere() { return PLANET_BY_ID[this.hereId()]; },
+  systemDef() { return SYSTEM_BY_ID[this.planetHere().sys]; },
+  galaxyDef() { return GALAXIES[this.systemDef().galIndex]; },
   planetDef() { return this.mission ? this.mission.planet : null; },
-  planetSky() { const P = this.planetDef(); return P ? P.sky : SECTORS[0].planets[0].sky; },
-  missionBoss() { const P = this.planetDef(); return (P && P.boss) || this.sectorDef().boss; },
-  missionCapital() { const P = this.planetDef(); return (P && P.capital) || this.sectorDef().capital; },
-  sectorSideKinds() { return this.sectorDef().sideKinds; },
-  isFinale() { const M = this.mission; return !!M && M.planet.id === 'citadel' && M.leg === 'assault'; },
+  planetSky() { return this.planetHere().sky; },
+  missionBoss() { const P = this.planetDef(); return (P && P.boss) || this.systemDef().boss; },
+  missionCapital() { const P = this.planetDef(); return (P && P.capital) || this.systemDef().capital; },
+  systemSideKinds() { return this.systemDef().sideKinds; },
+  isFinale() {
+    const M = this.mission;
+    return !!M && M.planet.id === 'citadel' && M.kind === 'strike' && M.leg === M.legs.length - 1;
+  },
 
-  // A sector may swap some enemy types for its own.
+  // A system may swap some enemy types for its own.
   mixType(type) {
-    for (const [nt, chance] of this.sectorDef().swap[type] || []) if (Math.random() < chance) return nt;
+    for (const [nt, chance] of this.systemDef().swap[type] || []) if (Math.random() < chance) return nt;
     return type;
   },
 
-  sectorCleared(id) { return SECTOR_BY_ID[id].planets.every(P => this.camp.cleared[P.id]); },
-  isUnlocked(id) { return id === 'sol' || SECTOR_BY_ID[id].links.some(l => this.sectorCleared(l)); },
-  planetsCleared() { return Object.keys(this.camp.cleared).length; },
-  sectorsCleared() { return SECTORS.filter(S => this.sectorCleared(S.id)).length; },
+  // ---- Progress -------------------------------------------------------------------------
+  missionDone(P, i) { return !!this.camp.cleared[P.id + ':' + i]; },
+  // The stronghold (last mission) opens once every other mission on the planet is flown.
+  missionOpen(P, i) { return i < P.missions.length - 1 || P.missions.slice(0, -1).every((k, j) => this.missionDone(P, j)); },
+  planetCleared(P) { return P.missions.every((k, i) => this.missionDone(P, i)); },
+  systemClearedCount(S) { return S.planets.filter(P => this.planetCleared(P)).length; },
+  systemNeed(S) { return Math.ceil(S.planets.length / 2); },
+  systemSecured(S) { return this.systemClearedCount(S) >= this.systemNeed(S); },
+  systemCleared(S) { return S.planets.every(P => this.planetCleared(P)); },
+  galaxyOpen(G) { return G.index === 0 || GALAXIES[G.index - 1].systems.every(S => this.systemSecured(S)); },
+  systemOpen(S) {
+    const G = GALAXIES[S.galIndex];
+    if ((this.camp.opened || []).includes(S.id)) return true;   // reached in a version 1 save
+    if (!this.galaxyOpen(G)) return false;
+    return S === G.systems[0] || S.links.some(id => this.systemSecured(SYSTEM_BY_ID[id]));
+  },
+  systemsSecured() { return SYSTEMS.filter(S => this.systemSecured(S)).length; },
 
-  // Difficulty number for the existing stage formulas: it climbs with progress, not with route.
-  difficulty(leg) { return 1 + this.planetsCleared() + (leg === 'assault' ? 1 : 0) + this.camp.loop * 8; },
+  // Difficulty number for the stage formulas: it grows with where you fly (the system's place in the
+  // galaxy chain, and the planet's place in its system), like the zones of an open-world game.
+  difficulty(boss) {
+    const S = this.systemDef(), P = this.planetHere();
+    return 1 + Math.round(S.tier * 1.4 + P.index * 0.3) + (boss ? 1 : 0) + this.camp.loop * 8;
+  },
+  // Enemy toughness: later galaxies field sturdier machines (weapons stats keep climbing too).
+  hpMul() { return 1 + this.systemDef().galIndex * 0.6 + (this.camp ? this.camp.loop * 0.5 : 0); },
 
   // ---- Campaign start, save and load --------------------------------------------------
+  newCamp(pilot) {
+    return { v: 2, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
+      level: 1, learned: [], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0 };
+  },
+
   newCampaign(pilot) {
     this.pilot = pilot;
-    this.camp = { v: 1, pilot, hull: 0, hulls: [0], up: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
-      level: 1, learned: [], learnQ: 0, cleared: {}, sector: 'sol', loop: 0, beats: [], score: 0 };
+    this.camp = this.newCamp(pilot);
     this.resetRun(0);
-    this.startTravel('sol', 'sol');
+    this.startTravel('earth', 'earth');
   },
 
   resetRun(score) {
@@ -132,7 +100,8 @@ Object.assign(Game, {
   continueCampaign() {
     let c = null;
     try { c = JSON.parse(localStorage.getItem('chimera.save')); } catch (e) { c = null; }
-    if (!c || c.v !== 1 || !PILOTS[c.pilot] || !SECTOR_BY_ID[c.sector] || !HULLS[c.hull]) {
+    if (c && c.v === 1) c = this.migrateSave(c);
+    if (!c || c.v !== 2 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
       Sound.sfx('denied');
       this.toast('SAVE DATA UNREADABLE');
       return;
@@ -140,23 +109,41 @@ Object.assign(Game, {
     this.camp = c;
     this.pilot = c.pilot;
     this.resetRun(c.score || 0);
-    this.startTravel(c.sector, c.sector);
+    this.startTravel(c.at, c.at);
   },
 
-  // Dev shortcut (?stage=N): planet ceil(N/2) in map order, odd N = approach, even N = assault.
-  testLeg(n) {
-    const all = SECTORS.flatMap(S => S.planets.map(P => [S, P]));
-    const k = clamp(Math.ceil(n / 2), 1, all.length) - 1;
-    const [S, P] = all[k];
+  // Version 1 saves (six sectors, one mission per planet): cleared planets keep every mission cleared,
+  // the carrier moves to the old sector's first planet, and the pilot picks a starting passive.
+  migrateSave(o) {
+    if (!o || !PILOTS[o.pilot]) return null;
+    const c = this.newCamp(o.pilot);
+    c.at = { sol: 'earth', acen: 'proxima', barn: 'hive', sirius: 'agouti', tau: 'taue', eps: 'aegir' }[o.sector] || 'earth';
+    for (const id of Object.keys(o.cleared || {})) {
+      const P = PLANET_BY_ID[id];
+      if (P) P.missions.forEach((k, i) => { c.cleared[id + ':' + i] = true; });
+    }
+    Object.assign(c, { hull: o.hull || 0, hulls: o.hulls || [0], up: { ...(o.up || {}) }, money: o.money || 0, xp: o.xp || 0,
+      level: o.level || 1, learned: o.learned || [], loop: o.loop || 0, beats: o.beats || [], score: o.score || 0 });
+    for (let i = 0; i < (o.learnQ || 0); i++) c.pending.push('special');
+    c.opened = [...new Set([c.at, ...Object.keys(o.cleared || {})].filter(id => PLANET_BY_ID[id]).map(id => PLANET_BY_ID[id].sys))];
+    return c;
+  },
+
+  // Dev shortcut (?stage=N): planet ceil(N/2) in map order (PLANETS), its stronghold; odd N = first
+  // leg, even N = the boss leg. ?passives=drone,rear and ?hull=N set up the test ship.
+  testLeg(n, q) {
+    const k = clamp(Math.ceil(n / 2), 1, PLANETS.length) - 1, P = PLANETS[k];
     this.pilot = 0;
-    this.camp = { v: 1, test: true, pilot: 0, hull: 0, hulls: [0], up: { weapons: 0, shields: 0, special: 0 },
-      money: 0, xp: 0, level: 1, learned: SPECIALS.map((s, i) => i), learnQ: 0, cleared: {}, sector: S.id,
-      loop: 0, beats: [], score: 0 };
-    for (let i = 0; i < k; i++) this.camp.cleared[all[i][1].id] = true;
+    this.camp = this.newCamp(0);
+    const passives = (q.get('passives') || '').split(',').filter(id => PASSIVES.some(s => s.id === id));
+    Object.assign(this.camp, { test: true, at: P.id, learned: SPECIALS.map((s, i) => i), passives, pending: [],
+      hull: clamp(parseInt(q.get('hull'), 10) || 0, 0, HULLS.length - 1) });
+    this.camp.hulls = [this.camp.hull];
+    for (let i = 0; i < k; i++) PLANETS[i].missions.forEach((m, j) => { this.camp.cleared[PLANETS[i].id + ':' + j] = true; });
     this.resetRun(0);
-    this.mission = { sector: S.id, planet: P, leg: 'approach', score0: 0, bonusCr: 0, replay: false };
+    this.mission = this.makeMission(P, P.missions.length - 1);
     this.special = { idx: 0, ammo: 0, cd: 0 };
-    this.startLeg(n % 2 ? 'approach' : 'assault');
+    this.startLeg(n % 2 ? 0 : this.mission.legs.length - 1);
   },
 
   // ---- Starbase arrival ------------------------------------------------------------------
@@ -167,21 +154,38 @@ Object.assign(Game, {
     this.enemies = []; this.eBul = []; this.pBul = []; this.pickups = [];
     this.radio = null; this.radioQ = [];
     this.stageType = 'normal'; this.special = null; this.wingT = 0; this.tetT = 0; this.laser = null;
-    const p = this.player;
+    this.clearSpecialFx();
+    const p = this.player, c = this.camp;
     p.alive = true; p.hidden = true; p.silenced = [false, false, false]; p.silenceT = [0, 0, 0];
-    this.baseUI = { page: 'main', sel: 0 };
+    this.baseUI = { page: 'main', sel: 0, top: 0 };
     this.saveCampaign();
     this.setState('base');
     Sound.playSong(Sound.SONGS.base);
+    if (c.pending.length) { this.openLearn(); return; }   // level-up choices first (skills.js)
+    const G = this.galaxyDef();
+    if (!c.seen.includes(G.id)) {                           // first visit to a galaxy: Mira's briefing
+      c.seen.push(G.id);
+      const B = GALAXY_STORY[G.id];
+      if (B && !c.loop) this.startBriefing(G.name, B.title, B.pages, () => this.setState('base'));
+    }
   },
 
   // ---- Missions ---------------------------------------------------------------------------
-  startMission(i) {
-    const S = this.sectorDef(), P = S.planets[i];
-    this.mission = { sector: S.id, planet: P, leg: 'approach', score0: this.score, bonusCr: 0,
-      replay: !!this.camp.cleared[P.id] };
+  makeMission(P, mi) {
+    const kind = P.missions[mi];
+    let legs = MISSION_KINDS[kind].legs.map(type => ({ type }));
+    if (kind === 'strike') {
+      legs = P.order === 'sv' ? [{ type: 'side' }, { type: 'capital', boss: true }]
+        : [{ type: P.approach || 'normal' }, { type: 'side', boss: true }];
+    }
+    return { sys: P.sys, planet: P, mi, kind, legs, leg: 0, score0: this.score, bonusCr: 0, replay: this.missionDone(P, mi) };
+  },
+
+  startMission(mi) {
+    const P = this.planetHere(), S = this.systemDef();
+    this.mission = this.makeMission(P, mi);
     this.nextAdapt = -1;
-    const B = this.planetBriefing(S, P);
+    const B = this.planetBriefing(S, P, this.mission.kind);
     this.startBriefing(P.name, B.title, B.pages, () => this.openLoadout());
     Sound.playSong(Sound.SONGS.stage);
   },
@@ -192,7 +196,7 @@ Object.assign(Game, {
     this.startSortie();
   },
 
-  // Cutscene: the carrier leaves the starbase and flies out to the planet.
+  // Cutscene: the carrier leaves orbit and flies down toward the planet.
   startSortie() {
     this.setState('sortie');
     Sound.sfx('takeoff');
@@ -201,28 +205,28 @@ Object.assign(Game, {
   updateSortie() {
     this.stateT++;
     const skip = this.stateT > 20 && (Input.just('fire') || Input.just('start'));
-    if (this.stateT > 170 || skip) this.startLeg('approach');
+    if (this.stateT > 170 || skip) this.startLeg(0);
   },
 
-  startLeg(leg) {
-    const M = this.mission;
-    M.leg = leg;
+  startLeg(i) {
+    const M = this.mission, L = M.legs[i];
+    M.leg = i;
     this.inBase = false;
-    this.stage = this.difficulty(leg);
-    this.legBoss = leg === 'assault';
-    const vs = (M.planet.order || 'vs') === 'vs';
-    const type = leg === 'approach' ? (vs ? M.planet.approach || 'normal' : 'side') : (vs ? 'side' : 'capital');
-    this.setupStage(type);
+    this.legBoss = !!L.boss;
+    this.raid = L.type === 'raid';
+    this.stage = this.difficulty(L.boss);
+    this.setupStage(this.raid ? 'side' : L.type);
     if (Sound.current !== Sound.SONGS.mission) Sound.playSong(Sound.SONGS.mission);   // keep the groove across legs
     this.startTakeoff();
-    if (leg === 'assault') this.say('APPROACH CLEAR. REARMED AND REFUELED. NOW THE ASSAULT ON ' + M.planet.name + '.', 'mira');
+    if (i > 0) this.say('APPROACH CLEAR. REARMED AND REFUELED. NOW THE ASSAULT ON ' + M.planet.name + '.', 'mira');
   },
 
   // A leg's enemies (or boss) are gone: head back to the carrier.
   legDone() { this.startLanding(); },
 
   afterLanding() {
-    if (this.mission.leg === 'approach') this.startLeg('assault');
+    const M = this.mission;
+    if (M.leg < M.legs.length - 1) this.startLeg(M.leg + 1);
     else this.missionComplete();
   },
 
@@ -234,35 +238,37 @@ Object.assign(Game, {
 
   // ---- Rewards -----------------------------------------------------------------------------
   missionComplete() {
-    const c = this.camp, M = this.mission, S = this.sectorDef(), P = M.planet;
-    const tier = this.planetsCleared() - (M.replay ? 1 : 0);
+    const c = this.camp, M = this.mission, S = this.systemDef(), P = M.planet, K = MISSION_KINDS[M.kind];
     const mult = (M.replay ? 0.5 : 1) * (1 + c.loop * 0.5);
-    const round10 = v => Math.round(v / 10) * 10;
-    const pay = round10((600 + 150 * tier) * mult);
-    const combat = round10((this.score - M.score0) / 40 + M.bonusCr);
-    const xp = Math.round((150 + 25 * tier) * mult);
+    const payMul = (1 + 0.1 * this.upLevel('broker')) * (this.hasPassive('salvage') ? 1.2 : 1);
+    const xpMul = this.hasPassive('study') ? 1.2 : 1;
+    const pay = round10((500 + 140 * S.tier) * K.pay * mult * payMul);
+    const combat = round10(((this.score - M.score0) / 40 + M.bonusCr) * payMul);
+    const xp = Math.round((120 + 25 * S.tier) * K.pay * mult * xpMul);
     const lines = [['MISSION PAY', pay + ' CR'], ['COMBAT PAY', combat + ' CR'], ['EXPERIENCE', xp + ' XP']];
     let money = pay + combat, gain = xp;
-    const before = SECTORS.filter(q => this.isUnlocked(q.id)).map(q => q.id);
-    const wasClear = this.sectorCleared(S.id);
-    c.cleared[P.id] = true;
-    const sectorClear = !wasClear && this.sectorCleared(S.id);
-    if (sectorClear) {
-      const bm = round10(S.bonus.money * (1 + c.loop * 0.5));
-      money += bm; gain += S.bonus.xp;
-      lines.push(['SECTOR BONUS', bm + ' CR'], ['', S.bonus.xp + ' XP']);
-    }
-    const unlocked = SECTORS.filter(q => !before.includes(q.id) && this.isUnlocked(q.id)).map(q => q.name);
+    const openBefore = SYSTEMS.filter(q => this.systemOpen(q)).map(q => q.id);
+    const galBefore = GALAXIES.filter(g => this.galaxyOpen(g)).map(g => g.id);
+    const was = { planet: this.planetCleared(P), secured: this.systemSecured(S), cleared: this.systemCleared(S) };
+    c.cleared[P.id + ':' + M.mi] = true;
+    const bonus = (label, m, x) => {
+      m = round10(m * (1 + c.loop * 0.5) * payMul); x = Math.round(x * xpMul);
+      money += m; gain += x;
+      lines.push([label, m + ' CR'], ['', x + ' XP']);
+    };
+    const planetClear = !was.planet && this.planetCleared(P);
+    if (planetClear) bonus('PLANET BONUS', 300 * (1 + S.tier * 0.3), 60 + 10 * S.tier);
+    const secured = !was.secured && this.systemSecured(S);
+    if (secured) bonus('SYSTEM BONUS', S.bonus.money, S.bonus.xp);
+    const liberated = !was.cleared && this.systemCleared(S);
+    if (liberated) bonus('LIBERATION', S.bonus.money / 2, S.bonus.xp / 2);
+    const unlocked = [...GALAXIES.filter(g => !galBefore.includes(g.id) && this.galaxyOpen(g)).map(g => 'GALAXY: ' + g.name),
+      ...SYSTEMS.filter(q => !openBefore.includes(q.id) && this.systemOpen(q)).map(q => 'SYSTEM: ' + q.name)];
     c.money += money;
     c.xp += gain;
-    const levels = [];
-    while (c.level < LEVELS.length && c.xp >= LEVELS[c.level]) {
-      c.level++;
-      levels.push(c.level);
-      if (LEARN_LEVELS.includes(c.level) && c.learned.length + c.learnQ < SPECIALS.length) c.learnQ++;
-    }
-    this.debrief = { planet: P.name, lines, total: money, levels, unlocked, sectorClear, sector: S.name,
-      finale: this.isFinale() };
+    const levels = this.gainLevels();
+    this.debrief = { planet: P.name, kind: K.name, lines, total: money, levels, unlocked, planetClear, secured, liberated,
+      system: S.name, finale: this.isFinale() };
     this.setState('debrief');
     Sound.playSong(Sound.SONGS.victory);
   },
@@ -273,7 +279,7 @@ Object.assign(Game, {
     if (this.stateT === 60) Sound.sfx('cash');
     if (this.stateT < 90 || !(Input.just('fire') || Input.just('start'))) return;
     Sound.sfx('select');
-    if (this.camp.learnQ > 0) this.openLearn();
+    if (this.camp.pending.length) this.openLearn();
     else this.leaveDebrief();
   },
 
@@ -286,31 +292,34 @@ Object.assign(Game, {
   drawDebrief(ctx) {
     const D = this.debrief, c = this.camp, center = { align: 'center' };
     NES.box(ctx, 2, 2, 252, 236, C.black, C.gold);
-    NES.text(ctx, D.planet, 128, 14, C.gold, { align: 'center', scale: 2, shadow: C.navy });
-    NES.text(ctx, 'MISSION COMPLETE', 128, 36, C.white, center);
+    NES.text(ctx, D.planet, 128, 10, C.gold, { align: 'center', scale: 2, shadow: C.navy });
+    NES.text(ctx, D.kind + ' COMPLETE', 128, 30, C.white, center);
     D.lines.forEach(([a, b], i) => {
       if (this.stateT < 20 + i * 12) return;
-      NES.text(ctx, a, 32, 56 + i * 11, C.aqua);
-      NES.text(ctx, b, 224, 56 + i * 11, C.white, { align: 'right' });
+      NES.text(ctx, a, 32, 44 + i * 10, C.aqua);
+      NES.text(ctx, b, 224, 44 + i * 10, C.white, { align: 'right' });
     });
-    let y = 62 + D.lines.length * 11;
+    let y = 48 + D.lines.length * 10;
     if (this.stateT >= 60) {
       NES.text(ctx, 'CREDITS', 32, y, C.gold);
       NES.text(ctx, c.money + ' CR', 224, y, C.gold, { align: 'right' });
       y += 11;
       this.drawXpBar(ctx, 32, y);
-      y += 16;
+      y += 14;
     }
     if (this.stateT >= 150) {
-      for (const lv of D.levels) {
-        const learn = LEARN_LEVELS.includes(lv) ? ' NEW SPECIAL!' : '';
-        if ((this.t >> 3) & 1) NES.text(ctx, 'LEVEL UP! LV ' + lv + learn, 128, y, C.lime, center);
-        y += 11;
+      const msgs = [];
+      if (D.levels.length) msgs.push(['LEVEL UP! LV ' + D.levels[D.levels.length - 1], C.lime, true]);
+      if (D.planetClear) msgs.push([D.planet + ' CLEARED!', C.gold]);
+      if (D.secured) msgs.push([D.system + ' SECURED!', C.gold]);
+      if (D.liberated) msgs.push([D.system + ' LIBERATED!', C.gold]);
+      for (const u of D.unlocked) msgs.push(['NEW ' + u, C.pink]);
+      for (const [m, col, blink] of msgs.slice(0, 5)) {
+        if (!blink || (this.t >> 3) & 1) NES.text(ctx, m, 128, y, col, center);
+        y += 10;
       }
-      if (D.sectorClear) { NES.text(ctx, D.sector + ' CLEARED!', 128, y, C.gold, center); y += 11; }
-      for (const name of D.unlocked) { NES.text(ctx, 'NEW SECTOR: ' + name, 128, y, C.pink, center); y += 11; }
     }
-    if (this.stateT >= 90 && (this.t >> 4) & 1) NES.text(ctx, 'PRESS SPACE / A', 128, 222, C.white, center);
+    if (this.stateT >= 90 && (this.t >> 4) & 1) NES.text(ctx, 'PRESS SPACE / A', 128, 226, C.white, center);
   },
 
   // XP bar toward the next level.
@@ -323,139 +332,15 @@ Object.assign(Game, {
     NES.text(ctx, String(c.xp), x + w + 72, y, C.white, { align: 'right' });
   },
 
-  // After the finale's epilogue: the Echo campaign (New Game+). Sectors reset, everything else stays.
+  // After the finale's epilogue: the Echo campaign (New Game+). The galaxies reset, everything else stays.
   startNewGamePlus() {
     const c = this.camp;
     c.loop++;
     c.cleared = {};
     c.beats = [];
-    const from = c.sector;
-    c.sector = 'sol';
-    this.startTravel(from, 'sol');
-  },
-
-  // ---- Galaxy map and carrier travel ----------------------------------------------------
-  openMap() {
-    this.setState('map');
-    this.mapSel = SECTORS.findIndex(S => S.id === this.camp.sector);
-  },
-
-  updateMap() {
-    this.stateT++;
-    if (Input.just('back') || Input.just('special')) { Sound.sfx('move'); this.setState('base'); return; }
-    const dirs = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
-    for (const [key, [dx, dy]] of Object.entries(dirs)) {
-      if (!Input.just(key)) continue;
-      const cur = SECTORS[this.mapSel];
-      let best = -1, bd = Infinity;
-      SECTORS.forEach((S, i) => {
-        const vx = S.x - cur.x, vy = S.y - cur.y, along = vx * dx + vy * dy;
-        if (along <= 0) return;
-        const d = along + Math.abs(vx * dy - vy * dx) * 2;
-        if (d < bd) { bd = d; best = i; }
-      });
-      if (best >= 0) { this.mapSel = best; Sound.sfx('move'); }
-    }
-    if (this.stateT > 10 && (Input.just('fire') || Input.just('start'))) {
-      const S = SECTORS[this.mapSel];
-      if (S.id === this.camp.sector) { Sound.sfx('select'); this.setState('base'); }
-      else if (this.isUnlocked(S.id)) { Sound.sfx('select'); this.startTravel(this.camp.sector, S.id); }
-      else Sound.sfx('denied');
-    }
-  },
-
-  startTravel(from, to) {
-    this.travel = { from, to };
-    this.inBase = false;
-    this.setState('travel');
-    Sound.playSong(Sound.SONGS.base);
-  },
-
-  updateTravel() {
-    this.stateT++;
-    const T = this.travel, dur = T.from === T.to ? 70 : 150;
-    const skip = this.stateT > 20 && (Input.just('fire') || Input.just('start'));
-    if (this.stateT >= dur || skip) {
-      this.camp.sector = T.to;
-      this.travel = null;
-      this.arriveBase();
-    }
-  },
-
-  // The galaxy map as a holographic chart: a see-through grid, glowing routes (pulses run along the
-  // open ones), each sector a shaded star with a colored halo, and a reticle on the selection.
-  drawMap(ctx, carrierAt) {
-    const c = this.camp, center = { align: 'center' }, t = this.t;
-    SNES.half(ctx, () => {
-      ctx.fillStyle = '#2048c0';
-      for (let x = 4; x < W; x += 16) ctx.fillRect(x, 26, 1, 150);
-      for (let y = 26; y < 180; y += 16) ctx.fillRect(0, y, W, 1);
-    }, 0.3);
-    NES.text(ctx, 'GALAXY MAP', CX, 6, C.gold, { align: 'center', scale: 2 });
-    for (const S of SECTORS) {
-      for (const id of S.links) {
-        const O = SECTOR_BY_ID[id];
-        if (O.x < S.x || (O.x === S.x && O.y < S.y)) continue;   // draw each link once
-        const open = this.isUnlocked(S.id) && this.isUnlocked(O.id);
-        const n = Math.ceil(Math.hypot(O.x - S.x, O.y - S.y) / 3);
-        for (let k = 1; k < n; k++) {
-          const x = Math.round(S.x + (O.x - S.x) * k / n), y = Math.round(S.y + (O.y - S.y) * k / n);
-          if (!open) { if (k % 2) { ctx.fillStyle = '#404858'; ctx.fillRect(x, y, 1, 1); } continue; }
-          const pulse = (k + (t >> 2)) % 12 === 0;
-          SNES.add(ctx, () => NES.draw(ctx, SNES.glow(pulse ? 3 : 1, pulse ? '#60c0f8' : '#2050b0'), x, y));
-        }
-      }
-    }
-    SECTORS.forEach((S, i) => {
-      const open = this.isUnlocked(S.id), done = this.sectorCleared(S.id);
-      if (open) SNES.add(ctx, () => NES.draw(ctx, SNES.glow(12 + ((t >> 4) & 1), SNES.mix(S.col, '#000000', 0.55)), S.x, S.y));
-      NES.draw(ctx, SNES.sphere(open ? 5 : 4, open ? S.col : '#505868'), S.x, S.y);
-      NES.text(ctx, open ? S.short : '???', S.x, S.y + 10, open ? (done ? C.lime : C.white) : C.gray, center);
-      if (done) NES.text(ctx, 'CLEAR', S.x, S.y + 19, C.lime, center);
-      if (i === this.mapSel && this.state === 'map') {   // reticle: four corner ticks, breathing
-        const d = 9 + ((t >> 3) & 1);
-        ctx.fillStyle = C.gold;
-        for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-          ctx.fillRect(S.x + sx * d - (sx > 0 ? 3 : 0), S.y + sy * d, 4, 1);
-          ctx.fillRect(S.x + sx * d, S.y + sy * d - (sy > 0 ? 3 : 0), 1, 4);
-        }
-      }
-    });
-    const at = carrierAt || SECTOR_BY_ID[c.sector];
-    this.drawCarrierIcon(ctx, at.x, at.y - 12);
-  },
-
-  drawMapScreen(ctx) {
-    this.drawMap(ctx);
-    this.panel(ctx, () => this.drawMapInfo(ctx));
-  },
-
-  drawMapInfo(ctx) {
-    const S = SECTORS[this.mapSel], c = this.camp, center = { align: 'center' };
-    NES.box(ctx, 8, 180, 240, 38, C.black, S.col);
-    if (this.isUnlocked(S.id)) {
-      const n = S.planets.filter(P => c.cleared[P.id]).length;
-      NES.text(ctx, S.name, 14, 185, S.col);
-      NES.text(ctx, n + '/' + S.planets.length + ' PLANETS', 242, 185, C.white, { align: 'right' });
-      NES.text(ctx, 'STARBASE: ' + S.base, 14, 196, C.lgray);
-      if (S.hull >= 0) NES.text(ctx, 'SELLS: ' + HULLS[S.hull].name, 14, 206, C.aqua);
-    } else {
-      NES.text(ctx, 'UNCHARTED SECTOR', 14, 185, C.gray);
-      NES.text(ctx, 'CLEAR A LINKED SECTOR FIRST.', 14, 196, C.lgray);
-    }
-    const here = S.id === c.sector;
-    NES.text(ctx, here ? 'A: DOCK   B: BACK' : 'A: TRAVEL   B: BACK', 128, 226, C.gray, center);
-  },
-
-  drawTravel(ctx) {
-    const T = this.travel, A = SECTOR_BY_ID[T.from], B = SECTOR_BY_ID[T.to];
-    const dur = T.from === T.to ? 70 : 150;
-    const k = Math.min(1, this.stateT / (dur - 30));
-    const e = k * k * (3 - 2 * k);
-    this.drawMap(ctx, { x: A.x + (B.x - A.x) * e, y: A.y + (B.y - A.y) * e });
-    const msg = k < 1 && T.from !== T.to ? 'JUMPING TO ' + B.name : 'DOCKING AT ' + B.base;
-    NES.box(ctx, OX + 8, 190, 240, 20, C.black, B.col);
-    if ((this.t >> 3) & 1 || k >= 1) NES.text(ctx, msg, CX, 196, C.white, { align: 'center' });
+    const from = c.at;
+    c.at = 'earth';
+    this.startTravel(from, 'earth');
   },
 
   // Full-screen campaign screens.
