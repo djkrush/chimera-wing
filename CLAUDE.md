@@ -112,7 +112,7 @@ leg (`MISSION_KINDS`). `Game.legBoss` is true on a boss leg (side.js only adds t
 it grows with the system's `tier` (its place in the galaxy chain) and the planet's place in its system,
 like open-world zones. `hpMul()` makes enemies and bosses tougher in later galaxies.
 
-- **Vertical stages:** wave layouts (`buildNormalWaves`, `buildChallengeWaves`), spline flight paths
+- **Vertical stages:** several squadrons in turn (`squads`, `nextSquadron()`), wave layouts (`buildNormalWaves`, `buildChallengeWaves`), spline flight paths
   (`PATH_DEFS` → `PATHS`), formation slots, dives, methylator beams.
 - **Side missions** (`side.js`): `initSide()` builds a timed event script. `updateSide()` spawns patterns
   (`migLine`, `migSwoop`, `migRear`, `bomber`, `sam`, `methyl`, `splitterLine`, `droneSwarm`,
@@ -154,7 +154,9 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 
 ### Key data tables (at the top of `game.js`)
 
-- `FORMS`: the player's three forms (speed, `free` = can climb/dive, hitbox). What each form fires
+- `FORMS`: the player's three forms (speed, hitbox). Every form flies in all four directions; `p.tilt`
+  eases toward the stick and `drawShip(..., tilt)` shows bank frames (vertical, `SPR.hulls[h].top.bankR/bankL`)
+  or pitch steps (side). The Battloid's engine glow comes from its feet. What each form fires
   comes from the hull: `HULLS[h].guns[form]` names a gun in `GUNS` (`weapons.js`); `HULLS[h].form[f]`
   is the hull's damage multiplier in that form. `fireWeapon()`, `updateBullets()` and
   `drawPlayerBullet()` live in `weapons.js`; `collide()` calls `bulletHits(b, e)` there (piercing

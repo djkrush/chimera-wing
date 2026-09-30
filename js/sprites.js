@@ -317,7 +317,31 @@ const SPR = (() => {
     white: list.map(flash),
     silenced: list.map(r => B(r, silencedMap)),
   });
-  const hulls = HULL_ART.map(h => ({ top: bakeForms(h.top, h.pal), side: bakeForms(h.side, h.pal) }));
+  // Bank frames for vertical stages, baked from each top-down form: rolling toward the turn, the wing on
+  // that side dips away from the light (narrower and darker) and the other wing rises into it.
+  // bankR[form] / bankL[form] = [half bank, full bank].
+  const bankFrame = (img, lvl, dir) => {
+    const w = img.width, h = img.height, hl = w >> 1, hr = w - hl;
+    const near = 1 - 0.08 * lvl, far = 1 - 0.22 * lvl;   // scale of the rising and the dipping wing
+    const wl = Math.round(hl * (dir > 0 ? near : far)), wr = Math.round(hr * (dir > 0 ? far : near));
+    const m = Math.max(wl, wr);
+    return SNES.layer(m * 2 + (w & 1), h, g => {
+      g.imageSmoothingEnabled = false;
+      g.drawImage(img, 0, 0, hl, h, m - wl, 0, wl, h);
+      g.drawImage(img, hl, 0, hr, h, m, 0, wr, h);
+      g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = 'rgba(0,0,40,' + 0.18 * lvl + ')';          // dipping wing in shadow
+      g.fillRect(dir > 0 ? m : 0, 0, m + (w & 1), h);
+      g.fillStyle = 'rgba(255,255,255,' + 0.08 * lvl + ')';     // rising wing catching the light
+      g.fillRect(dir > 0 ? 0 : m, 0, m, h);
+    });
+  };
+  const hulls = HULL_ART.map(h => {
+    const top = bakeForms(h.top, h.pal);
+    top.bankR = top.normal.map(img => [bankFrame(img, 1, 1), bankFrame(img, 2, 1)]);
+    top.bankL = top.normal.map(img => [bankFrame(img, 1, -1), bankFrame(img, 2, -1)]);
+    return { top, side: bakeForms(h.side, h.pal) };
+  });
 
   // ---- Enemy aircraft --------------------------------------------------------
   const MIG = SNES.mirror([   // fighter with wing-mounted cannon pods (twin long barrels forward)

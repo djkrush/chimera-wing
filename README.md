@@ -37,7 +37,7 @@ B zooms back out. You can also click or tap galaxies, systems and planets.
   - **PATROL**: a vertical Galaga-style stage.
   - **INTERCEPT**: a side-scrolling stage.
   - **GROUND RAID**: a side-scrolling stage full of tank columns and missile sites.
-  - **CONTROL GROUP**: a bonus stage. The planes don't shoot; hit all 40.
+  - **CONTROL GROUP**: a bonus stage. The planes don't shoot; hit all 64.
   - **STRONGHOLD**: two legs and a boss. Either a vertical approach and a side-scrolling assault on a
     grounded **boss warship**, or a side-scrolling approach and a vertical **capital-ship flyover**.
 - You **take off from the carrier** before every leg and **land on it** after.
@@ -166,7 +166,7 @@ upgrades and level-up training add to them, up to 16):
 
 | Form      | Weapon                  | Movement                     | Special |
 |-----------|-------------------------|------------------------------|---------|
-| FIGHTER   | Rapid twin cannons      | Fastest, low altitude only   | Smallest hitbox |
+| FIGHTER   | Rapid twin cannons      | Fastest                      | Smallest hitbox |
 | GUARDIAN  | 3-way spread            | Can climb/dive in the low sky | |
 | BATTLOID  | Homing micro-missiles   | Slow, can climb/dive          | Armor absorbs one hit (then 10 s reboot) |
 
@@ -185,7 +185,9 @@ upgrades and level-up training add to them, up to 16):
   adapts and takes half damage from it. Keep transforming.
 ## The two kinds of stage
 
-- **Vertical** (Galaga-style, top-down, you fly up): 40 planes fly into formation and dive at you.
+- **Vertical** (Galaga-style, top-down, you fly up): squadrons of 40 planes fly into formation and dive
+  at you, one after another (2 squadrons early on, up to 4 in the far galaxies). Every form can fly up,
+  down, left and right in the lower part of the screen, and the ship banks as it turns.
   On a challenging stage they don't shoot.
 - **Capital-ship flyover** (vertical boss): a giant Star Destroyer-style ship scrolls beneath you.
   Knock out its gun turrets, fighter hangars and histone reactor cores, and the fighters it

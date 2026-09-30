@@ -6,7 +6,7 @@ const W = NES.W, H = NES.H;
 const CX = W >> 1;          // screen center
 const OX = (W - 256) >> 1;  // left edge of a centered 256-wide panel (menus and dialogue)
 const PY = 212;        // player's home row
-const PY_MIN = 150;    // highest Guardian/Battloid can climb
+const PY_MIN = 132;    // highest the ship can climb in vertical stages (just below where methylators hover)
 const SIDE_GROUND = 206;   // top of the ground strip in side-scrolling missions
 const TAU = Math.PI * 2;
 
@@ -22,9 +22,9 @@ const angDiff = (a, b) => {
 const pad6 = n => String(Math.floor(n)).padStart(6, '0');
 
 const FORMS = [
-  { name: 'FIGHTER', short: 'FTR', speed: 2.4, free: false, hit: 4 },
-  { name: 'GUARDIAN', short: 'GRD', speed: 1.8, free: true, hit: 5 },
-  { name: 'BATTLOID', short: 'BTL', speed: 1.3, free: true, hit: 6 },
+  { name: 'FIGHTER', short: 'FTR', speed: 2.4, hit: 4 },
+  { name: 'GUARDIAN', short: 'GRD', speed: 1.8, hit: 5 },
+  { name: 'BATTLOID', short: 'BTL', speed: 1.3, hit: 6 },
 ];
 
 const ENEMY = {
@@ -102,8 +102,10 @@ for (const [k, pts] of Object.entries(PATH_DEFS)) {
 
 // ---- Wave layouts -------------------------------------------------------------
 // Formation: row 0 = methylators, rows 1-2 = bombers, rows 3-4 = MiGs (40 planes, like Galaga).
-function buildNormalWaves() {
-  const S = (type, c, r, path, delay) => ({ type, slot: { c, r }, path, delay });
+// A vertical stage sends several squadrons in turn; odd ones fly in on the mirrored paths.
+function buildNormalWaves(squad = 0) {
+  const flip = p => (squad % 2 ? (p.endsWith('M') ? p.slice(0, -1) : p + 'M') : p);
+  const S = (type, c, r, path, delay) => ({ type, slot: { c, r }, path: flip(path), delay });
   const waves = [];
   let w = [];
   [3, 4, 5, 6].forEach((c, i) => { w.push(S('bomber', c, 1, 'top', i * 13)); w.push(S('fighter', c, 3, 'topM', i * 13)); });
@@ -124,9 +126,11 @@ function buildNormalWaves() {
   return waves.map(list => ({ list, timer: 0, wait: 0 }));
 }
 
+// Challenging stage: 8 waves of 8 planes (64 in all) on looping paths.
 function buildChallengeWaves(stage) {
   const types = ['fighter', 'bomber', 'methyl'];
-  const plan = [['ch1', 'ch1M'], ['ch2', 'ch2M'], ['ch3', 'ch3M'], ['ch1M', 'ch2'], ['ch3M', 'ch2M']];
+  const plan = [['ch1', 'ch1M'], ['ch2', 'ch2M'], ['ch3', 'ch3M'], ['ch1M', 'ch2'], ['ch3M', 'ch2M'],
+    ['ch2', 'ch3'], ['ch1', 'ch3M'], ['ch2M', 'ch1M']];
   return plan.map(([a, b], wi) => {
     const type = types[(wi + stage) % 3];
     const list = [];
@@ -203,7 +207,8 @@ const Game = {
 
   newPlayer() {
     return { x: CX, y: PY, form: 0, nextForm: 0, morphT: 0, fireCd: 0, alive: true, respawnT: 0,
-      invuln: 60, battCd: 0, silenced: [false, false, false], silenceT: [0, 0, 0], moving: false, shieldT: 0 };
+      invuln: 60, battCd: 0, silenced: [false, false, false], silenceT: [0, 0, 0], moving: false, shieldT: 0,
+      tilt: 0 };   // -1..1: bank (vertical stages, left/right) or pitch (side missions, up/down)
   },
 
   get isSide() { return this.stageType === 'side'; },
@@ -216,6 +221,9 @@ const Game = {
     if (this.isSide) this.initSide();
     this.waves = type === 'normal' ? buildNormalWaves() : type === 'challenge' ? buildChallengeWaves(this.stage) : [];
     this.waveI = 0;
+    this.squad = 0;                                        // squadrons flown so far in a vertical stage
+    this.squads = this.stage < 4 ? 2 : this.stage < 10 ? 3 : 4;
+    this.challengeTotal = this.waves.reduce((n, w) => n + w.list.length, 0);
     this.formationReady = false;
     this.formation = { t: 0, ox: 0, spread: 1, bt: 0 };
     this.attackCd = 90;
@@ -532,17 +540,33 @@ const Game = {
       return;
     }
     if (this.waveI < this.waves.length || this.enemies.length) return;
+    if (this.stageType === 'normal' && ++this.squad < this.squads) { this.nextSquadron(); return; }
     this.nextAdapt = this.computeAdapt();
     if (this.stageType === 'challenge') {
+      const perfect = this.stageHits >= this.challengeTotal;
       this.setState('result');
-      this.resultBonus = this.stageHits >= 40 ? 10000 : this.stageHits * 100;
+      this.resultBonus = perfect ? 10000 : this.stageHits * 100;
       this.addScore(this.resultBonus);
-      if (this.mission) this.mission.bonusCr += this.stageHits * 10 + (this.stageHits >= 40 ? 500 : 0);
-      Sound.playSong(this.stageHits >= 40 ? Sound.SONGS.victory : Sound.SONGS.stage);
+      if (this.mission) this.mission.bonusCr += this.stageHits * 10 + (perfect ? 500 : 0);
+      Sound.playSong(perfect ? Sound.SONGS.victory : Sound.SONGS.stage);
     } else {
       this.clearDelay = 90;
       this.setState('clear');
     }
+  },
+
+  // The next squadron flies in once the last one is gone. Epigenetic memory carries over: if one
+  // form scored most of the kills, the new squadron resists it.
+  nextSquadron() {
+    this.waves = buildNormalWaves(this.squad);
+    this.waves[0].wait = 100;
+    this.waveI = 0;
+    this.formationReady = false;
+    this.formation = { t: 0, ox: 0, spread: 1, bt: 0 };
+    this.adapt = this.computeAdapt();
+    this.formKills = [0, 0, 0];
+    this.popup(CX, 100, 'SQUADRON ' + (this.squad + 1) + ' OF ' + this.squads, C.gold);
+    this.say(this.squad === this.squads - 1 ? 'LAST SQUADRON INBOUND. FINISH THEM.' : 'ANOTHER SQUADRON INBOUND!', 'mira', true);
   },
 
   gameOver() {
@@ -915,17 +939,19 @@ const Game = {
     if (Input.pressed('right')) dx++;
     if (Input.pressed('up')) dy--;
     if (Input.pressed('down')) dy++;
+    // Every form flies in all four directions.
     if (this.isSide) {
-      // Side missions: every form flies freely over the left part of the screen.
       const maxX = this.boss ? W - 10 : W - 164;   // at a boss base you can fly the whole screen
       p.x = clamp(p.x + dx * sp, 18, maxX);
       p.y = clamp(p.y + dy * sp, 22, SIDE_GROUND - 14);
     } else {
       p.x = clamp(p.x + dx * sp, 14, W - 14);
-      if (F.free) p.y = clamp(p.y + dy * sp, PY_MIN, PY);
-      else p.y = Math.min(PY, p.y + 2);   // Fighter drops back to low altitude
+      p.y = clamp(p.y + dy * sp, PY_MIN, PY);
     }
     p.moving = dx !== 0 || dy !== 0;
+    // The ship eases into a bank (vertical) or a climb/dive (side) and back, passing through each frame.
+    const want = this.isSide ? dy : dx;
+    p.tilt += clamp(want - p.tilt, -0.1, 0.1);
 
     if (canFire && p.morphT === 0 && p.fireCd <= 0 && Input.pressed('fire')) this.fireWeapon();
     if (canFire && Input.just('special')) this.useSpecial();
@@ -1116,21 +1142,35 @@ const Game = {
   },
 
   // side = true draws the side profile, facing right (side-scrolling missions).
-  drawShip(ctx, form, x, y, morphT, flame, side = false, hull = this.camp ? this.camp.hull : 0) {
+  // tilt (-1..1) picks a transition frame: in vertical stages the ship banks left or right (baked bank
+  // frames, 2 steps each way); in side missions it pitches its nose up or down (rotated in 2 steps).
+  drawShip(ctx, form, x, y, morphT, flame, side = false, hull = this.camp ? this.camp.hull : 0, tilt = 0) {
     const set = SPR.hulls[hull][side ? 'side' : 'top'];
     const white = morphT > 0 && ((morphT >> 1) & 1);
-    const img = white ? set.white[form] : set.normal[form];
-    NES.draw(ctx, img, x, y);
-    if (!flame || morphT > 0 || form === 2) return;
-    // Engine glow, blended additively. Flickers between two sizes.
-    const r = 2 + ((this.t >> 1) & 1);
+    const lvl = Math.round(Math.abs(tilt) * 2);   // 0 level, 1 half, 2 full
+    let img = white ? set.white[form] : set.normal[form], ang = 0;
+    if (lvl && !white) {
+      if (side) ang = Math.sign(tilt) * lvl * Math.PI / 32;
+      else img = set[tilt > 0 ? 'bankR' : 'bankL'][form][lvl - 1];
+    }
     x = Math.round(x); y = Math.round(y);
-    const jets = side ? [[-(img.width >> 1) - 1, form === 0 ? 0 : -2]]
-      : (form === 0 ? [-4, 4] : [-4, 3]).map(dx => [dx, (img.height >> 1) + 1]);
+    if (ang) SNES.drawRot(ctx, img, x, y, ang); else NES.draw(ctx, img, x, y);
+    if (!flame || morphT > 0) return;
+    // Engine glow, blended additively. Flickers between two sizes. The Battloid's jets are in its feet.
+    const r = 2 + ((this.t >> 1) & 1), base = set.normal[form], k = img.width / base.width;
+    const feet = form === 2;
+    let jets = side ? (feet ? [[-6, 0], [4, 0]] : [[-(base.width >> 1) - 1, form === 0 ? 0 : -2]])
+      : (feet ? [[-6, 0], [4, 0]] : (form === 0 ? [-4, 4] : [-4, 3]).map(dx => [dx, 0]));
+    jets = jets.map(([dx, dy]) => {
+      const jy = feet || !side ? dy + (base.height >> 1) + 1 : dy;   // below the feet or the tail, or behind
+      return side ? [dx * Math.cos(ang) - jy * Math.sin(ang), dx * Math.sin(ang) + jy * Math.cos(ang)] : [dx * k, jy];
+    });
     SNES.add(ctx, () => {
       for (const [dx, dy] of jets) {
-        NES.draw(ctx, SNES.glow(r + 2, '#a04810'), x + dx, y + dy);
-        NES.draw(ctx, SNES.glow(r, '#f8c040'), x + dx, y + dy);
+        const fy = feet ? dy + 1 + ((this.t >> 2) & 1) : dy;   // foot jets flicker longer, pointing down
+        NES.draw(ctx, SNES.glow(r + 2, feet ? '#1848a0' : '#a04810'), x + dx, y + fy);
+        NES.draw(ctx, SNES.glow(r, feet ? '#60c8f8' : '#f8c040'), x + dx, y + fy);
+        if (feet) NES.draw(ctx, SNES.glow(r - 1, '#60c8f8'), x + dx, y + fy + 3);
       }
     });
   },
@@ -1147,7 +1187,9 @@ const Game = {
     for (const b of this.pBul) this.drawPlayerBullet(ctx, b);   // weapons.js
     SNES.add(ctx, () => { for (const b of this.eBul) NES.draw(ctx, SNES.glow(4, (this.t >> 2) & 1 ? '#c01830' : '#a01050'), b.x, b.y); });
     for (const b of this.eBul) NES.draw(ctx, SPR.ebullet, b.x, b.y);
-    if (p.alive && !p.hidden && (p.invuln <= 0 || (this.t >> 2) & 1)) this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide);
+    if (p.alive && !p.hidden && (p.invuln <= 0 || (this.t >> 2) & 1)) {
+      this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide, undefined, p.tilt);
+    }
     if (p.alive && this.wingT > 0 && (this.wingT > 90 || (this.t >> 2) & 1)) this.drawWingman(ctx);
     this.drawPassives(ctx);   // skills.js: escort drone
     this.drawSpecialFx(ctx, 'over');
@@ -1388,7 +1430,7 @@ const Game = {
   },
 
   drawResult(ctx) {
-    const perfect = this.stageHits >= 40;
+    const perfect = this.stageHits >= this.challengeTotal;
     if (this.stateT > 20) NES.box(ctx, 44, 56, 168, 70, C.black, C.sky);
     if (this.stateT > 20) NES.text(ctx, 'NUMBER OF HITS', 60, 88, C.aqua);
     if (this.stateT > 50) NES.text(ctx, String(this.stageHits), 196, 88, C.white, { align: 'right' });
@@ -1560,7 +1602,7 @@ const Game = {
     } else if (pg === 1) {
       T('THE VX-3 CHIMERA', 128, 10, C.gold, { align: 'center' });
       const rows = [
-        ['FIGHTER', 'FASTEST. TWIN CANNONS.', 'STAYS AT LOW ALTITUDE.'],
+        ['FIGHTER', 'FASTEST. TWIN CANNONS.', 'SMALLEST TARGET.'],
         ['GUARDIAN', 'THREE-WAY SPREAD SHOT.', 'CAN CLIMB AND DIVE.'],
         ['BATTLOID', 'HOMING MISSILES. SLOW.', 'ARMOR SURVIVES ONE HIT.'],
       ];
