@@ -289,6 +289,7 @@ js/starbase.js    station menus: missions, market, status, skills
 js/carrier.js     space carrier art, elevator/catapult takeoff and landing
 js/story.js       planet briefings, story beats, epilogue, Echo facts, Mira's hints
 js/tet.js         TET capsule pickups
+js/howto.js       HOW TO PLAY: the illustrated FAQ (story, controls, pilots, forms, guns, skills, missions, market)
 js/touch.js       touch controls for phones (joystick, buttons, tap to pick)
 js/main.js        boot + fixed 60 Hz loop
 ```

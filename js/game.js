@@ -142,7 +142,6 @@ function buildChallengeWaves(stage) {
   });
 }
 
-const HOWTO_PAGES = 5;
 const SETUP_STEPS = [
   { key: 'fire', label: 'FIRE' },
   { key: 'special', label: 'SPECIAL WEAPON' },
@@ -160,7 +159,7 @@ function saveHi(v) {
 
 const Game = {
   state: 'title', stateT: 0, t: 0, paused: false,
-  menu: 0, howPage: 0, setup: null,
+  menu: 0, setup: null,
   score: 0, hi: 20000, shields: 0, stage: 0, nextExtra: 20000,
   player: null, enemies: [], pBul: [], eBul: [], parts: [], pops: [], booms: [], stars: [],
   waves: [], waveI: 0, formation: null, formationReady: false, attackCd: 0,
@@ -433,22 +432,11 @@ const Game = {
     else if (item === 'NEW GAME') this.openPilotSelect();
     else if (item === 'CONTROLLER SETUP') this.openSetup();
     else if (item === 'EXIT GAME') this.exitGame();
-    else { this.howPage = 0; this.setState('howto'); }
+    else this.openHowto();   // howto.js
   },
 
   titleItems() {
     return [...(this.hasSave() ? ['CONTINUE'] : []), 'NEW GAME', 'CONTROLLER SETUP', 'HOW TO PLAY', ...(Touch.on ? ['EXIT GAME'] : [])];
-  },
-
-  updateHowto() {
-    this.stateT++;
-    if (Input.just('back')) { this.setState('title'); return; }
-    if (this.stateT > 10 && (Input.just('fire') || Input.just('start') || Input.just('right'))) {
-      Sound.sfx('move');
-      this.stateT = 0;
-      if (++this.howPage >= HOWTO_PAGES) this.setState('title');
-    }
-    if (Input.just('left') && this.howPage > 0) { this.howPage--; Sound.sfx('move'); }
   },
 
   openSetup() {
@@ -1572,85 +1560,6 @@ const Game = {
     else if (pad) NES.text(ctx, ('PAD: ' + pad).slice(0, 28), 128, 210, C.lime, { align: 'center' });
     else NES.text(ctx, 'PAD: PRESS ANY BUTTON', 128, 210, C.lgray, { align: 'center' });
     NES.text(ctx, Touch.on ? 'TAP TO CHOOSE, TAP AGAIN TO GO' : 'Z FIRE  C SPECIAL  X MORPH', 128, 225, C.white, { align: 'center' });
-  },
-
-  drawHowto(ctx) { this.panel(ctx, () => this.drawHowtoPage(ctx)); },
-
-  drawHowtoPage(ctx) {
-    // lines up to 31 characters: a full-screen window, with the left margin pulled in to fit
-    const T = (s, x, y, c = C.white, o) => NES.text(ctx, s, x === 8 ? 5 : x === 16 ? 13 : x, y, c, o);
-    const pg = this.howPage;
-    NES.box(ctx, 0, 0, 256, 240, C.black, C.gold);
-    if (pg === 0) {
-      T('MISSION BRIEFING', 128, 10, C.gold, { align: 'center' });
-      ['DR. HELENA VOSS, A ROGUE', 'EPIGENETICIST, HAS TAKEN OVER',
-        "THE WORLD'S AIR FORCES. SHE", 'NEVER CHANGED THEIR DNA. SHE',
-        'SWITCHED THEIR GENES OFF.', '', 'DR. MIRA KATO, HER OLD LAB',
-        'PARTNER, BUILT THE VX-3 CHIMERA', 'TO STOP HER. YOU FLY IT.']
-        .forEach((l, i) => T(l, 8, 26 + i * 10));
-      T('CONTROLS', 128, 120, C.gold, { align: 'center' });
-      T('PAD', 72, 132, C.aqua); T('KEYS', 176, 132, C.aqua);
-      [['MOVE', 'DPAD/STICK', 'ARROWS'], ['FIRE', 'A', 'Z SPACE'], ['SPECIAL', 'B', 'C'],
-        ['MORPH', 'SELECT', 'X'], ['BACK', 'LB', 'Q'], ['MENU', 'START', 'ENTER']]
-        .forEach(([a, b, c], i) => { T(a, 8, 144 + i * 10, C.lgray); T(b, 72, 144 + i * 10); T(c, 176, 144 + i * 10); });
-      T('1 2 3 KEYS PICK A FORM', 128, 208, C.gray, { align: 'center' });
-    } else if (pg === 4) {
-      T('THE SCIENCE', 128, 10, C.gold, { align: 'center' });
-      [['GENOME', 'ALL YOUR DNA. ALMOST EVERY', 'CELL CARRIES THE SAME COPY.'],
-        ['EPIGENOME', 'MARKS ON DNA AND HISTONES THAT', 'SET WHICH GENES A CELL USES.'],
-        ['METHYLATION', 'METHYL GROUPS ON DNA. NEAR A', 'PROMOTER THEY SILENCE A GENE.'],
-        ['ACETYLATION', 'ACETYL GROUPS ON HISTONES', 'LOOSEN DNA SO GENES SWITCH ON.'],
-        ['HISTONES', 'PROTEIN SPOOLS. DNA WRAPPED', 'ON THEM FORMS NUCLEOSOMES.'],
-        ['TET ENZYMES', 'START REMOVING METHYL MARKS.', 'MARKS CAN BE UNDONE!']]
-        .forEach(([term, a, b], i) => {
-          const y = 26 + i * 32;
-          T(term, 8, y, C.aqua); T(a, 16, y + 10); T(b, 16, y + 19, C.lgray);
-        });
-    } else if (pg === 3) {
-      T('THE CAMPAIGN', 128, 10, C.gold, { align: 'center' });
-      ['3 GALAXIES, 12 STAR SYSTEMS,', '84 PLANETS. FLY YOUR CARRIER', 'ANYWHERE THE STAR MAP ALLOWS.',
-        'EVERY PLANET HAS MISSIONS AND', 'A MARKET. CLEAR HALF A SYSTEM', 'TO OPEN THE NEXT ONE.']
-        .forEach((l, i) => T(l, 8, 24 + i * 10, i < 3 ? C.white : C.lgray));
-      T('LEVEL UP', 128, 90, C.gold, { align: 'center' });
-      ['EVERY LEVEL: TRAIN A STAT +1,', 'THEN LEARN A SPECIAL (EVEN', 'LEVELS) OR A PASSIVE SKILL', '(ODD LEVELS).']
-        .forEach((l, i) => T(l, 8, 102 + i * 10, C.white));
-      SPECIALS.forEach((s, i) => NES.draw(ctx, SPR.specialIcons[i], 20 + (i % 13) * 17, 150));
-      T('SPECIAL AMMO = SPECIAL STAT,', 128, 166, C.pink, { align: 'center' });
-      T('REFILLED AT EVERY TAKEOFF.', 128, 176, C.pink, { align: 'center' });
-      T('PASSIVE SKILLS ARE ALWAYS ON.', 128, 192, C.lime, { align: 'center' });
-    } else if (pg === 1) {
-      T('THE VX-3 CHIMERA', 128, 10, C.gold, { align: 'center' });
-      const rows = [
-        ['FIGHTER', 'FASTEST. TWIN CANNONS.', 'SMALLEST TARGET.'],
-        ['GUARDIAN', 'THREE-WAY SPREAD SHOT.', 'CAN CLIMB AND DIVE.'],
-        ['BATTLOID', 'HOMING MISSILES. SLOW.', 'ARMOR SURVIVES ONE HIT.'],
-      ];
-      T('OTHER HULLS CARRY OTHER GUNS.', 128, 170, C.aqua, { align: 'center' });
-      rows.forEach(([n, a, b], f) => {
-        const y = 34 + f * 48;
-        this.drawShip(ctx, f, 24, y + 10, 0, true);
-        T(n, 48, y, C.aqua); T(a, 48, y + 12); T(b, 48, y + 22, C.lgray);
-      });
-      T('MORPH ANY TIME. A SILENCED', 128, 186, C.pink, { align: 'center' });
-      T('FORM CANNOT BE USED.', 128, 196, C.pink, { align: 'center' });
-    } else {
-      T("VOSS'S AIR FORCE", 128, 10, C.gold, { align: 'center' });
-      const rows = [['fighter', 'MIG', '50 / 100'], ['bomber', 'BOMBER', '80 / 160'], ['methyl', 'METHYLATOR', '150 / 400']];
-      rows.forEach(([type, n, pts], i) => {
-        const y = 32 + i * 22;
-        NES.drawRot(ctx, SPR.enemy[type].normal[(this.t >> 3) & 1], 24, y + 3, Math.PI);
-        T(n, 44, y, C.white); T(pts, 240, y, C.aqua, { align: 'right' });
-      });
-      T('(IN FORMATION / DIVING)', 240, 98, C.gray, { align: 'right' });
-      NES.drawRot(ctx, SPR.enemy.fighter.acetyl[0], 24, 113, Math.PI);
-      ['ACETYLATED (GOLD) PLANES:', 'FASTER, DOUBLE POINTS.'].forEach((l, i) => T(l, 40, 108 + i * 10, C.gold));
-      NES.draw(ctx, SPR.tet, 24, 134);
-      ['SOME DROP TET CAPSULES.', 'THEY RESTORE A FORM.'].forEach((l, i) => T(l, 40, 128 + i * 10, C.lime));
-      ['METHYLATOR BEAMS SILENCE THE', 'FORM YOU ARE IN. SHOOT DOWN THE', 'CARRIER TO RESTORE IT (+1000).',
-        'LEAN ON ONE FORM AND VOSS', 'MAKES HER PILOTS RESIST IT.', 'KEEP TRANSFORMING!']
-        .forEach((l, i) => T(l, 8, 156 + i * 10, i < 3 ? C.pink : C.lgray));
-    }
-    T((pg + 1) + '/' + HOWTO_PAGES + '  FIRE: NEXT', 128, 226, C.gray, { align: 'center' });
   },
 
   drawSetup(ctx) { this.panel(ctx, () => this.drawSetupPage(ctx)); },

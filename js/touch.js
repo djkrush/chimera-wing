@@ -134,6 +134,7 @@ Object.assign(Game, {
       case 'base': this.tapBase(px, y); return;
       case 'learn': this.tapLearn(px, y); return;
       case 'hangar': this.tapHangar(px, y); return;
+      case 'howto': this.tapHowto(x, y); return;
       case 'setup': return;
       default: Input.pulse('fire');
     }

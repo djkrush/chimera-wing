@@ -32,7 +32,7 @@ Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load orde
 ```
 nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js
        → scenery.js → specials.js → weapons.js → pilots.js → skills.js → world.js → campaign.js → starmap.js
-       → starbase.js → carrier.js → story.js → tet.js → touch.js → main.js
+       → starbase.js → carrier.js → story.js → tet.js → howto.js → touch.js → main.js
 ```
 
 | Global | File | Role |
@@ -47,7 +47,7 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 | `Touch` | `js/touch.js` | Touch controls (DOM overlay): floating joystick in flight, A/B/X/START buttons, taps elsewhere go to `Game.tap(x, y)`. On for Android/Samsung UAs, `?touch`, or the first touch. `Touch.on` switches `main.js` to fill-the-screen scaling. |
 | world data | `js/world.js` | `GALAXIES` → systems → planets, flattened into `SYSTEMS`, `PLANETS` and the `*_BY_ID` maps. Also `MISSION_KINDS`, `MARKET_POOL`, `TERRAIN_PAL`, `seededRand`. Loads after `game.js` (uses `C`, `TAU`). |
 | `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, HUD and rendering |
-| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/weapons.js`, `js/pilots.js`, `js/skills.js`, `js/campaign.js`, `js/starmap.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js`, `js/touch.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
+| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/weapons.js`, `js/pilots.js`, `js/skills.js`, `js/campaign.js`, `js/starmap.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js`, `js/howto.js`, `js/touch.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
 | boot | `js/main.js` | Scales the canvas to whole-number sizes, sets global hotkeys, runs a **fixed 60 Hz** accumulator loop (`Input.update(); Game.update();` per tick, `Game.draw(ctx)` per frame) |
 
 ### Game state machine
@@ -258,6 +258,11 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   type, intro). A new `CAP_STYLES` hull must return at least as many slots as the ship mounts.
 - **New hull:** add it to `HULLS` (`pilots.js`, with `guns` and `form`) and `HULL_ART` (`sprites.js`,
   same index, with top-down and side-profile rows), and put its index in a planet's `hulls` to sell it.
+- **HOW TO PLAY** (`howto.js`): an illustrated FAQ. `howPages()` builds the topics and pages once:
+  `page(q, paragraphs, art)` or `list(q, items, art)` (lists come from the game's tables and split over
+  pages by height). Each `art(ctx, x, y, hi)` draws in the left pane, centered on x, y; on lists `hi` is
+  the lit row. A page that runs too long logs `HOWTO page too long` to the console. When you add a gun,
+  special, passive, upgrade, hull or enemy, its list updates by itself; new mechanics need a page.
 - **New system in its own file:** use the `Object.assign(Game, {...})` mixin pattern and add a
   `<script>` tag after `game.js` in `index.html`.
 
