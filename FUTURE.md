@@ -11,8 +11,7 @@ move an item to the README when it ships.
 - **Space station mini game: a card game.** A casino deck on every starbase where the pilot can gamble
   credits and win or lose money. Station crews could bet with themed cards (histone suits, a "methyl"
   wild card), with higher-stakes tables in later galaxies and a house champion to beat in each one.
-- **Better sound quality.** Richer instruments for the WebAudio synth (SNES-style sampled waves and
-  echo/reverb like the SPC700's), a new theme per galaxy, and distinct sounds for each of the eight guns
+- **More music and sounds.** A new theme per galaxy, and distinct sounds for each of the eight guns
   and thirteen specials.
 
 ## More ideas

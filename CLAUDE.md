@@ -41,7 +41,7 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 | `FACES` | `js/faces.js` | Character portraits (56×64), painted like SNES fighting-game select screens: shapes drawn in 40×48 units on a 4× canvas (materials with form lighting plus shadow/highlight shapes), reduced to pixels with hand-picked ramps and a silhouette outline, then eyes and glints stamped pixel by pixel. The pilots (`pilot()`) are front views in full flight gear with the mirror visor down over the eyes (helmet, visor, oxygen mask and hose); Mira and Voss are painted front-view faces (`frontNeck`/`frontHead`). `drawFace` frames them at 60×68; dialogue puts the frame in the widescreen margin left of the text box. |
 | `YARD` | `js/shipyard.js` | Painter for the big pre-rendered machines (carrier, capital ships, boss warships): `sheet(w, h)` lays down materials at height levels (`rect`, `poly`, `ellipse`, `mirrorX`, `recolor`), `bake()` bevels, drop-shadows and outlines them; detail helpers `modules`, `plates`, `greebles`, `vent`, `turret`, `windows` |
 | `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Top-down sprites point **up** and the game rotates them. Side-mission sprites are **side profiles**, drawn unrotated. |
-| `Sound` | `js/audio.js` | WebAudio chiptune: `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`, sequencer notes as `"NOTE:LEN"` tokens in sixteenths |
+| `Sound` | `js/audio.js` | SNES-style (SPC700) sound: instruments are samples synthesized at start-up and BRR-encoded (`buildSamples`), played with ADSR, pan and one shared echo. `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`. Sequencer notes are `"NOTE:LEN"` tokens in sixteenths, `A4+C5:2` chords, `inst@NOTE` to borrow an instrument; drum tracks use the kit letters. Songs are built bar by bar with `arrange(bpm, echo, sections, parts)`. The music takes its tempo, keys and harmony from Acen's 1992 records ("Trip II The Moon", "Obsessed II"), with our own melodies. |
 | `Input` | `js/input.js` | Keyboard, gamepad and touch merged into abstract actions: `Input.pressed(a)`, `Input.just(a)`. Actions: `left right up down fire special transform prevForm start back form1-3`. Per-pad remaps live in `localStorage['chimera.padmap']`. Touch feeds `Input.setVirtual(a, on)` (held) and `Input.pulse(a)` (one frame). |
 | `Touch` | `js/touch.js` | Touch controls (DOM overlay): floating joystick in flight, A/B/X/START buttons, taps elsewhere go to `Game.tap(x, y)`. On for Android/Samsung UAs, `?touch`, or the first touch. `Touch.on` switches `main.js` to fill-the-screen scaling. |
 | world data | `js/world.js` | `GALAXIES` → systems → planets, flattened into `SYSTEMS`, `PLANETS` and the `*_BY_ID` maps. Also `MISSION_KINDS`, `MARKET_POOL`, `TERRAIN_PAL`, `seededRand`. Loads after `game.js` (uses `C`, `TAU`). |
@@ -218,7 +218,9 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 
 ## Adding things (quick recipes)
 
-- **New sound effect:** add an entry to `SFX` in `audio.js`, then call `Sound.sfx('name')`.
+- **New sound effect:** add an entry to `SFX` in `audio.js` (voices from the `INST` sample bank), then call `Sound.sfx('name')`.
+- **New instrument:** synthesize it in `buildSamples()` and `add(name, data, f0, loop, env)`; looped
+  samples need whole-number Hz over their length so the loop is seamless.
 - **New special weapon:** add it to `SPECIALS`, handle its `id` in `useSpecial()` (plus `updateSpecial`/
   `drawSpecialFx`/`specialCollide`/`clearSpecialFx` if it lasts over time), and add an icon to
   `SPR.specialIcons` at the same index.

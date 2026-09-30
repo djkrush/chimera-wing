@@ -246,7 +246,7 @@ js/snes.js        SNES rendering: color ramps, shading, glows, color math, Mode 
 js/shipyard.js    painter for the carrier, capital ships and boss warships
 js/faces.js       character portraits, painted and pixelized in the SNES fighting-game style
 js/sprites.js     sprite art (hulls top-down + side profile, aircraft, anime portraits, icons)
-js/audio.js       chiptune synth (pulse/triangle/noise) + music sequencer + sound effects
+js/audio.js       SNES-style sampled instruments (BRR, ADSR, echo) + music sequencer + sound effects
 js/input.js       keyboard + gamepad (standard, generic, hat-switch) + remapping
 js/game.js        game states, Galaga stages, player, enemies, rendering
 js/bosses.js      side-mission boss warships (turrets, hardpoints, cores, shields, beams)
