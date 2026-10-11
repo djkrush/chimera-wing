@@ -608,6 +608,17 @@ const SPR = (() => {
   const shuttle = B(['.....BB.....', '..WWWWBBWW..', 'KWWWWWWWWWWW', 'KWRRRRRRRWW.', '.GGGGGGGG...'],
     { W: C.white, B: C.sky, R: C.red, G: C.gray, K: C.gray });
   const ebullet = SNES.bake(['.RRR.', 'RWWWR', 'RWWWR', 'RWWWR', '.RRR.'], { R: '#f83850', W: '#fff0f0' });
+  // Enemy bullets by kind (game.js EBUL_GLOW): each its own color and shape, read at a glance.
+  // drop points up and is turned to its flight; split is a cracked shell; seek a ringed orb.
+  const ebul = {
+    aim: ebullet,
+    drop: SNES.bake(['.OO.', 'OWWO', 'OWWO', 'OYYO', 'OYYO', '.OO.'], { O: '#f86818', W: '#fff8e0', Y: '#f8c040' }),
+    split: SNES.bake(['..Y..', '.YWY.', 'YWKWY', '.YWY.', '..Y..'], { Y: '#f8d020', W: '#fffce0', K: '#a06800' }),
+    seek: SNES.bake(['.VVV.', 'VPWPV', 'VWWWV', 'VPWPV', '.VVV.'], { V: '#8840f8', P: '#d0a0ff', W: '#ffffff' }),
+  };
+  // Edge warning: a blinking arrow (drawn turned toward where the threat flies), pointing up as drawn.
+  const warnArrow = B(['...R...', '..RYR..', '.RYYYR.', 'RYYYYYR', '..RYR..', '..RYR..', '..RRR..'],
+    { R: C.red, Y: C.yellow });
   const missile = B(['..W..', '.WWW.', '.WRW.', '.WWW.', '.WWW.', 'GWWWG', 'G.K.G', '..E..'],
     { W: C.white, R: C.red, G: C.gray, K: C.gray, E: C.orange });
   const life = B(['...W...', '..WBW..', '.WWWWW.', 'WWWRWWW', 'W.WWW.W', '..R.R..'],
@@ -662,7 +673,7 @@ const SPR = (() => {
 
   return {
     hulls,
-    enemy, ebullet, missile, life, wing, wingSide, escort, escortSide, shuttle, shieldPip, shieldPipOff, tet, specialIcons, ordIcons,
+    enemy, ebullet, ebul, warnArrow, missile, life, wing, wingSide, escort, escortSide, shuttle, shieldPip, shieldPipOff, tet, specialIcons, ordIcons,
     // portraits come from the portrait painter (faces.js), baked on first use
     get portrait() { return FACES.voss; }, get mira() { return FACES.mira; }, get pilots() { return FACES.pilots; },
   };

@@ -298,7 +298,7 @@ Object.assign(Game, {
           const n = q.big ? 3 : 1;
           for (let i = 0; i < n; i++) {
             const b = a + (i - (n - 1) / 2) * 0.12;
-            if (!(this.empT > 0)) this.eBul.push({ x: q.x + Math.cos(a) * 14, y: q.y + Math.sin(a) * 14, vx: Math.cos(b) * sp, vy: Math.sin(b) * sp });
+            if (!(this.empT > 0)) this.eShot(q.x + Math.cos(a) * 14, q.y + Math.sin(a) * 14, Math.cos(b) * sp, Math.sin(b) * sp);
           }
           this.spark(q.x + Math.cos(a) * 16, q.y + Math.sin(a) * 16, C.yellow, 3);
         }
@@ -340,6 +340,7 @@ Object.assign(Game, {
     if (q.hp > 0) return;
     q.dead = true;
     this.explode(q.x, q.y, q.kind === 'core' ? 24 : 14);
+    this.punch(q.kind === 'core' ? 3 : 2, q.x, q.y);
     Sound.sfx(q.kind === 'core' ? 'boom' : 'explode');
     const pts = CAPITAL_PTS[q.kind];
     this.addScore(pts);

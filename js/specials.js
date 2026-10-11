@@ -285,6 +285,7 @@ Object.assign(Game, {
 
   megaCrush() {
     this.crushT = 16;
+    this.punch(3);
     Sound.sfx('boom');
     for (const b of this.eBul) this.spark(b.x, b.y, C.white, 1);
     this.eBul = [];

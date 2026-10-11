@@ -271,6 +271,7 @@ Object.assign(Game, {
   bombBlast(b) {
     const R = b.blast || 22, d = b.dmg * 0.6;
     this.explode(b.x, b.y, R >= 28 ? 14 : 10, [C.red, C.orange, C.yellow, C.white]);
+    this.punch(R >= 28 ? 1.5 : 1, b.x, b.y);
     Sound.sfx('explode');
     for (const e of this.enemies) if (!e.dead && Math.hypot(e.x - b.x, e.y - b.y) < R + ENEMY[e.type].hit) this.damageEnemy(e, d, b.form);
     const B = this.boss;

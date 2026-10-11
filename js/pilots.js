@@ -92,6 +92,7 @@ Object.assign(Game, {
     if (this.shields <= 0) { this.killPlayer(); return false; }
     this.shields--;
     p.invuln = 120;
+    this.punch(3);
     this.explode(p.x, p.y, 12, [C.white, C.sky, C.aqua]);
     this.popup(p.x, p.y - 16, this.shields ? 'SHIELD -1' : 'DANGER', this.shields ? C.sky : C.red);
     Sound.sfx('armor');

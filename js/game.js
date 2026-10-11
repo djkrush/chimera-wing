@@ -27,16 +27,28 @@ const FORMS = [
   { name: 'BATTLOID', short: 'BTL', speed: 1.3, hit: 6 },
 ];
 
+// ammo = the plane's fire budget: each bullet spends one, and a plane with none stops firing (1942).
+// Gold (acetylated) planes carry half as much again. Bosses, capital ships and their turrets have no budget.
 const ENEMY = {
-  fighter: { name: 'MIG', hp: 1, pts: [50, 100], hit: 9 },
-  bomber: { name: 'BOMBER', hp: 1, pts: [80, 160], hit: 12 },
-  methyl: { name: 'METHYLATOR', hp: 2, pts: [150, 400], hit: 13 },
-  sam: { name: 'SAM SITE', hp: 2, pts: [200, 200], hit: 10 },
-  splitter: { name: 'SPLITTER', hp: 2, pts: [120, 240], hit: 11 },
-  drone: { name: 'DRONE', hp: 1, pts: [30, 60], hit: 6 },
-  armored: { name: 'ARMORED', hp: 5, pts: [250, 500], hit: 13 },
-  tank: { name: 'TANK', hp: 3, pts: [250, 250], hit: 11 },
+  fighter: { name: 'MIG', hp: 1, pts: [50, 100], hit: 9, ammo: 2 },
+  bomber: { name: 'BOMBER', hp: 1, pts: [80, 160], hit: 12, ammo: 3 },
+  methyl: { name: 'METHYLATOR', hp: 2, pts: [150, 400], hit: 13, ammo: 2 },
+  sam: { name: 'SAM SITE', hp: 2, pts: [200, 200], hit: 10, ammo: 8 },
+  splitter: { name: 'SPLITTER', hp: 2, pts: [120, 240], hit: 11, ammo: 2 },
+  drone: { name: 'DRONE', hp: 1, pts: [30, 60], hit: 6, ammo: 1 },
+  armored: { name: 'ARMORED', hp: 5, pts: [250, 500], hit: 13, ammo: 6 },
+  tank: { name: 'TANK', hp: 3, pts: [250, 250], hit: 11, ammo: 6 },
 };
+// Enemy bullet kinds (Typhoon Force): the behavior belongs to the bullet, so a color always means the
+// same thing. aim (red) flies at where you were; drop (orange) falls straight back, a little slower.
+const EBUL_GLOW = { aim: ['#c01830', '#a01050'], drop: ['#c05008', '#a03010'], split: ['#a08808', '#806010'], seek: ['#6020c0', '#7018a0'] };
+
+function loadOpts() {
+  try { return { shake: true, ...JSON.parse(localStorage.getItem('chimera.opts') || '{}') }; } catch (e) { return { shake: true }; }
+}
+function saveOpts(o) {
+  try { localStorage.setItem('chimera.opts', JSON.stringify(o)); } catch (e) { /* storage unavailable */ }
+}
 
 // Dr. Helena Voss: rogue epigeneticist. Her science is real; her ethics are not.
 // In-game radio lines. Stage briefings and the rest of the story live in story.js.
@@ -172,9 +184,11 @@ const Game = {
   camp: null, mission: null, inBase: false, carrier: null, // campaign (campaign.js), carrier (carrier.js)
   capital: null, legBoss: false, scrollLock: false,        // capital ship (capital.js); leg ends in a boss; base arrived
   wingT: 0, tetT: 0, lastBossName: '',
+  warns: [], shake: 0, opts: { shake: true },               // edge warnings, screen shake, options
 
   init() {
     this.hi = loadHi();
+    this.opts = loadOpts();
     for (let i = 0; i < 70; i++) {
       this.stars.push({ x: rand(0, W), y: rand(0, H), s: rand(0.3, 1.5),
         c: pick([C.white, C.sky, C.pink, C.yellow, C.lime, C.red, C.lgray]), ph: randi(0, 59) });
@@ -217,7 +231,7 @@ const Game = {
   setupStage(type) {
     this.stageType = type;
     this.enemies = []; this.eBul = []; this.pBul = [];
-    this.laser = null; this.crushT = 0; this.wingT = 0; this.tetT = 0;
+    this.laser = null; this.crushT = 0; this.wingT = 0; this.tetT = 0; this.warns = []; this.shake = 0;
     if (this.isSide) this.initSide();
     this.waves = type === 'normal' ? buildNormalWaves() : type === 'challenge' ? buildChallengeWaves(this.stage) : [];
     this.waveI = 0;
@@ -288,6 +302,14 @@ const Game = {
 
   popup(x, y, text, col = C.white) { this.pops.push({ x, y, text, col, t: 50 }); },
 
+  // Screen shake (SUPERCRUISE): a punch of up to 3 px, weaker the farther it lands from the ship. Only
+  // the strongest punch counts; it decays 10% a frame. The SNES did this by nudging the scroll.
+  punch(amt, x = this.player.x, y = this.player.y) {
+    if (!this.opts.shake) return;
+    const d = Math.hypot(x - this.player.x, y - this.player.y);
+    this.shake = Math.min(3, Math.max(this.shake, amt * clamp(1 - d / 320, 0.35, 1)));
+  },
+
   // ---- Effects ---------------------------------------------------------------
   explode(x, y, n, cols) {
     for (let i = 0; i < n; i++) {
@@ -314,6 +336,9 @@ const Game = {
     this.pops = this.pops.filter(q => q.t > 0);
     for (const b of this.booms) if (--b.delay <= 0) { this.explode(b.x, b.y, b.n); Sound.sfx('explode'); }
     this.booms = this.booms.filter(b => b.delay > 0);
+    this.shake = this.shake > 0.4 ? this.shake * 0.9 : 0;
+    for (const w of this.warns) w.t--;
+    this.warns = this.warns.filter(w => w.t > 0);
   },
 
   updateStars(speed) {
@@ -381,7 +406,7 @@ const Game = {
   gameMenuItems() {
     const items = ['RESUME'];
     if (this.state === 'intro') items.push('SKIP BRIEFING');
-    items.push('SOUND: ' + (Sound.muted ? 'OFF' : 'ON'));
+    items.push('SOUND: ' + (Sound.muted ? 'OFF' : 'ON'), 'SHAKE: ' + (this.opts.shake ? 'ON' : 'OFF'));
     if (this.mission && !this.inBase && this.state !== 'debrief' && this.state !== 'learn') items.push('ABORT MISSION');
     return [...items, 'QUIT TO TITLE', 'EXIT GAME'];
   },
@@ -400,6 +425,7 @@ const Game = {
     if (item === 'RESUME') this.paused = false;
     else if (item === 'SKIP BRIEFING') { this.paused = false; this.intro.done(); }
     else if (item.startsWith('SOUND')) Sound.toggleMute();
+    else if (item.startsWith('SHAKE')) { this.opts.shake = !this.opts.shake; this.shake = 0; saveOpts(this.opts); }
     else if (item === 'ABORT MISSION') { this.paused = false; this.missionFailed(); }
     else if (item === 'EXIT GAME') this.exitGame();
     else { this.saveCampaign(); saveHi(this.hi); this.toTitle(); }
@@ -642,6 +668,7 @@ const Game = {
       acetyl: !chall && this.stage >= 2 && Math.random() < this.acetylChance(),
       holding: -1, flash: 0, fireYs: [], t: randi(0, 60), dead: false, enterFireAt: 0,
     };
+    e.ammo = this.ammoFor(e);
     if (Math.random() < (chall ? 0.3 : Math.min(0.25 + this.stage * 0.04, 0.6))) {   // every stage shoots back, a bonus stage lightly
       e.enterFireAt = randi(40, Math.max(41, Math.min(160, path.length - 40)));
     }
@@ -654,7 +681,19 @@ const Game = {
       type, hp, maxHp: hp, x, y, vx: 0, vy: 1, ang: Math.PI, state: 'dive',
       phase: 1, pt: 0, hd: Math.PI / 2 + side * 0.4, spd: 1.5, maxSpd: 2.6, turn: side,
       slot: null, wave: -1, acetyl: false, holding: -1, flash: 0, fireYs: [110], t: 0, dead: false, wob: 0,
+      ammo: ENEMY[type].ammo,
     });
+  },
+
+  // A new plane's fire budget.
+  ammoFor(e) { return Math.round((ENEMY[e.type].ammo || 0) * (e.acetyl ? 1.5 : 1)); },
+
+  // Spend n rounds of a plane's budget; false (and nothing spent) when it has run dry.
+  spendAmmo(e, n = 1) {
+    if (e.ammo === undefined) return true;   // no budget (a boss's guns)
+    if (e.ammo <= 0) return false;
+    e.ammo = Math.max(0, e.ammo - n);
+    return true;
   },
 
   // ---- Enemies -----------------------------------------------------------------
@@ -803,7 +842,7 @@ const Game = {
   formationFire() {
     if (this.stageType !== 'normal' || !this.player.alive || --this.volleyCd > 0) return;
     this.volleyCd = randi(Math.max(40, 130 - this.stage * 6), Math.max(80, 210 - this.stage * 8));
-    const pool = this.enemies.filter(e => e.state === 'form' && e.type !== 'methyl');
+    const pool = this.enemies.filter(e => e.state === 'form' && e.type !== 'methyl' && e.ammo > 0);   // an old formation goes quiet
     if (pool.length) this.enemyFire(pick(pool));
   },
 
@@ -833,32 +872,41 @@ const Game = {
     }
   },
 
-  enemyFire(e) {
+  // An enemy bullet of kind k (aim | drop | split | seek, see EBUL_GLOW).
+  eShot(x, y, vx, vy, k = 'aim') { this.eBul.push({ x, y, vx, vy, k, t: 0 }); },
+  // Room for another bullet? drop curtains get a little more.
+  eBulRoom(k) { return this.eBul.length <= (k === 'drop' ? 14 : 10) + this.stage; },
+
+  // A plane's shot: bombers drop theirs straight back, everything else aims at you. Each bullet spends ammo.
+  enemyFire(e, k = e.type === 'bomber' ? 'drop' : 'aim') {
     const p = this.player;
     if (!p.alive || this.empT > 0 || e.cargo) return;   // convoy cargo tanks are unarmed
-    if (this.eBul.length > 10 + this.stage) return;
+    if (!this.eBulRoom(k) || !(e.ammo === undefined || e.ammo > 0)) return;
     const sp = Math.min(2 + this.stage * 0.08, 3.4);
     let a = Math.atan2(p.y - e.y, p.x - e.x);
-    if (!this.isSide) a = clamp(a, 0.35, Math.PI - 0.35);   // vertical stages: only shoot downward
-    const angles = e.acetyl ? [a - 0.15, a + 0.15] : [a];
-    for (const aa of angles) this.eBul.push({ x: e.x, y: e.y + 9, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp });
+    if (k === 'drop') a = this.isSide ? Math.PI : Math.PI / 2;
+    else if (!this.isSide) a = clamp(a, 0.35, Math.PI - 0.35);   // vertical stages: only shoot downward
+    const angles = e.acetyl ? [a - 0.15, a + 0.15] : [a], v = k === 'drop' ? sp * 0.8 : sp;
+    this.spendAmmo(e, angles.length);
+    const [ox, oy] = this.orient(0, 9);
+    for (const aa of angles) this.eShot(e.x + ox, e.y + oy, Math.cos(aa) * v, Math.sin(aa) * v, k);
   },
 
-  spreadShot(x, y, n, gap, sp) {
+  spreadShot(x, y, n, gap, sp, k = 'aim') {
     const p = this.player;
     if (this.empT > 0) return;   // EMP BLAST jams every gun
     const base = p.alive ? Math.atan2(p.y - y, p.x - x) : Math.PI / 2;
     for (let i = 0; i < n; i++) {
       const a = base + (i - (n - 1) / 2) * gap;
-      this.eBul.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp });
+      this.eShot(x, y, Math.cos(a) * sp, Math.sin(a) * sp, k);
     }
   },
 
-  ringShot(x, y, n, sp, phase) {
+  ringShot(x, y, n, sp, phase, k = 'aim') {
     if (this.empT > 0) return;
     for (let i = 0; i < n; i++) {
       const a = phase + (i / n) * TAU;
-      this.eBul.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp });
+      this.eShot(x, y, Math.cos(a) * sp, Math.sin(a) * sp, k);
     }
   },
 
@@ -939,7 +987,8 @@ const Game = {
       if (--p.respawnT <= 0 && this.state !== 'gameover') this.gameOver();
       return;
     }
-    if (p.invuln > 0) p.invuln--;
+    if (p.invuln > (p.invMax || 0)) p.invMax = p.invuln;   // how long this spell of invulnerability is (for drawing)
+    if (p.invuln > 0) p.invuln--; else p.invMax = 0;
     if (p.battCd > 0) p.battCd--;
     if (p.fireCd > 0) p.fireCd--;
 
@@ -1009,6 +1058,7 @@ const Game = {
       this.morphTo(nf);
       this.explode(p.x, p.y, 10, [C.white, C.lgray, C.gray]);
       this.popup(p.x, p.y - 16, 'ARMOR BREAK', C.orange);
+      this.punch(2);
       Sound.sfx('armor');
       return;
     }
@@ -1021,6 +1071,7 @@ const Game = {
     p.respawnT = 150;
     p.morphT = 0;
     this.explode(p.x, p.y, 30, [C.white, C.sky, C.red, C.yellow]);
+    this.punch(3);
     for (let i = 1; i <= 3; i++) this.booms.push({ x: p.x + rand(-10, 10), y: p.y + rand(-8, 8), n: 10, delay: i * 8 });
     Sound.sfx('die');
   },
@@ -1201,7 +1252,9 @@ const Game = {
   },
 
   drawWorld(ctx) {
-    const p = this.player;
+    const p = this.player, sk = Math.round(this.shake);
+    ctx.save();
+    if (sk) ctx.translate(randi(-sk, sk), randi(-sk, sk));   // shake moves the playfield, not the HUD
     if (this.isSide) this.drawSideBG(ctx); else this.drawTopBG(ctx);
     if (this.carrier) this.drawCarrier(ctx);
     if (this.capital) this.drawCapital(ctx);
@@ -1210,10 +1263,13 @@ const Game = {
     this.drawPickups(ctx);
     this.drawSpecialFx(ctx, 'under');
     for (const b of this.pBul) this.drawPlayerBullet(ctx, b);   // weapons.js
-    SNES.add(ctx, () => { for (const b of this.eBul) NES.draw(ctx, SNES.glow(4, (this.t >> 2) & 1 ? '#c01830' : '#a01050'), b.x, b.y); });
-    for (const b of this.eBul) NES.draw(ctx, SPR.ebullet, b.x, b.y);
-    if (p.alive && !p.hidden && (p.invuln <= 0 || (this.t >> 2) & 1)) {
-      this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide, undefined, p.tilt);
+    this.drawEnemyBullets(ctx);
+    // Invulnerable: see-through for the first two thirds, then blinking, so you can tell when it ends.
+    if (p.alive && !p.hidden) {
+      const steady = p.invuln > (p.invMax || 0) / 3, draw = () => this.drawShip(ctx, p.form, p.x, p.y, p.morphT, true, this.isSide, undefined, p.tilt);
+      if (p.invuln <= 0) draw();
+      else if (steady) SNES.half(ctx, draw, 0.5);
+      else if ((this.t >> 2) & 1) draw();
     }
     this.drawChargeFx(ctx);
     if (p.alive && this.wingT > 0 && (this.wingT > 90 || (this.t >> 2) & 1)) this.drawWingman(ctx);
@@ -1221,8 +1277,26 @@ const Game = {
     this.drawModule(ctx);     // arsenal.js: barrier ring, escorts
     this.drawSpecialFx(ctx, 'over');
     this.drawParticles(ctx);
+    this.drawWarns(ctx);
+    ctx.restore();
     this.drawHUD(ctx);
     this.panel(ctx, () => this.drawOverlay(ctx));
+  },
+
+  // Enemy bullets: a banded glow in the kind's color (additive), then the sprite. drop turns to its flight.
+  drawEnemyBullets(ctx) {
+    const ph = (this.t >> 2) & 1;
+    SNES.add(ctx, () => { for (const b of this.eBul) NES.draw(ctx, SNES.glow(4, EBUL_GLOW[b.k || 'aim'][ph]), b.x, b.y); });
+    for (const b of this.eBul) {
+      const img = SPR.ebul[b.k || 'aim'];
+      if (b.k === 'drop') NES.drawRot(ctx, img, b.x, b.y, Math.atan2(b.vy, b.vx) + Math.PI / 2); else NES.draw(ctx, img, b.x, b.y);
+    }
+  },
+
+  // Edge warnings ({ x, y, dir, t }: dir = the angle the threat flies in at): a blinking arrow.
+  drawWarns(ctx) {
+    if (!((this.t >> 2) & 1)) return;
+    for (const w of this.warns) NES.drawRot(ctx, SPR.warnArrow, w.x, w.y, w.dir + Math.PI / 2);
   },
 
   // Run a layout made for a 256-wide screen, centered on the widescreen.

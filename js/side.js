@@ -28,15 +28,13 @@ Object.assign(Game, {
     }
     events.sort((a, b) => a.t - b.t);
     if (this.legBoss) events.push({ t: dur + 150, kind: 'boss' });
-    this.side = { events, i: 0, t: 0, warns: [] };
+    this.side = { events, i: 0, t: 0 };
   },
 
   updateSide() {
     const S = this.side;
     S.t++;
     while (S.i < S.events.length && S.events[S.i].t <= S.t) this.spawnSidePattern(S.events[S.i++].kind);
-    for (const w of S.warns) w.t--;
-    S.warns = S.warns.filter(w => w.t > 0);
   },
 
   spawnSidePattern(kind) {
@@ -57,7 +55,7 @@ Object.assign(Game, {
         for (let i = 0; i < 3; i++) {
           const y = clamp(p.y + (i - 1) * 30, 28, 180);
           this.spawnSideEnemy('fighter', 'rear', -40 - i * 30, y);
-          this.side.warns.push({ y, t: 50 });
+          this.warns.push({ x: 6, y, dir: 0, t: 50 });   // an arrow on the left edge, pointing in
         }
         break;
       }
@@ -123,6 +121,7 @@ Object.assign(Game, {
       ...extra,
     };
     if (type === 'sam' || type === 'tank') e.face = 0;
+    if (e.ammo === undefined) e.ammo = this.ammoFor(e);
     this.enemies.push(e);
     return e;
   },
@@ -156,7 +155,7 @@ Object.assign(Game, {
       case 'bomber':
         e.vx = -0.5;
         e.vy = Math.sin(e.st * 0.02) * 0.3;
-        if (e.st % 100 === 50 && e.x < W - 10) this.spreadShot(e.x - 14, e.y, 3, 0.25, 2);
+        if (e.st % 100 === 50 && e.x < W - 10 && this.spendAmmo(e)) this.spreadShot(e.x - 14, e.y, 3, 0.25, 2);   // a fan spends one round
         break;
       case 'ground':
         e.vx = this.scrollLock ? 0 : -1.5;   // moves with the ground
@@ -231,11 +230,6 @@ Object.assign(Game, {
     NES.disc(ctx, x + 3, y + 9, 1, C.black); NES.disc(ctx, x + 9, y + 9, 1, C.black);
   },
 
-  // SNES parallax landscape (scenery.js), plus the incoming-enemy warnings.
-  drawSideBG(ctx) {
-    this.drawSideLayers(ctx);   // scenery.js
-    if (this.side && (this.t >> 2) & 1) {
-      for (const w of this.side.warns) NES.text(ctx, '!>', 4, w.y - 3, C.red);
-    }
-  },
+  // SNES parallax landscape (scenery.js).
+  drawSideBG(ctx) { this.drawSideLayers(ctx); },
 });

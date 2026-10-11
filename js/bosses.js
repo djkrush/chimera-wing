@@ -380,6 +380,7 @@ Object.assign(Game, {
     if (pt.dead) return;
     pt.dead = true;
     this.explode(pt.x, pt.y, pt.kind === 'core' ? 24 : 16);
+    this.punch(pt.kind === 'core' ? 3 : 2, pt.x, pt.y);
     Sound.sfx('boom');
     if (pt.kind === 'turret' && B.def.regrow && !B.regrew) { B.regrew = true; B.regrow = { part: pt, t: 300 }; }
     const pts = BASE_PART[pt.kind].pts;
