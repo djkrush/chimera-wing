@@ -63,8 +63,8 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
   Replaying a cleared mission pays half (supply raids pay in full). Clearing a planet, securing a system
   and liberating a system each pay a bonus.
 - **Every level-up** (up to level 30) lets you learn a **special attack** (even levels) or a **passive
-  skill** (odd levels), picked from three offers. **Every third level** also trains one stat (+1 WEAPONS,
-  SHIELDS or SPECIAL).
+  skill** (odd levels), picked from three offers. **Every third level** adds a bonus, taking turns: a stat
+  point (+1 WEAPONS, SHIELDS or SPECIAL) at levels 3, 9, 15..., and an extra passive at 6, 12, 18....
   A new pilot also picks a starting passive: DRONE ESCORT, REINFORCED HULL or GROUND MISSILES.
 - **Every planet's market stocks different things**, from this list (prices rise with each purchase):
 
@@ -214,7 +214,7 @@ until you press one of its buttons, so press one after plugging it in.
 ## Pilots
 
 A new game starts by picking who flies the Chimera. Each pilot has three stats. Your hull, its market
-upgrades and a trained point every third level add to them, up to 8 weapons, 8 shields and 5 special:
+upgrades and a trained point every sixth level (3, 9, 15...) add to them, up to 8 weapons, 8 shields and 5 special:
 
 - **Weapons** sets how hard your shots hit: (1 + weapons) / 4 of a gun's damage, so 1 = half, 3 = full,
   8 = 2.25 times. At weapons 1 a MiG takes two hits.

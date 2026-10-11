@@ -36,8 +36,8 @@ Object.assign(Game, {
     while (c.level < LEVELS.length && c.xp >= LEVELS[c.level]) {
       c.level++;
       levels.push(c.level);
-      if (c.level % 3 === 0) c.pending.push('stat');   // a stat point every third level
       c.pending.push(c.level % 2 ? 'passive' : 'special');
+      if (c.level % 3 === 0) c.pending.push((c.level / 3) % 2 ? 'stat' : 'passive');   // every third level: a stat point, then an extra passive, in turn
     }
     return levels;
   },

@@ -91,7 +91,7 @@ Object.assign(Game, {
       'WEAPONS: HOW HARD SHOTS HIT. 1 IS HALF A GUNS POWER, 3 IS FULL, 8 IS 2.25 TIMES.',
       'SHIELDS: HITS YOU CAN TAKE. REPAIRED AT EVERY TAKEOFF.',
       'SPECIAL: USES OF YOUR SPECIAL WEAPON ON EACH LEG.',
-      'YOUR HULL, ITS MARKET UPGRADES AND A POINT EVERY THIRD LEVEL ADD TO THEM.'],
+      'YOUR HULL, ITS MARKET UPGRADES AND A POINT AT LEVELS 3, 9, 15 AND SO ON ADD TO THEM.'],
     (ctx, x, y) => {
       const n = 1 + ((this.t >> 5) % 8);
       [['WEAPONS', 'weapons', C.red], ['SHIELDS', 'shields', C.sky], ['SPECIAL', 'special', C.gold]].forEach(([l, k, col], i) => {
@@ -245,8 +245,8 @@ Object.assign(Game, {
 
     topic('LEVELS AND CREDITS');
     page('HOW DO I LEVEL UP?', [
-      'MISSIONS PAY XP. EVERY LEVEL, UP TO ' + LEVELS.length + ', TRAINS ONE STAT BY 1, THEN TEACHES A SPECIAL (EVEN LEVELS) OR A PASSIVE SKILL (ODD LEVELS).',
-      'EACH TIME YOU PICK ONE OF THREE OFFERS.'],
+      'MISSIONS PAY XP. EVERY LEVEL, UP TO ' + LEVELS.length + ', TEACHES A SPECIAL (EVEN LEVELS) OR A PASSIVE SKILL (ODD LEVELS).',
+      'EVERY THIRD LEVEL ADDS A BONUS: A STAT POINT, THEN AN EXTRA PASSIVE, TAKING TURNS. EACH TIME YOU PICK ONE OF THREE OFFERS.'],
     (ctx, x, y) => {
       const f = (this.t % 180) / 150;
       this.drawBar(ctx, x - 60, y, 120, 6, Math.min(1, f), C.lime, '#082008');
