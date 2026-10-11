@@ -300,6 +300,7 @@ Object.assign(Game, {
     const exposed = this.bossCores().some(q => !q.dead && !q.shielded);
     if (!exposed && !B.phase2) return;
     if (!B.phase2) { B.phase2 = true; B.beamCd = 120; if (def.shield === 'turrets') this.say(VOSS.bossPhase2); }
+    if (B.beamT > 0 && !this.beamCore()) B.beamT = 0;   // its core fell mid-sweep while other targets stand: the beam dies with it
     if (B.beamT > 0) {
       B.beamT--;
       if (B.beamT < 140) {
