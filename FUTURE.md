@@ -25,7 +25,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 | M2 | **Arsenal and economy** (shipped, see the README) | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, a price table, supply raids, save v4 | Gives credits a use in every galaxy (see Economy) |
 | M3 | **Vertical stages** (shipped, see the README) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls and the gun ladder** | Two guns per form (a start gun and a market upgrade), one form per gun, 16 new guns, gun levels bought at markets, special bays, two new hulls, pilot perks with a mechanic, unique hull art | Every hull becomes its own ship, and credits get a steady use in every galaxy |
-| M5 | **Bosses and rewards** | Side bosses become ground fortresses, part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
+| M5 | **Bosses and rewards** (each feature needs an interview first, see the M5 spec) | Side bosses become ground fortresses, part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
 | M6 | **Stages** (each feature needs an interview first, see the M6 spec) | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
 | — | **Later** | Carrier upgrades, card game, music, passive slots, planet reputation, more galaxies, touch polish, save slots, score attack | Worth doing, but they don't fix the long-campaign problem |
 
@@ -398,6 +398,35 @@ costs about 225k, so no one does it all. The early galaxies run above the 70 to 
 hull purchases are optional (the CHIMERA can finish the Milky Way). If the climb feels slow, lower
 `GUN_PRICE` for rungs 4 to 8 first, then the level multipliers.
 
+### M5: bosses and rewards (interview first)
+
+Like M6, M5 is a list of candidate features. **Every feature needs an interview with the user before it
+gets a spec**: keep, change or drop it, then settle the open questions below. Only interviewed features
+are written up (rules, numbers, files, a build step) and go into M5; a dropped feature moves to the
+catalog's Later list with a note saying why. Interview one feature at a time and record the answers here.
+The catalog sections Bosses (M5) and Rewards (M5) hold the background for each.
+
+| Feature | Status | Questions for the interview |
+|---|---|---|
+| Ground fortresses instead of beached warships | draft written (catalog), needs interview | Are CITADEL, FOUNDRY and NEST the right three styles, and which boss gets which? How should destruction look? Should fortresses also get M5's multi-section or part-reactive rules? |
+| Parts that change the fight | needs interview | Which reactions (a weak point opens, the boss goes frantic, guns stop while parts fly loose)? Side fortresses, capital ships or both? |
+| Twin bosses | needs interview | A pair of capital ships, a pair of fortresses, or both? What happens if the wrong one dies first? |
+| Multi-section bosses | needs interview | How many sections? Does a fortress break open into a second form? Which bosses? |
+| Ordered locks | needs interview | Which epigenetic order to teach (for example a demethylase before a histone core)? How is the order shown on screen? |
+| Readable turret patterns | needs interview | Fixed volleys tied to a capital ship's rotation, side fortress turrets, or both? |
+| Boss destruction % and escape timers | needs interview | Does a boss leave after a time limit? Pay per target killed before it escapes, or a percent bonus? Does a capital ship's last pass count as its escape? |
+| Color chains | needs interview | Chain gray (methylated) or gold (acetylated) planes, or both? What does a chain pay, and how is it shown? |
+| Earn the special in flight | needs interview | What earns a use (shooting bullets, a kill streak)? Does it fit the low SPC stats from the stats patch? |
+| Weapon challenges | needs interview | Which challenges (hits without a miss, kills with one gun)? Per gun, tied to M4's gun levels? What do they pay? |
+| Grazing | needs interview | Points only, or a meter that pays out? Does it reward risk too much now that shields are low? |
+| Timed pickups | needs interview | Which pickups lose value over time? Points or credits? |
+| Hidden secrets | needs interview | Where do they hide (scenery, fortress parts, off the path)? What do they give? |
+| Destroy-everything and no-hit bonuses | needs interview | Per leg or per mission? How do they relate to the shot-down % that already shipped? |
+| Collisions cost power, not a hit | needs interview | With M4's bought gun levels, should a collision drop a gun level for the leg, or keep costing a shield? |
+| Fair homing for divers | needs interview | Widen the dead zone above the ship? Do divers stop firing when close? |
+| Boss in a band | needs interview | Use the heavy's movement rule for new free-flying vertical bosses? Which bosses would those be? |
+| Scripted volleys | needs interview | Hand-made bursts in set pieces: which set pieces? |
+
 ### M6: stages (interview first)
 
 M6 is a list of candidate features, not a plan. The user likes some and not others, so **every feature
@@ -514,6 +543,8 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
 
 ### Bosses (M5)
 
+Candidates only: each needs an interview before it is planned (see the M5 spec).
+
 - **Ground fortresses instead of beached warships (Truxton, Thunder Force IV).** The side-mission bosses
   (`bosses.js`) are painted as battleships, destroyers and carriers sitting on landing legs, which reads
   as a ship run aground. Their names already say base (HISTONE BUNKER, IMPRINT KEEP, HP1 BASTION, DNMT3
@@ -533,8 +564,8 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
   - Destruction: towers topple and sections slump into smoke and dust on top of today's explosions.
   - Art direction: capital ships (vertical) stay Yamato and Star Destroyer warships; side bosses become
     ground fortresses. Update CLAUDE.md, the README and the `bosses.js` header with it.
-  - Do it first in M5: multi-section and part-reactive bosses fit a fortress well (walls that crumble as
-    their guns fall).
+  - Proposed as M5's first step: multi-section and part-reactive bosses fit a fortress well (walls that
+    crumble as their guns fall). Confirm in the M5 interview.
 
 - **Parts that change the fight (Darius Twin, Strikers 1945).** Darius Twin's squid shows its weak point
   when one tentacle is destroyed, but turns frantic if both are; its lobster stops firing while its claws
@@ -558,6 +589,8 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
   if it escapes. For us: credits per boss target killed before the capital ship's last pass.
 
 ### Rewards (M5)
+
+Candidates only: each needs an interview before it is planned (see the M5 spec).
 
 - **Color chains (Radiant Silvergun).** Three kills of the same color start a chain that grows. For us:
   chain methylated (gray) or acetylated (gold) planes for credits and XP.
