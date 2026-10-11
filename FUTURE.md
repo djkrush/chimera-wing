@@ -136,6 +136,130 @@ To revisit after real play:
 - **Gold planes and fire budgets.** Gold planes fire pairs, so their 1.5x ammo goes in fewer volleys.
   Try counting a pair as one round.
 
+### M4: hulls
+
+**Goal.** Hulls today differ by stat bonuses and a damage multiplier per form, and the last three reuse
+the first airframes in new colors. M4 gives every hull a job and a move of its own (U.N. Squadron's
+planes, 1942's loop), adds four late hulls so Andromeda has something to save for, turns the pilots'
+perks into mechanics, and gives every hull its own art. No save change: hulls are still indices in
+`camp.hulls`, moves and perks are per leg, and the won prototype is pushed into `camp.hulls`.
+
+**Scope.** In: hull roles, signature moves and traits, the move input and HUD, four late hulls and
+their prices, pilot perks, unique Fighter art for every hull and per-hull Guardian and Battloid parts,
+HOW TO pages and docs. Left in the catalog: the M4 guns (Thunder Sword, hyper beam and the rest; they
+can follow as their own release), in-flight power levels, gun XP tuning.
+
+#### Moves and traits
+
+Every hull gets either an **active move** (charges per leg) or a **trait** (always on). Both are data on
+the hull: `HULLS[h].move = { id, name, uses, desc }` or `HULLS[h].trait = { id, name, desc }`, run in a new
+mixin `js/moves.js` (after `pilots.js`): `startMove()`, `updateMove()`, `drawMove()`, `moveCollide()`.
+
+- **Input: double-tap a direction** (the catalog's idea; it needs no new button, so it works on an NES
+  pad). `Input.dbl(dir)` is true when a direction is pressed, released within 10 frames and pressed again
+  within 12. It reads the merged actions, so it covers keys, D-pad, the analog stick and the touch
+  joystick (a double flick). Directional moves (the roll, the bash) use that direction through
+  `orient()`; the others go off on any direction.
+- **Charges:** `uses` per leg (3 by default), refilled at takeoff; shown as small icons next to the
+  special's ammo in the HUD. Each charge left when a leg clears pays 1,000 points on the clear banner
+  (1942's loops), counted in `tallyLeg`.
+- A move can't start during a transform (`morphT`), while silenced in that form, or in `gunsCold()`.
+
+| # | Hull | Role | Move or trait | What it does |
+|---|---|---|---|---|
+| 0 | VX-3 CHIMERA | Balanced starter | Trait QUICK CHANGE | A transform is invulnerable while it morphs (14 frames), at most once a second |
+| 1 | VX-5 MANTICORE | Striker, fastest Fighter | Move ROLL | Barrel roll 40 px toward the tapped side, invulnerable 30 frames (the bank frames spun through) |
+| 2 | VX-6 GRIFFIN | Armor, Battloid | Move SHIELD BASH | Battloid only: a 24-frame dash forward behind the arm shield; blocks bullets, rams planes for 8x gun power |
+| 3 | VX-9 HYDRA | All-rounder | Trait THIRD HEAD | An escort drone in every form that fires with you (stacks with DRONE ESCORT) |
+| 4 | VX-7 WYVERN | Guardian | Move LOCK VOLLEY | Locks up to 6 targets on screen (`findTarget`/`targetable`) and fires a homing missile at each |
+| 5 | VX-8 BASILISK | Glass cannon | Move LANCE | A piercing beam the length of the screen, 6x gun power, hits every target in line |
+| 6 | VX-12 PHOENIX | Top of the line | Trait REBIRTH | Once per mission, a fatal hit leaves 3 shields and bursts in fire, clearing bullets nearby |
+| 7 | VX-10 BEHEMOTH | Ground attack (A-10) | Move CARPET | Drops 6 bombs along its path; also carries every bomb rack, and ground targets and boss parts take +50% |
+| 8 | VX-11 SPHINX | Stealth | Move CLOAK | 3 s unseen: planes aim at a decoy where you cloaked. Trait on top: `seek` bullets don't steer at it and methyl beams take twice as long to lock |
+| 9 | VX-14 CERBERUS | Drone carrier | Move PACK | Two escort drones in every form (trait); the move sends them to ram the two nearest targets, then they return |
+| 10 | VX-13 NUE | Prototype, won | Move OVERDRIVE | For 4 s, all three fitted guns fire at once (each at its form's power) |
+
+Side missions use the same moves: the roll and bash run along `orient()`, CARPET bombs fall to
+`SIDE_GROUND`, the LANCE fires right.
+
+#### Four late hulls
+
+New `HULLS` entries at the end (indices 7 to 10, so saves keep working), each with `HULL_ART`, a `guns`
+default fit and `mounts`:
+
+| Hull | WPN SHD SPC | Speed | Form multipliers | Mounts | Default guns | Price | Where |
+|---|---|---|---|---|---|---|---|
+| VX-10 BEHEMOTH | +1 +3 0 | 0.85 | 1.1 / 1.0 / 1.2 | heavy all | vulcan, bomb, laser | 25,000 | N44 Bubble (Magellanic) |
+| VX-11 SPHINX | +1 0 +2 | 1.2 | 1.2 / 1.1 / 1.0 | light, heavy, light | wave, homing, vulcan | 50,000 | NGC 206 (Andromeda) |
+| VX-14 CERBERUS | 0 +2 +2 | 1.0 | 1.0 / 1.2 / 1.0 | light, heavy, heavy | twin, ripple, homing | 65,000 | M32 (Andromeda) |
+| VX-13 NUE | +3 +2 +2 | 1.2 | 1.4 all | heavy all | laser, ripple, homing | won | Mayall II stronghold |
+
+- **Where they're sold:** `EXTRA_HULLS` in `world.js` (generated planets): `n44: 7`, `ngc206: 8`, `m32: 9`.
+  That replaces the Basilisk at NGC 206 and the Wyvern at M32; both are still sold in the Magellanic
+  Cloud, and a hull you own always shows in every shipyard.
+- **The prototype:** clearing the Mayall II stronghold for the first time adds NUE to `camp.hulls`, with
+  a Mira line in the debrief and a Voss taunt (it's her prototype). It can't be bought or sold.
+- **Bomb racks:** `ORDNANCE` bomb entries add the BEHEMOTH to `hulls` (`[0, 2, 4, 6, 7]`).
+
+**Economy check** (against the table above): the Magellanic Cloud goes from about 93k of permanent
+sinks to 118k (79% of its 150k); Andromeda from about 88k to 203k (81% of 250k). Both sit at the top of
+the 70 to 80% target, before ordnance, so tune the two Andromeda prices down first if it feels grindy.
+
+#### Pilot perks
+
+Stats stay as they are; the perk line on the pilot card and in the starbase changes to the mechanic:
+
+| Pilot | Perk | How |
+|---|---|---|
+| MAVERICK | GUNS LEVEL UP 50% FASTER | `addGunXP` multiplies by 1.5 |
+| TURTLE | SHIELDS RECHARGE AFTER 10 QUIET SECONDS | 600 frames without a hit restores 1 shield (up to max), then the timer restarts; stacks with AUTO REPAIR |
+| DRAC | ONE MORE RACK AND ONE MORE MOVE | Ordnance `carry` + one rack's `uses`; +1 move charge per leg |
+
+#### Art
+
+- **Fighters:** new top-down and side Fighter sprites for the WYVERN, BASILISK and PHOENIX and the four
+  new hulls (7 airframes, Truxton detail, Robotech VF lines): the BEHEMOTH heavy and twin-tailed with
+  wing pylons, the SPHINX a flat faceted wedge, the CERBERUS wide with three drone bays, the NUE a
+  forward-swept prototype.
+- **Guardian and Battloid by parts** (like the VF-1 A, J, S and R heads): one shared body, with each
+  hull adding a head, shoulder armor and backpack, composited into the ASCII rows before baking
+  (`hullParts(h, form)` in `sprites.js`). That gives every hull its own GERWALK and robot without 40 new
+  full sprites; the bank frames and side profiles are built from the same parts.
+- Move effects: roll streaks, the bash shield flash, lock-on brackets, the lance beam, the cloak drawn
+  with `SNES.half`, Rebirth flames. All in 15-bit color with banded glows.
+
+#### HOW TO PLAY and docs
+
+New pages: *WHAT IS MY HULL'S MOVE?* (double-tap, charges, the bonus for charges left, animated roll),
+and the hull list gains each hull's role and move. README (hulls table, pilots, moves), CLAUDE.md
+(`moves.js` in the load order and table, `HULLS[h].move`/`trait`, `Input.dbl`, a recipe for a new move).
+
+#### Build order
+
+Each step is playable and committed on its own, checked in Chrome with frames stepped by hand, the
+console watched, and `chimera.*` keys put back.
+
+1. **Move framework** (`input.js`, new `js/moves.js`, `index.html`, `game.js` HUD and `tallyLeg`):
+   `Input.dbl`, charges, HUD icons, the clear bonus, and the MANTICORE roll as the first move. *Check:*
+   double-taps fire the roll on keys, pad and touch; tapping a direction quickly to dodge doesn't
+   (single taps under 10 frames apart without a release don't count); the roll works in side missions.
+2. **The other six existing hulls' moves and traits.** *Check:* each one in a vertical and a side leg,
+   on a boss leg (bash and lance on boss parts, the volley on capital-ship targets).
+3. **Pilot perks.** *Check:* XP rate with MAVERICK, TURTLE's recharge timing, DRAC's carry and charges.
+4. **The four late hulls:** stats, moves (CARPET, CLOAK, PACK, OVERDRIVE), shipyards, the prototype
+   reward, bomb racks. Placeholder art (recolors) until step 5. *Check:* `?stage=` legs with each hull
+   via `&hull=N`; buying in a test campaign; the Mayall II reward once and only once.
+5. **Art:** seven Fighters and the Guardian and Battloid parts kit. *Check:* every hull in all three
+   forms, banking, side profile, silenced and white flash, in the hangar and the shipyard.
+6. **Tuning, HOW TO pages and docs.** Scripted runs with each move at stages about 1, 7, 13 and 18: a move
+   should save about one hit a leg, not trivialize a boss; recheck the economy totals.
+
+**Decisions to confirm before step 1:**
+
+- The double-tap trigger, or a held button (hold SELECT for 20 frames; slower, but no accidental moves).
+- Whether existing hulls keep their stats (recommended) or get rebalanced around their roles.
+- Whether the M4 guns ship now or as their own release after M4 (recommended: after).
+
 ## Idea catalog
 
 ### Hulls (M4)
