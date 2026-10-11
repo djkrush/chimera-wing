@@ -228,6 +228,7 @@ const Game = {
   toast(text) { this.toastMsg = { text, t: 150 }; },
 
   // Radio message. who defaults to the current villain. queued = wait for the current message.
+  // In flight (radioHolds) a message stops the stage until it's read: A, B or a tap moves on.
   say(text, who = this.villain(), queued = false) {
     const msg = { who, lines: NES.wrap(text, 25).slice(0, 3), t: 200 };
     if (queued && this.radio) this.radioQ.push(msg); else this.radio = msg;
@@ -374,8 +375,25 @@ const Game = {
     }
   },
 
+  // States where a radio message freezes the stage (it covers the top of the playfield).
+  radioHolds() { return this.radio && !this.paused && (this.state === 'play' || this.state === 'clear'); },
+  // Frozen for the radio: wait a beat so a held trigger can't skip it, then a fresh A or B (or a tap) goes on.
+  updateRadioHold() {
+    const r = this.radio;
+    r.held = (r.held || 0) + 1;
+    if (Input.just('start')) { this.openGameMenu(); return; }
+    if (r.held > 20 && (Input.just('fire') || Input.just('special'))) this.nextRadio();
+  },
+  nextRadio() { this.radio = this.radioQ.shift() || null; Sound.sfx('move'); },
+
   // ---- Main update -------------------------------------------------------------
   update() {
+    if (this.radioHolds()) {
+      Sound.update();
+      if (this.toastMsg && --this.toastMsg.t <= 0) this.toastMsg = null;
+      this.updateRadioHold();
+      return;
+    }
     this.t++;
     Sound.update();
     if (this.toastMsg && --this.toastMsg.t <= 0) this.toastMsg = null;
@@ -1583,9 +1601,10 @@ const Game = {
   // Dialogue sits in the centered panel; the speaker's portrait goes in the widescreen margin to its left.
   drawRadio(ctx) {
     const r = this.radio, box = () => NES.box(ctx, 2, 10, 252, 42, C.black, CAST[r.who].col);   // below the HUD's top row
-    if (this.state === 'play') SNES.half(ctx, box, 0.55); else box();   // in flight the window is see-through (color math)
+    box();
     this.drawPortrait(ctx, -64, 10, r.who);
     r.lines.forEach((l, i) => NES.text(ctx, l, 12, 17 + i * 11, C.white));
+    if (this.radioHolds() && r.held > 20 && (r.held >> 4) & 1) NES.text(ctx, this.radioQ.length ? 'A: NEXT' : 'A: GO', 246, 42, CAST[r.who].col, { align: 'right' });
   },
 
   drawIntro(ctx) {

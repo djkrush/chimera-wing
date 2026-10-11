@@ -117,6 +117,7 @@ Object.assign(Game, {
       if (i === this.gameMenuSel) this.gameMenuPick(); else { this.gameMenuSel = i; Sound.sfx('move'); }
       return;
     }
+    if (this.radioHolds()) { if (this.radio.held > 20) this.nextRadio(); return; }
     switch (this.state) {
       case 'title': {
         const i = Math.floor((y - 142) / 12);
