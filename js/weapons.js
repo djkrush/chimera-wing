@@ -236,12 +236,30 @@ Object.assign(Game, {
     }
     if (!chrono) {
       for (const b of this.eBul) {
+        this.steerEnemyBullet(b);
         b.x += b.vx; b.y += b.vy;
         if (b.y < -10 || b.y > H + 10 || b.x < -10 || b.x > W + 10) b.dead = true;
       }
     }
     this.pBul = this.pBul.filter(b => !b.dead);
     this.eBul = this.eBul.filter(b => !b.dead);
+  },
+
+  // Enemy bullet kinds: split bursts into three aimed shards after 40 frames; seek turns gently toward
+  // you for 90 frames, then flies straight.
+  steerEnemyBullet(b) {
+    const p = this.player;
+    b.t = (b.t || 0) + 1;
+    if (b.k === 'split' && b.t === 40) {
+      b.dead = true;
+      const sp = Math.hypot(b.vx, b.vy) * 1.8, a = p.alive ? Math.atan2(p.y - b.y, p.x - b.x) : Math.atan2(b.vy, b.vx);
+      for (const d of [-0.3, 0, 0.3]) this.eShot(b.x, b.y, Math.cos(a + d) * sp, Math.sin(a + d) * sp);
+      this.spark(b.x, b.y, C.yellow, 3);
+    } else if (b.k === 'seek' && b.t < 90 && p.alive) {
+      const sp = Math.hypot(b.vx, b.vy), h = Math.atan2(b.vy, b.vx);
+      const nh = h + clamp(angDiff(h, Math.atan2(p.y - b.y, p.x - b.x)), -0.025, 0.025);
+      b.vx = Math.cos(nh) * sp; b.vy = Math.sin(nh) * sp;
+    }
   },
 
   // Per-kind flight for the newer bullets.

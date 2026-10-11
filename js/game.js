@@ -893,6 +893,9 @@ const Game = {
   // Room for another bullet? drop curtains get a little more.
   eBulRoom(k) { return this.eBul.length <= (k === 'drop' ? 14 : 10) + this.stage; },
 
+  // What a gunship fires: gold ones fire splitting shells from band B (stage 5) on.
+  gunshipKind(e) { return e.acetyl && this.vband() >= 1 ? 'split' : 'aim'; },
+
   // A plane's shot: bombers drop theirs straight back, everything else aims at you. Each bullet spends ammo.
   enemyFire(e, k = e.type === 'bomber' ? 'drop' : 'aim', n = e.acetyl ? 2 : 1, gap = 0.3) {
     const p = this.player;
@@ -902,7 +905,7 @@ const Game = {
     let a = Math.atan2(p.y - e.y, p.x - e.x);
     if (k === 'drop') a = this.isSide ? Math.PI : Math.PI / 2;
     else if (!this.isSide) a = clamp(a, 0.35, Math.PI - 0.35);   // vertical stages: only shoot downward
-    const angles = Array.from({ length: n }, (_, i) => a + (i - (n - 1) / 2) * gap), v = k === 'drop' ? sp * 0.8 : sp;
+    const angles = Array.from({ length: n }, (_, i) => a + (i - (n - 1) / 2) * gap), v = sp * ({ drop: 0.8, split: 0.6, seek: 0.65 }[k] || 1);
     this.spendAmmo(e, angles.length);
     const [ox, oy] = this.orient(0, 9);
     for (const aa of angles) this.eShot(e.x + ox, e.y + oy, Math.cos(aa) * v, Math.sin(aa) * v, k);
@@ -951,6 +954,8 @@ const Game = {
     if (form >= 0) { this.formKills[form]++; this.addGunXP(form, pts); }   // the gun in that form earns the points
     this.stageHits++;
     if (e.type === 'splitter') this.splitEnemy(e);
+    if (e.type === 'heavy') this.heavyDown(e);   // traffic.js
+    if (e.red) this.redKill(e);
   },
 
   // Chance a new plane is acetylated (gold). Some systems field more of them.
@@ -1357,7 +1362,7 @@ const Game = {
     const f = (e.t >> 3) & 1;
     const img = e.flash > 0 ? set.white
       : e.type === 'methyl' && e.hp < e.maxHp ? set.dmg[f]
-        : e.acetyl ? set.acetyl[f] : set.normal[f];
+        : e.red ? set.red[f] : e.acetyl ? set.acetyl[f] : set.normal[f];
     if (e.beamExt > 0 && (e.state === 'beam' || e.state === 'side')) this.drawMethylBeam(ctx, e);
     if (e.holding >= 0) {
       // the silenced form is carried behind the methylator, like Galaga's captured fighter
@@ -1365,6 +1370,7 @@ const Game = {
       NES.drawRot(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].top.silenced[e.holding], bx, by, e.ang);
     }
     NES.drawRot(ctx, img, e.x, e.y, e.ang);
+    if (e.type === 'heavy') this.drawBar(ctx, Math.round(e.x) - 16, Math.round(e.y) + 21, 32, 2, e.hp / e.maxHp, C.pink);   // the mini-boss's hp
   },
 
   // Side missions: unrotated side profiles. They face left, and flip when flying right.

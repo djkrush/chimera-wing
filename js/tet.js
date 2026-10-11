@@ -1,7 +1,8 @@
 'use strict';
 // TET capsules. TET enzymes start the removal of methyl marks from DNA, so a capsule
 // demethylates one silenced form. Acetylated (gold) planes sometimes drop one.
-// Capsules drift backward: down in vertical stages, left in side missions.
+// Capsules drift backward: down in vertical stages, left in side missions. A pickup's kind is 'tet' or
+// 'cell' (a shield cell, the squadron bonus in traffic.js).
 
 Object.assign(Game, {
   dropTet(e) {
@@ -10,7 +11,13 @@ Object.assign(Game, {
     const more = (this.hasPassive('magnet') ? 1.5 : 1) * (1 + 0.25 * this.upLevel('scanner'));   // TET MAGNET, TET SCANNER
     if (Math.random() >= (need ? 0.6 : 0.2) * more) return;
     const [vx, vy] = this.orient(0, 0.7);
-    this.pickups.push({ x: e.x, y: e.y, vx, vy, t: 0 });
+    this.pickups.push({ kind: 'tet', x: e.x, y: e.y, vx, vy, t: 0 });
+  },
+
+  // The squadron bonus: a shield cell (+1 shield, or 500 points at full).
+  dropCell(x, y) {
+    const [vx, vy] = this.orient(0, 0.6);
+    this.pickups.push({ kind: 'cell', x, y, vx, vy, t: 0 });
   },
 
   updatePickups() {
@@ -22,7 +29,7 @@ Object.assign(Game, {
       const d = Math.hypot(p.x - q.x, p.y - q.y);
       if (this.hasPassive('magnet') && p.alive && d < 90 && d > 1) { q.x += (p.x - q.x) / d * 2.5; q.y += (p.y - q.y) / d * 2.5; }
       if (q.x < -8 || q.x > W + 8 || q.y > H + 8) q.dead = true;
-      else if (p.alive && Math.abs(q.x - p.x) < 13 && Math.abs(q.y - p.y) < 13) { q.dead = true; this.collectTet(q); }
+      else if (p.alive && Math.abs(q.x - p.x) < 13 && Math.abs(q.y - p.y) < 13) { q.dead = true; if (q.kind === 'cell') this.collectCell(q); else this.collectTet(q); }
     }
     this.pickups = this.pickups.filter(q => !q.dead);
   },
@@ -46,10 +53,23 @@ Object.assign(Game, {
     this.hint('tet');
   },
 
+  collectCell(q) {
+    this.spark(q.x, q.y, C.sky, 8);
+    if (this.shields < this.maxShields()) {
+      this.shields++;
+      this.popup(q.x, q.y - 8, 'SHIELD +1', C.lime);
+      Sound.sfx('oneup');
+    } else {
+      this.addScore(500);
+      this.popup(q.x, q.y - 8, '500', C.sky);
+      Sound.sfx('select');
+    }
+  },
+
   drawPickups(ctx) {
     for (const q of this.pickups) {
       if (q.t > 20 && q.t % 16 < 3) continue;   // blink so it stands out from bullets
-      NES.draw(ctx, SPR.tet, q.x, q.y);
+      NES.draw(ctx, q.kind === 'cell' ? SPR.cell : SPR.tet, q.x, q.y);
     }
   },
 });

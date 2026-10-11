@@ -689,6 +689,7 @@ const SPR = (() => {
   ];
 
   const gold = { D: C.gold, L: C.cream };   // acetylated (aggressive) palette swap
+  const red = { D: C.darkred, L: C.red, C: C.gold };   // the red squadron (squadron bonus, traffic.js)
   const ENEMY_DEFS = {
     fighter: { rows: MIG, side: MIG_SIDE, normal: { D: C.periwinkle, L: C.ice, R: C.red, C: C.gold } },
     bomber: { rows: BOMBER, side: BOMBER_SIDE, normal: { D: C.green, L: C.chartreuse, R: C.darkred, C: C.sky } },
@@ -708,6 +709,7 @@ const SPR = (() => {
   const bakeEnemy = (rows, d) => ({
     normal: frames(rows, d.normal),
     acetyl: frames(rows, { ...d.normal, ...gold }),
+    red: frames(rows, { ...d.normal, ...red }),
     dmg: frames(rows, d.dmg || d.normal),
     white: flash(rows),
   });
@@ -755,6 +757,10 @@ const SPR = (() => {
   const shieldPip = B(PIP, { W: C.white, B: C.sky });
   const shieldPipOff = B(PIP, { W: C.gray, B: '#202030' });
 
+  // Shield cell pickup (the squadron bonus): a capsule with a cross, in the shield pips' colors
+  const cell = B(['..WWWWW..', '.WSSSSSW.', 'WSSSWSSSW', 'WSSSWSSSW', 'WSWWWWWSW', 'WSSSWSSSW', 'WSSSWSSSW', '.WSSSSSW.', '..WWWWW..'],
+    { W: C.white, S: C.sky });
+
   // TET enzyme capsule (demethylates a silenced form)
   const tet = B(['..LLLLWWWW..', '.LLLLLWWWWW.', 'LLGLLLWWWWWW', 'LLLLLLWWWWWW', 'LLGLLLWWWWWW', '.LLLLLWWWWW.',
     '..LLLLWWWW..'], { L: C.lime, G: C.green, W: C.white });
@@ -786,7 +792,7 @@ const SPR = (() => {
 
   return {
     hulls,
-    enemy, ebullet, ebul, warnArrow, missile, life, wing, wingSide, escort, escortSide, shuttle, shieldPip, shieldPipOff, tet, specialIcons, ordIcons,
+    enemy, ebullet, ebul, warnArrow, missile, life, wing, wingSide, escort, escortSide, shuttle, shieldPip, shieldPipOff, tet, cell, specialIcons, ordIcons,
     // portraits come from the portrait painter (faces.js), baked on first use
     get portrait() { return FACES.voss; }, get mira() { return FACES.mira; }, get pilots() { return FACES.pilots; },
   };

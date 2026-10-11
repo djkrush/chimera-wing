@@ -183,7 +183,7 @@ Object.assign(Game, {
       case 'gunship':   // steady crossing; an aimed pair each time it passes a fire point
         e.vx = -e.spd * 0.7;
         e.vy = Math.sin(e.st * 0.03) * 0.4;
-        if (e.fireXs.length && e.x < e.fireXs[0]) { e.fireXs.shift(); this.enemyFire(e, 'aim', 2, 0.14); }
+        if (e.fireXs.length && e.x < e.fireXs[0]) { e.fireXs.shift(); this.enemyFire(e, this.gunshipKind(e), 2, 0.14); }
         break;
       case 'park':      // slides in to its spot, snipes until it runs dry, then backs off (Typhoon Force)
         if (e.phase === 'out') { e.vx = 1.2; e.vy = -0.4; break; }
@@ -201,11 +201,11 @@ Object.assign(Game, {
     if (gone) e.dead = true;
   },
 
-  // A parked sniper: an aimed 3-round burst (8 frames apart) every 80 frames; once dry it leaves.
+  // A parked sniper (side and vertical): a 3-round burst (8 frames apart) every 80 frames; once dry it leaves.
   parkFire(e) {
     e.pt = (e.pt || 0) + 1;
     const ph = e.pt % 80;
-    if (e.pt > 20 && (ph === 0 || ph === 8 || ph === 16)) this.enemyFire(e, e.seek ? 'seek' : 'aim', 1);
+    if (e.pt > 20 && (ph === 0 || ph === 8 || ph === 16)) this.enemyFire(e, this.vband() >= 2 ? 'seek' : 'aim', 1);   // seekers from band C
     if (e.ammo <= 0 && ph === 40) e.phase = 'out';
   },
 
