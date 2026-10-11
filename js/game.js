@@ -203,6 +203,14 @@ const Game = {
 
   setState(s) { this.state = s; this.stateT = 0; },
 
+  // Once the fight is over for the player (leg won, a boss going up, landing, shot down), the guns go
+  // cold and shots still in the air vanish, so nothing flies on through the end sequences.
+  gunsCold() {
+    const B = this.boss, K = this.capital;
+    return this.state !== 'play' || !this.player.alive || !!(B && B.dying > 0) || !!(K && K.dying > 0);
+  },
+  ceaseFire() { this.pBul = []; this.laser = null; },
+
   toTitle() {
     this.setState('title');
     this.enemies = []; this.pBul = []; this.eBul = []; this.parts = []; this.pops = []; this.booms = [];
@@ -532,7 +540,7 @@ const Game = {
       this.updateSpawns();
       if (this.isSide) this.updateSide(); else this.trafficTick();   // traffic.js
     }
-    this.updatePlayer(true);
+    this.updatePlayer(!this.gunsCold());
     this.updatePassives();   // skills.js
     this.updateModule();     // arsenal.js
     if (!slow) {
@@ -546,11 +554,13 @@ const Game = {
     this.updatePickups();
     this.updateAttacks();
     if (this.state === 'play') this.checkStageEnd();
+    if (this.gunsCold()) this.ceaseFire();
   },
 
   updateClear() {
     this.stateT++;
-    this.updatePlayer(true);
+    this.ceaseFire();
+    this.updatePlayer(false);
     this.updateModule();
     this.updateEnemies();   // leftover traffic breaks off and flies home
     this.updateBullets();
@@ -562,6 +572,7 @@ const Game = {
 
   updateResult() {
     this.stateT++;
+    this.ceaseFire();
     this.updatePlayer(false);
     if (this.stateT > 240) this.legDone();
   },
@@ -571,6 +582,7 @@ const Game = {
     this.updateFormation();
     this.updateEnemies();
     if (this.boss) { this.boss.t++; }
+    this.ceaseFire();
     this.updateBullets();
     if ((this.stateT > 120 && Input.just('fire')) || this.stateT > 1200) this.missionFailed();
   },
