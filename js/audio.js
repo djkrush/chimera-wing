@@ -402,6 +402,19 @@ const Sound = (() => {
   const arp8 = c => [0, 1, 2, 3, 2, 1, 2, 3].map(k => c.arp[k] + ':2').join(' ');
   const roll = n => `R:8 ${Array(8).fill(n + ':1').join(' ')}`;   // timpani roll into the next section
   const mel = (b, lines) => lines[b.sec] && lines[b.sec][b.i];
+  // The missions' opening hook over D -> C#: a call that climbs to the top of each chord (the C# bar
+  // echoes the D bar a step down), then an answer that reaches F#6 and settles on C#.
+  const MISSION_HOOK = ['A5:3 F#5:1 A5:1 B5:1 A5:2 D6:3 C#6:1 A5:2 F#5:2',
+    'G#5:3 F5:1 G#5:1 A#5:1 G#5:2 C#6:4 G#5:2 F5:2',
+    'F#5:2 A5:2 D6:2 E6:2 F#6:4 E6:2 D6:2',
+    'F6:3 C#6:1 G#5:2 F5:2 G#5:4 C#6:4'];
+  // Under it, an 8-bit-style pair of pulse voices: a thin countermelody that slips a half step off the
+  // chord tone and back in the hook's offbeats, and a looping bass (root, fifth, octave, leading tone).
+  const HOOK_PULSE = ['R:2 A6:1 R:1 G#6:1 R:1 A6:1 R:5 F#6:1 R:1 F6:1 R:1',
+    'R:2 G#6:1 R:1 G6:1 R:1 G#6:1 R:5 F6:1 R:1 E6:1 R:1',
+    'R:2 D7:1 R:1 C#7:1 R:1 D7:1 R:9',
+    'R:2 C#7:1 R:1 C7:1 R:1 C#7:1 R:1 G#6:1 R:1 G6:1 R:1 G#6:2 R:2'];
+  const HOOK_BASS = ['D3:2 D3:2 A3:2 D3:2 D4:2 D3:2 C#3:2 D3:2', 'C#3:2 C#3:2 G#3:2 C#3:2 C#4:2 C#3:2 C3:2 C#3:2'];
 
   // Drums, one bar per call: each lane is 16 characters (k s g h o c y p as in the kit, . rest).
   const DRUM = { k: 'K', s: 'S', g: 'G', h: 'H', o: 'O', c: 'C', y: 'Y', p: 'P' };
@@ -464,7 +477,7 @@ const Sound = (() => {
     [{ inst: 'choir', vol: 0.12, pan: -0.2, echo: 0.5, gate: 1 }, (b, c) => b.sec.startsWith('pedal') && c.pad + ':16'],
   ]);
 
-  // Missions: riff over the break, the climb (riser at its end), the drop, then the kaleidoscope.
+  // Missions: the hook over the break, the climb (riser at its end), the drop, then the kaleidoscope.
   const mission = arrange(104, { ...ECHO_TRIP, fb: 0.35, mix: 0.3 }, [
     ['riff', ['D', 'Cs', 'D', 'Cs', 'D', 'Cs', 'D', 'Cs']],
     ['climb', ['Fs', 'E', 'D', 'E', 'Fs', 'E', 'Daug', 'E']],
@@ -475,7 +488,7 @@ const Sound = (() => {
       drop: groove(BRK2, 8, FILL), kaleido: groove(RIDE, 8, FILL) })[b.sec](b)],
     [{ inst: 'sub', vol: 0.5 }, (b, c) => in_(b, 'drop') ? [0, 0, 1, 0, 0, 1, 0, 1].map(k => `reese@${k ? up(c.b) : c.b}:2`).join(' ')
       : in_(b, 'climb') ? c.b + ':16' : in_(b, 'kaleido') ? `${c.b}:8 ${up(c.b)}:8` : `${c.b}:12 ${up(c.b)}:4`],
-    [{ inst: 'piano', vol: 0.28, pan: 0.3, echo: 0.3 }, (b, c) => in_(b, 'riff') ? riff(c)
+    [{ inst: 'piano', vol: 0.28, pan: 0.3, echo: 0.3 }, (b, c) => in_(b, 'riff') ? MISSION_HOOK[b.i % 4]
       : in_(b, 'drop') ? hits('x-.x-.x-..x-.x-.', c.stab) : in_(b, 'kaleido') && `epiano@${arp8(c).replace(/ /g, ' epiano@')}`],
     [{ inst: 'strings', vol: 0.15, pan: -0.3, echo: 0.2, gate: 1 }, (b, c) => c.pad + ':16'],
     [{ inst: 'hoover', vol: 0.24, bend: -12, bendT: 0.12, echo: 0.2 }, (b, c) => {
@@ -483,13 +496,14 @@ const Sound = (() => {
       if (in_(b, 'drop')) return b.i === 0 ? `orch@${h}:4 ${h}:2 R:2 ${h}:4 R:4` : b.i % 2 ? `R:2 ${h}:2 R:2 ${h}:2 R:2 ${h}:6` : `${h}:6 R:2 ${h}:4 R:4`;
       return b.i === 0 && in_(b, 'climb', 'kaleido') && `orch@${h}:4 R:12`;
     }],
-    [{ inst: 'lead', vol: 0.24, echo: 0.35, vib: 0.006 }, b => b.i >= 4 && mel({ ...b, i: b.i - 4 }, {
-      riff: ['F#5:6 A5:2 C#6:4 A5:4', 'G#5:6 F5:2 C#5:8', 'F#5:4 A5:4 D6:4 C#6:2 A5:2', 'C#6:6 A#5:2 G#5:4 F5:4'],
+    [{ inst: 'lead', vol: 0.24, echo: 0.35, vib: 0.006 }, b => b.i >= 4 && mel({ ...b, i: b.i - 4 }, {   // silent under the hook
       climb: ['C#6:8 F#6:8', 'E6:6 D#6:2 B5:8', 'A#5:8 F#6:8', 'G#5:12 B5:4'],
       drop: ['C#6:3 A#5:3 F#5:2 A#5:2 C#6:2 F#6:4', 'F6:3 C#6:3 G#5:2 C#6:2 F6:2 G#6:4',
         'D#6:3 B5:3 F#5:2 B5:2 D#6:2 F#6:4', 'E6:4 D#6:2 B5:2 G#5:4 B5:4'],
     })],
     [{ inst: 'choir', vol: 0.15, pan: 0.3, echo: 0.5, gate: 1 }, (b, c) => in_(b, 'climb', 'kaleido') && c.pad + ':16'],
+    [{ inst: 'sq25', vol: 0.09, pan: -0.4, echo: 0.5, gate: 0.6 }, b => in_(b, 'riff') && HOOK_PULSE[b.i % 4]],
+    [{ inst: 'sq50', vol: 0.11, pan: 0.15, echo: 0.1, gate: 0.5 }, b => in_(b, 'riff') && HOOK_BASS[b.i % 2]],
     [{ inst: 'bell', vol: 0.15, pan: -0.4, echo: 0.5 }, (b, c) => in_(b, 'climb') ? shimmer(c) : in_(b, 'kaleido') && [
       'C#6:4 R:4 E6:4 R:4', 'E6:4 R:4 C#6:4 R:4', 'F#6:6 R:2 C#6:8', 'B5:8 G#5:8',
       'F#6:4 R:4 E6:4 C#6:4', 'E6:8 C#6:8', 'A#5:4 R:4 F#5:8', 'G#5:12 R:4'][b.i]],

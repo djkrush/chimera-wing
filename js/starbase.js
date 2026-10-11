@@ -59,13 +59,13 @@ Object.assign(Game, {
     }
     if (U.page === 'missions') {
       return [...P.missions.map((kind, i) => {
-        const K = MISSION_KINDS[kind], done = this.missionDone(P, i), open = this.missionOpen(P, i);
+        const K = MISSION_KINDS[kind], done = this.missionDone(P, i), open = this.planetOpen(P) && this.missionOpen(P, i);
         let info = K.desc;
         if (kind === 'strike') {
           const boss = P.order === 'sv' ? CAPITALS[P.capital || this.systemDef().capital].name : BOSSES[P.boss || this.systemDef().boss].name;
           info = (open ? 'BOSS: ' : 'FLY THE OTHERS FIRST. BOSS: ') + boss + '.';
         }
-        const locked = () => { Sound.sfx('denied'); this.toast('FLY THE OTHER MISSIONS FIRST'); };
+        const locked = () => { Sound.sfx('denied'); this.toast(this.planetOpen(P) ? 'FLY THE OTHER MISSIONS FIRST' : 'CLEAR ' + this.nextPlanet().name + ' FIRST'); };
         return { label: K.name, right: done ? 'CLEAR' : open ? 'NEW' : 'LOCKED', col: done ? C.lime : open ? C.gold : C.gray,
           act: () => (open ? this.startMission(i) : locked()), info: info + (done ? ' HALF PAY.' : '') };
       }), ...(this.planetCleared(P) ? [{ label: MISSION_KINDS.convoy.name, right: 'CONTRACT', col: C.aqua,

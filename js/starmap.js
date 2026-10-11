@@ -20,8 +20,8 @@ Object.assign(Game, {
     const U = this.mapUI;
     if (level === 0) return GALAXIES.map(G => ({ x: G.x, y: G.y, open: this.galaxyOpen(G), obj: G }));
     if (level === 1) return GALAXIES[U.gal].systems.map(S => ({ x: S.x, y: S.y, open: this.systemOpen(S), obj: S }));
-    const S = GALAXIES[U.gal].systems[U.sys], open = this.systemOpen(S);
-    return S.planets.map((P, i) => ({ ...this.orbitPos(S, i), open, obj: P }));
+    const S = GALAXIES[U.gal].systems[U.sys];
+    return S.planets.map((P, i) => ({ ...this.orbitPos(S, i), open: this.planetOpen(P), obj: P }));
   },
 
   // Planets circle their star slowly, on flattened ellipses (the plane seen at an angle).
@@ -67,7 +67,7 @@ Object.assign(Game, {
 
   mapPick() {
     const U = this.mapUI, it = this.mapItems(U.level)[U.sel], here = this.planetHere();
-    if (!it.open) { Sound.sfx('denied'); this.toast(U.level === 0 ? 'GALAXY LOCKED' : 'SYSTEM LOCKED'); return; }
+    if (!it.open) { Sound.sfx('denied'); this.toast(['GALAXY', 'SYSTEM', 'PLANET'][U.level] + ' LOCKED'); return; }
     if (U.level === 0) {
       this.mapZoom(true, it.x, it.y, () => {
         U.gal = U.sel; U.level = 1;
@@ -309,20 +309,19 @@ Object.assign(Game, {
       if (it.open) {
         T(O.name, 185, O.col);
         NES.text(ctx, this.systemClearedCount(O) + '/' + O.planets.length + ' PLANETS', 242, 185, C.white, { align: 'right' });
-        T(this.systemSecured(O) ? (this.systemCleared(O) ? 'LIBERATED' : 'SECURED') : 'CLEAR ' + this.systemNeed(O) + ' PLANETS TO SECURE IT.', 196,
-          this.systemSecured(O) ? C.lime : C.lgray);
+        T(this.systemSecured(O) ? 'SECURED' : 'CLEAR EVERY PLANET IN ORDER.', 196, this.systemSecured(O) ? C.lime : C.lgray);
         T('STATION: ' + O.base, 206, C.aqua);
       } else {
         T('UNCHARTED SYSTEM', 185, C.gray);
-        T('SECURE A LINKED SYSTEM FIRST.', 196, C.lgray);
+        T('SECURE THE SYSTEM BEFORE IT.', 196, C.lgray);
       }
     } else {
       const done = O.missions.filter((k, i) => this.missionDone(O, i)).length;
       T(O.name, 185, O.disc[0] === C.black ? C.white : C.gold);
       NES.text(ctx, done + '/' + O.missions.length + ' MISSIONS', 242, 185, done === O.missions.length ? C.lime : C.white, { align: 'right' });
       T('SELLS: ' + this.marketShort(O), 196, C.lgray);
-      if (O.hulls.length) T('SHIPYARD: ' + HULLS[O.hulls[0]].name, 206, C.aqua);
-      if (!it.open) T('SYSTEM LOCKED', 206, C.gray);
+      if (!it.open) T('CLEAR ' + this.nextPlanet().name + ' FIRST.', 206, C.gray);
+      else if (O.hulls.length) T('SHIPYARD: ' + HULLS[O.hulls[0]].name, 206, C.aqua);
     }
     const here = U.level === 2 && O.id === this.planetHere().id;
     NES.text(ctx, (U.level === 2 ? (here ? 'A: DOCK' : 'A: FLY THERE') : 'A: ZOOM IN') + '   B: ' + (U.level ? 'ZOOM OUT' : 'BACK'),

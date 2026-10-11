@@ -45,10 +45,12 @@ B zooms back out. You can also click or tap galaxies, systems and planets.
     enzymes use). Every unarmed cargo tank you destroy pays (40 CR, plus 15 per system tier). It pays
     in full every time and never counts toward clearing anything.
 - You **take off from the carrier** before every leg and **land on it** after.
-- **Clear half the planets in a system to secure it.** That opens the systems linked to it. Secure
-  every system in a galaxy to open the next galaxy. Clear every planet in a system to liberate it.
-- **Difficulty depends on where you fly**, like the zones of an open-world game: later systems and
-  outer planets are harder, and each new galaxy's machines are tougher.
+- **The campaign is one line, easiest planet first.** Only one new planet is open at a time: clear it
+  (every mission, stronghold last) and the next one opens. Each galaxy's four systems form a chain;
+  clear every planet in a system to secure it and open the next system, and the last system of a
+  galaxy opens the next galaxy. Cleared planets stay open for replays and supply raids.
+- **Difficulty grows along that line**: later systems and outer planets are harder, and each new
+  galaxy's machines are tougher.
 - If your ship goes down, the **mission fails** and the carrier brings you back. You keep your money,
   XP and upgrades, and can try again.
 - The game **saves** every time the carrier docks. Pick **CONTINUE** on the title screen. Saves from the
@@ -60,8 +62,8 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 ### Money, experience and upgrades
 
 - Every mission pays **credits** (mission pay plus combat pay from your score) and **XP**.
-  Replaying a cleared mission pays half (supply raids pay in full). Clearing a planet, securing a system
-  and liberating a system each pay a bonus.
+  Replaying a cleared mission pays half (supply raids pay in full). Clearing a planet and securing a
+  system each pay a bonus.
 - **Every odd level** (up to level 30) teaches a **passive skill**, picked from three offers; even levels
   give nothing by themselves. Specials never come from levels: they come with hulls and markets. **Every third level** adds a bonus, taking turns: a stat
   point (+1 WEAPONS, SHIELDS or SPECIAL) at levels 3, 9, 15..., and an extra passive at 6, 12, 18....

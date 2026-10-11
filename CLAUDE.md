@@ -82,9 +82,12 @@ base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT M
   `camp.cleared['planetId:missionIndex']`. `mi = -1` is the SUPPLY RAID contract a cleared planet offers
   (kind `convoy`, outside `P.missions`): full pay every time, `M.cargoCr` from cargo tanks
   (`cargoKill` in `side.js`), and it never writes to `cleared`.
-- **Unlocking:** a planet's stronghold opens when its other missions are done (`missionOpen`); a system
-  is secured at half its planets cleared (`systemSecured`), which opens linked systems (`systemOpen`);
-  a galaxy opens when every system of the previous one is secured (`galaxyOpen`).
+- **Unlocking:** the campaign is linear in difficulty order, which is `PLANETS` order (galaxy, the
+  system chain in `GALAXIES`, planet). `nextPlanet()` is the first planet not cleared; `planetOpen(P)` =
+  cleared or next, so only one new planet is open at a time (old saves keep planets they cleared out of
+  order; nothing else stays open). A planet's stronghold opens when its other missions are done
+  (`missionOpen`). A system is secured when every planet is cleared (`systemSecured`); a system or galaxy
+  is open while one of its planets is (`systemOpen`, `galaxyOpen`). `links` only draw the chain on the map.
 - **Star map** (`starmap.js`): `mapUI = { level: 0 universe | 1 galaxy | 2 system, gal, sys, sel, zoom }`.
   `mapItems(level)` lists what can be picked; `tapMap` handles clicks and taps; travel plays on the
   smallest map level that shows both ends.
@@ -253,8 +256,7 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - `Game.camp` is the whole saved campaign (`v: 6`: pilot, hull, owned hulls, `up`, `train`, money, xp,
   level, `specs` (specials owned), `passives`, `pending` choices, `cleared` missions, `at` planet, `seen`
   galaxies, loop, story beats, score, `guns` owned, `fit[hull]`, `gunLv[id]`, `ord` (ordnance stock),
-  `ordLast` (last ordnance fitted), `mods` and `mod` (modules owned and fitted), and `opened` systems
-  for converted saves). It is saved as JSON in `localStorage['chimera.save']` by
+  `ordLast` (last ordnance fitted), and `mods` and `mod` (modules owned and fitted)). It is saved as JSON in `localStorage['chimera.save']` by
   `saveCampaign()` whenever the carrier docks, you buy something or you launch from the hangar.
   `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), `migrateV2()` (v2 → v3),
   `migrateV3()` (v3 → v4), then `migrateV4()` (v4 → v5: earned gun XP becomes bought levels at the old

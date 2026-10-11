@@ -41,17 +41,15 @@ Object.assign(Game, {
   // The stronghold (last mission) opens once every other mission on the planet is flown.
   missionOpen(P, i) { return i < P.missions.length - 1 || P.missions.slice(0, -1).every((k, j) => this.missionDone(P, j)); },
   planetCleared(P) { return P.missions.every((k, i) => this.missionDone(P, i)); },
+  // The campaign is one line in difficulty order (PLANETS: galaxy, then system chain, then planet): the
+  // first planet not yet cleared is the only new one open, and cleared planets stay open for replays.
+  // A save that cleared planets out of order keeps them; everything else waits its turn.
+  nextPlanet() { return PLANETS.find(P => !this.planetCleared(P)); },
+  planetOpen(P) { return this.planetCleared(P) || P === this.nextPlanet(); },
   systemClearedCount(S) { return S.planets.filter(P => this.planetCleared(P)).length; },
-  systemNeed(S) { return Math.ceil(S.planets.length / 2); },
-  systemSecured(S) { return this.systemClearedCount(S) >= this.systemNeed(S); },
-  systemCleared(S) { return S.planets.every(P => this.planetCleared(P)); },
-  galaxyOpen(G) { return G.index === 0 || GALAXIES[G.index - 1].systems.every(S => this.systemSecured(S)); },
-  systemOpen(S) {
-    const G = GALAXIES[S.galIndex];
-    if ((this.camp.opened || []).includes(S.id)) return true;   // reached in a version 1 save
-    if (!this.galaxyOpen(G)) return false;
-    return S === G.systems[0] || S.links.some(id => this.systemSecured(SYSTEM_BY_ID[id]));
-  },
+  systemSecured(S) { return S.planets.every(P => this.planetCleared(P)); },   // every planet: then the next system opens
+  systemOpen(S) { return S.planets.some(P => this.planetOpen(P)); },
+  galaxyOpen(G) { return G.systems.some(S => this.systemOpen(S)); },
   systemsSecured() { return SYSTEMS.filter(S => this.systemSecured(S)).length; },
 
   // Difficulty number for the stage formulas: it grows with where you fly (the system's place in the
@@ -146,7 +144,6 @@ Object.assign(Game, {
     Object.assign(c, { hull: o.hull || 0, hulls: o.hulls || [0], up: { ...(o.up || {}) }, money: o.money || 0, xp: o.xp || 0,
       level: o.level || 1, learned: o.learned || [], loop: o.loop || 0, beats: o.beats || [], score: o.score || 0 });
     for (let i = 0; i < (o.learnQ || 0); i++) c.pending.push('special');
-    c.opened = [...new Set([c.at, ...Object.keys(o.cleared || {})].filter(id => PLANET_BY_ID[id]).map(id => PLANET_BY_ID[id].sys))];
     c.v = 2;
     return c;
   },
@@ -333,7 +330,7 @@ Object.assign(Game, {
     if (back) lines.push(['ORDNANCE BACK', 'X' + back]);
     const openBefore = SYSTEMS.filter(q => this.systemOpen(q)).map(q => q.id);
     const galBefore = GALAXIES.filter(g => this.galaxyOpen(g)).map(g => g.id);
-    const was = { planet: this.planetCleared(P), secured: this.systemSecured(S), cleared: this.systemCleared(S) };
+    const was = { planet: this.planetCleared(P), secured: this.systemSecured(S), next: this.nextPlanet() };
     if (M.mi >= 0) c.cleared[P.id + ':' + M.mi] = true;
     const bonus = (label, m, x) => {
       m = round10(m * (1 + c.loop * 0.5) * payMul); x = Math.round(x * xpMul);
@@ -343,15 +340,15 @@ Object.assign(Game, {
     const planetClear = !was.planet && this.planetCleared(P);
     if (planetClear) bonus('PLANET BONUS', 300 * (1 + S.tier * 0.3), 60 + 10 * S.tier);
     const secured = !was.secured && this.systemSecured(S);
-    if (secured) bonus('SYSTEM BONUS', S.bonus.money, S.bonus.xp);
-    const liberated = !was.cleared && this.systemCleared(S);
-    if (liberated) bonus('LIBERATION', S.bonus.money / 2, S.bonus.xp / 2);
+    if (secured) bonus('SYSTEM BONUS', S.bonus.money * 1.5, S.bonus.xp * 1.5);   // the old securing and liberation bonuses in one
+    const next = this.nextPlanet();
     const unlocked = [...GALAXIES.filter(g => !galBefore.includes(g.id) && this.galaxyOpen(g)).map(g => 'GALAXY: ' + g.name),
-      ...SYSTEMS.filter(q => !openBefore.includes(q.id) && this.systemOpen(q)).map(q => 'SYSTEM: ' + q.name)];
+      ...SYSTEMS.filter(q => !openBefore.includes(q.id) && this.systemOpen(q)).map(q => 'SYSTEM: ' + q.name),
+      ...(next && next !== was.next ? ['PLANET: ' + next.name] : [])];
     c.money += money;
     c.xp += gain;
     const levels = this.gainLevels();
-    this.debrief = { planet: P.name, kind: K.name, lines, total: money, levels, unlocked, planetClear, secured, liberated,
+    this.debrief = { planet: P.name, kind: K.name, lines, total: money, levels, unlocked, planetClear, secured,
       system: S.name, finale: this.isFinale() };
     this.setState('debrief');
     Sound.playSong(Sound.SONGS.victory);
@@ -396,7 +393,6 @@ Object.assign(Game, {
       if (D.levels.length) msgs.push(['LEVEL UP! LV ' + D.levels[D.levels.length - 1], C.lime, true]);
       if (D.planetClear) msgs.push([D.planet + ' CLEARED!', C.gold]);
       if (D.secured) msgs.push([D.system + ' SECURED!', C.gold]);
-      if (D.liberated) msgs.push([D.system + ' LIBERATED!', C.gold]);
       for (const u of D.unlocked) msgs.push(['NEW ' + u, C.pink]);
       for (const [m, col, blink] of msgs.slice(0, 5)) {
         if (!blink || (this.t >> 3) & 1) NES.text(ctx, m, 128, y, col, center);
