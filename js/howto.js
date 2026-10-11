@@ -130,7 +130,7 @@ Object.assign(Game, {
       const L = 1 + ((this.t / 120 | 0) % 5);
       this.howArtGun(ctx, 'twin', x, y + 60, L, 'TWIN CANNON LV' + L);
     });
-    list('WHICH GUNS ARE THERE?', GUN_IDS.map(id => { const G = GUNS[id]; return [G.name, FORMS[G.form].name + ', ' + G.price + ' CR. ' + G.desc.join(' '), C.aqua]; }),
+    list('WHICH GUNS ARE THERE?', GUN_IDS.map(id => { const G = GUNS[id]; return [G.name, FORMS[G.form].name + ', ' + (G.rung ? this.gunPrice(id) + ' CR. ' : 'ON THE CHIMERA. ') + G.desc.join(' '), C.aqua]; }),
       (ctx, x, y, hi, items) => this.howArtGun(ctx, GUN_IDS.find(id => GUNS[id].name === items[hi][0]), x, y + 60));
 
     topic('SPECIAL WEAPONS');

@@ -418,7 +418,7 @@ Object.assign(Game, {
         NES.text(ctx, G.name, 100, y, sel ? C.white : C.lgray);
         NES.text(ctx, g === st ? 'START' : 'UPGRADE', 22, y + 9, C.gray);
         const alt = !other ? ['NO UPGRADE', C.gray] : this.hangarGuns(r).includes(other) ? ['OR ' + GUNS[other].short, C.lime]
-          : [GUNS[other].short + (GUNS[other].wip ? ' SOON' : ' NOT OWNED'), C.gray];
+          : [GUNS[other].wip ? GUNS[other].short + ' SOON' : 'BUY ' + GUNS[other].short, C.gray];
         NES.text(ctx, alt[0], 100, y + 9, alt[1]);
         NES.text(ctx, 'LV' + lv, 240, y + 9, lv >= 5 ? C.gold : C.aqua, { align: 'right' });
       } else if (r === 3) {   // a special (uses per leg) or ordnance (loaded now / in stock)

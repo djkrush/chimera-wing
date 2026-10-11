@@ -6,7 +6,7 @@
 
 const PILOTS = [
   { name: 'MAVERICK', tag: 'HOTSHOT ACE', col: C.red, weapons: 2, shields: 2, special: 1,
-    perk: 'SHOTS HIT HARDEST.' },
+    perk: 'GUN LEVELS COST 25% LESS.' },
   { name: 'TURTLE', tag: 'IRON WALL', col: C.lime, weapons: 1, shields: 3, special: 1,
     perk: 'TAKES THE MOST HITS.' },
   { name: 'DRAC', tag: 'ALIEN TACTICIAN', col: C.magenta, weapons: 1, shields: 2, special: 2,

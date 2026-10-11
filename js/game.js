@@ -1283,9 +1283,9 @@ const Game = {
     else this.drawWorld(ctx);
     if (this.paused) this.panel(ctx, () => this.drawGameMenu(ctx));   // over any screen
     if (this.toastMsg && (this.toastMsg.t > 30 || this.toastMsg.t % 8 < 5)) {
-      const w = NES.textWidth(this.toastMsg.text) + 12;
-      NES.box(ctx, CX - (w >> 1), 212, w, 13, C.navy, C.sky);
-      NES.text(ctx, this.toastMsg.text, CX, 215, C.white, { align: 'center' });
+      const w = NES.textWidth(this.toastMsg.text) + 12, ty = this.state === 'base' ? 96 : 212;   // above the starbase menu's info box
+      NES.box(ctx, CX - (w >> 1), ty, w, 13, C.navy, C.sky);
+      NES.text(ctx, this.toastMsg.text, CX, ty + 3, C.white, { align: 'center' });
     }
   },
 

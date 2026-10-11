@@ -31,7 +31,14 @@ for (const k of MK_KEYS) {
 // Every price formula in one place, for tuning: an upgrade costs base x its tier's factor x (levels bought + 1).
 const PRICE = { mk: [1, 3, 6] };
 const upgradePrice = (key, n) => UPGRADES[key].base * PRICE.mk[(UPGRADES[key].mk || 1) - 1] * (n + 1);
-const MENU_ROWS = 7;   // visible rows in a starbase list; longer lists scroll
+// Guns (FUTURE.md, M4): a gun costs GUN_PRICE[its rung]. Levels are bought at any starbase: LV2 to LV5 cost
+// GUN_LV_MUL x the gun's price (rung 0, the CHIMERA's guns, from a base of 1,000), and LV4 and LV5 are only
+// sold from the galaxy in GUN_LV_GAL on.
+const GUN_PRICE = [1200, 1200, 1800, 2600, 4000, 5000, 6000, 9000, 12000];
+const GUN_LV_MUL = [0, 0, 0.2, 0.3, 0.5, 0.75];   // by the level bought
+const GUN_LV_GAL = [0, 0, 0, 0, 1, 2];
+const FORM_TAG_COL = [C.yellow, C.mint, C.orange];   // a gun's form, in its shots' color family
+const MENU_ROWS = 6;   // visible rows in a starbase list; longer lists scroll
 
 Object.assign(Game, {
   baseUI: null,
@@ -72,8 +79,13 @@ Object.assign(Game, {
           info: 'OWN ' + this.ordStock(o.id) + ', CARRY ' + o.carry + '. ' + o.uses + ' PER RACK. ' + (ok ? o.desc : 'NOT FOR THIS HULL.') };
       }), { label: 'BACK', act: () => this.basePage('shop') }];
     }
+    if (U.page === 'levels') {   // every gun you own, by form and rung
+      const own = GUN_IDS.filter(id => c.guns.includes(id)).sort((a, b) => GUNS[a].form - GUNS[b].form || GUNS[a].rung - GUNS[b].rung);
+      return [...own.map(id => this.gunLevelRow(id)), { label: 'BACK', act: () => this.basePage('shop') }];
+    }
     if (U.page === 'shop') {
       const rows = [{ label: 'ORDNANCE', right: '>', col: C.orange, act: () => this.basePage('ord'), info: 'MISSILES, BOMBS AND SHIELD CELLS, BY THE RACK.' },
+        { label: 'GUN LEVELS', right: '>', col: C.orange, act: () => this.basePage('levels'), info: 'LEVEL UP THE GUNS YOU OWN. EVERY STARBASE SELLS LEVELS.' },
         ...P.market.map(key => {
           if (key.startsWith('gun:')) return this.gunRow(key.slice(4));
           if (key.startsWith('mod:')) return this.moduleRow(key.slice(4));
@@ -103,11 +115,46 @@ Object.assign(Game, {
     return [back];   // status
   },
 
-  // A hull's strengths and guns, for the two-line info box.
+  // A hull's strengths and its six guns (start>upgrade per form; owned ones in white), for the info box.
   hullInfo(h) {
     const best = h.form.indexOf(Math.max(...h.form)), even = h.form.every(v => v === h.form[0]);
-    return (even ? 'ALL-ROUNDER' : 'BEST AS ' + FORMS[best].name) + '. SPEED ' + Math.round(h.speed * 100) + '%.' +
-      ' GUNS: ' + h.fit.map(f => f.filter(g => g).map(g => GUNS[g].short).join('>')).join(' ');
+    const spans = [[(even ? 'ALL-ROUNDER' : 'BEST AS ' + FORMS[best].name) + '. SPEED ' + Math.round(h.speed * 100) + '%. GUNS:', C.aqua]];
+    for (const f of h.fit) f.forEach((g, k) => { if (g) spans.push([(k ? '>' : '') + GUNS[g].short.replace(' ', ''), this.camp.guns.includes(g) ? C.white : C.gray, k > 0]); });
+    return spans;
+  },
+
+  // ---- Guns at the market ----------------------------------------------------------------
+  gunPrice(id) { return GUN_PRICE[GUNS[id].rung]; },
+  // Price of a gun's level n (the level it goes to); MAVERICK pays 25% less.
+  gunLevelPrice(id, n) {
+    const base = GUNS[id].rung ? this.gunPrice(id) : 1000;
+    return Math.round(base * GUN_LV_MUL[n] * (this.pilotDef().name === 'MAVERICK' ? 0.75 : 1) / 10) * 10;
+  },
+  // The galaxy level n needs, or null once you're there.
+  gunLevelGate(n) { const g = GUN_LV_GAL[n]; return this.galaxyDef().index >= g ? null : GALAXIES[g].name.split(' ')[0]; },
+  // Who a gun is for, as colored runs: the form, the hull that buys it as an upgrade and the hull that
+  // starts with it (hulls you own in white). fits = one of your hulls can take it.
+  gunFor(id) {
+    const G = GUNS[id], c = this.camp, txt = t => [t, C.aqua], ups = [], starts = [];
+    HULLS.forEach((h, i) => { if (h.fit[G.form][1] === id) ups.push(i); if (h.fit[G.form][0] === id) starts.push(i); });
+    const spans = [txt(FORMS[G.form].name + ' GUN.')];
+    const list = hs => hs.forEach((h, k) => { if (k) spans.push(txt('AND')); spans.push([HULLS[h].name.split(' ')[1], c.hulls.includes(h) ? C.white : C.gray]); });
+    if (ups.length) { spans.push(txt('UPGRADE ON')); list(ups); }
+    if (starts.length) { if (ups.length) spans.push(txt(',')); spans.push(txt('START ON')); list(starts); } else spans.push(txt('ONLY'));
+    spans.push(txt('.'));
+    return { spans, fits: c.hulls.some(h => HULLS[h].fit[G.form].includes(id)) };
+  },
+  // A gun's info box: who it is for, then tail (its description by default), or a note when none of your
+  // hulls can take it (the font has no apostrophe).
+  gunInfo(id, tail) {
+    const F = this.gunFor(id);
+    return [...F.spans, F.fits ? [tail || GUNS[id].desc.join(' '), C.aqua] : ['FOR A HULL YOU DONT OWN.', C.orange]];
+  },
+  gunLevelRow(id) {
+    const G = GUNS[id], lv = this.gunLevel(id), n = lv + 1, price = n <= 5 ? this.gunLevelPrice(id, n) : 0, gate = n <= 5 && this.gunLevelGate(n);
+    return { label: G.short + ' LV' + lv, right: n > 5 ? 'MAX' : gate ? 'NEEDS ' + gate : price + ' CR', tag: FORMS[G.form].short, tagCol: FORM_TAG_COL[G.form],
+      col: n > 5 ? C.gold : gate || this.camp.money < price ? C.gray : C.white,
+      info: this.gunInfo(id, n > 5 ? 'MAX LEVEL.' : 'LV' + n + ': ' + G.lv[lv - 1] + '.'), act: () => this.buyGunLevel(id) };
   },
 
   // A part for sale (gun or module): its price, or OWNED once bought.
@@ -115,9 +162,9 @@ Object.assign(Game, {
     return { label: name, right: owned ? 'OWNED' : price + ' CR', col: owned ? C.lime : this.camp.money >= price ? C.aqua : C.gray, info, act };
   },
   gunRow(id) {
-    const G = GUNS[id];
-    if (G.wip) return { label: G.name, right: 'COMING SOON', col: C.gray, info: FORMS[G.form].name + ' GUN. ' + G.desc.join(' ') };
-    return this.partRow(G.name, G.price, this.camp.guns.includes(id), FORMS[G.form].name + ' GUN. ' + G.desc.join(' '), () => this.buyGun(id));
+    const G = GUNS[id], tag = { tag: FORMS[G.form].short, tagCol: FORM_TAG_COL[G.form] };
+    if (G.wip) return { label: G.name, right: 'SOON', col: C.gray, ...tag, info: this.gunInfo(id, 'COMING SOON.') };
+    return { ...this.partRow(G.name, this.gunPrice(id), this.camp.guns.includes(id), this.gunInfo(id), () => this.buyGun(id)), ...tag };
   },
   moduleRow(id) {
     const M = MODULE_BY_ID[id];
@@ -144,7 +191,7 @@ Object.assign(Game, {
     if (Input.just('up')) { U.sel = (U.sel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { U.sel = (U.sel + 1) % n; Sound.sfx('move'); }
     U.sel = Math.min(U.sel, n - 1);
-    if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage(U.page === 'ord' ? 'shop' : 'main'); return; }
+    if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage(U.page === 'ord' || U.page === 'levels' ? 'shop' : 'main'); return; }
     if (this.stateT > 10 && Input.just('fire')) this.baseAct();
   },
 
@@ -181,11 +228,24 @@ Object.assign(Game, {
   buyGun(id) {
     const c = this.camp, G = GUNS[id];
     if (c.guns.includes(id)) { Sound.sfx('denied'); this.toast('FIT IT IN THE HANGAR'); return; }
-    if (c.money < G.price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
-    c.money -= G.price;
+    if (G.wip) { Sound.sfx('denied'); return; }
+    if (c.money < this.gunPrice(id)) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
+    c.money -= this.gunPrice(id);
     c.guns.push(id);
     Sound.sfx('cash');
     this.toast(G.name + ' BOUGHT');
+    this.saveCampaign();
+  },
+
+  buyGunLevel(id) {
+    const c = this.camp, n = this.gunLevel(id) + 1, price = n <= 5 ? this.gunLevelPrice(id, n) : 0, gate = n <= 5 && this.gunLevelGate(n);
+    if (n > 5) { Sound.sfx('denied'); return; }
+    if (gate) { Sound.sfx('denied'); this.toast('LV' + n + ' SOLD FROM ' + gate + ' ON'); return; }
+    if (c.money < price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
+    c.money -= price;
+    c.gunLv[id] = n;
+    Sound.sfx('cash');
+    this.toast(GUNS[id].short + ' LV' + n);
     this.saveCampaign();
   },
 
@@ -394,7 +454,7 @@ Object.assign(Game, {
     NES.text(ctx, PILOTS[c.pilot].name, 246, 117, PILOTS[c.pilot].col, { align: 'right' });
     ctx.fillStyle = SNES.mix(S.col, C.black, 0.5); ctx.fillRect(7, 126, 242, 1);
     if (U.page === 'status') { this.drawStatus(ctx); return; }
-    const title = { main: S.base, missions: 'MISSIONS', shop: 'MARKET', ord: 'ORDNANCE', skills: 'SKILLS' }[U.page];
+    const title = { main: S.base, missions: 'MISSIONS', shop: 'MARKET', ord: 'ORDNANCE', levels: 'GUN LEVELS', skills: 'SKILLS' }[U.page];
     NES.text(ctx, title, 128, 130, C.gold, { align: 'center' });
     const top = this.listTop(items.length, U.sel, MENU_ROWS);
     items.slice(top, top + MENU_ROWS).forEach((it, j) => {
@@ -403,11 +463,29 @@ Object.assign(Game, {
       if (sel && (this.t >> 3) & 1) NES.text(ctx, '>', 12, y, C.gold);
       NES.text(ctx, it.label, 22, y, sel ? C.white : it.col === C.gray ? C.gray : C.lgray);
       if (it.right) NES.text(ctx, it.right, 242, y, it.col || C.white, { align: 'right' });
+      if (it.tag) {   // the form tag sits left of the price, where it doesn't run into the name
+        const tx = 236 - NES.textWidth(it.right || '');
+        if (tx - NES.textWidth(it.tag) > 30 + NES.textWidth(it.label)) NES.text(ctx, it.tag, tx, y, it.tagCol, { align: 'right' });
+      }
     });
     if (top > 0) NES.text(ctx, '...', 230, 130, C.gray);
-    if (top + MENU_ROWS < items.length) NES.text(ctx, '...', 230, 206, C.gray);
+    if (top + MENU_ROWS < items.length) NES.text(ctx, '...', 230, 197, C.gray);
     const info = items[U.sel].info;
-    if (info) NES.wrap(info, 30).slice(0, 2).forEach((l, i) => NES.text(ctx, l, 10, 214 + i * 9, C.aqua));
+    if (info) this.drawSpans(ctx, typeof info === 'string' ? [[info, C.aqua]] : info, 10, 205, 30, 3);
+  },
+
+  // Colored text runs ([text, color, glued]) wrapped word by word at n characters, up to rows lines.
+  // Punctuation and glued runs join the word before them.
+  drawSpans(ctx, spans, x, y, n, rows) {
+    const words = spans.flatMap(([t, col, glued]) => t.split(' ').filter(w => w).map((w, i) => [w, col, (glued && !i) || /^[.,]/.test(w)]));
+    let line = 0, cx = 0;
+    for (const [w, col, glued] of words) {
+      const gap = cx && !glued ? 1 : 0;
+      if (cx + gap + w.length > n) { line++; cx = 0; } else cx += gap;
+      if (line >= rows) return;
+      NES.text(ctx, w, x + cx * 8, y + line * 9, col);
+      cx += w.length;
+    }
   },
 
   drawStatus(ctx) {
