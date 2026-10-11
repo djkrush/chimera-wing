@@ -24,7 +24,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 | M1 | **Loadout** (shipped, see the README) | Guns as parts, new guns sold at markets, guns that level up with use, a hangar that fits guns, save v3 | The core of both problems: markets run out of stock, and progress stops once stats cap |
 | M2 | **Arsenal and economy** (shipped, see the README) | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, a price table, supply raids, save v4 | Gives credits a use in every galaxy (see Economy) |
 | M3 | **Vertical stages** (shipped, see the README) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
-| M4 | **Hulls** | Hull roles and signature moves, four late hulls, pilot perks with a mechanic, unique hull art | New ships to chase in the Magellanic Cloud and Andromeda |
+| M4 | **Hulls and the gun ladder** | Two guns per form (a start gun and a market upgrade), one form per gun, 16 new guns, gun levels bought at markets, special bays, two new hulls, pilot perks with a mechanic, unique hull art | Every hull becomes its own ship, and credits get a steady use in every galaxy |
 | M5 | **Bosses and rewards** | Part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
 | M6 | **Stages** | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
 | — | **Later** | Carrier upgrades, card game, music, passive slots, planet reputation, more galaxies, touch polish, save slots, score attack | Worth doing, but they don't fix the long-campaign problem |
@@ -136,183 +136,267 @@ To revisit after real play:
 - **Gold planes and fire budgets.** Gold planes fire pairs, so their 1.5x ammo goes in fewer volleys.
   Try counting a pair as one round.
 
-### M4: hulls
+### M4: hulls and the gun ladder
 
-**Goal.** Hulls today differ by stat bonuses and a damage multiplier per form, and the last three reuse
-the first airframes in new colors. M4 gives every hull a job and a move of its own (U.N. Squadron's
-planes, 1942's loop), adds four late hulls so Andromeda has something to save for, turns the pilots'
-perks into mechanics, and gives every hull its own art. No save change: hulls are still indices in
-`camp.hulls`, moves and perks are per leg, and the won prototype is pushed into `camp.hulls`.
+**Goal.** Hulls today differ by stat bonuses and a damage multiplier per form, any form fits most guns,
+and guns level up by themselves. M4 makes every hull its own ship. Each form of a hull has exactly two
+guns: the one it **starts** with and one **upgrade** bought at a market. Every gun belongs to one form
+only. The hulls form a **ladder**: each hull starts with the previous hull's upgrades and adds three new
+ones. Gun levels are bought at markets instead of earned. Each hull also has **special bays** that
+decide which specials it can use. Two new hulls finish the ladder, pilot perks become mechanics, and
+every hull gets its own art.
 
-**Scope.** In: hull roles, signature moves and traits, the move input and HUD, four late hulls and
-their prices, pilot perks, unique Fighter art for every hull and per-hull Guardian and Battloid parts,
-HOW TO pages and docs. Left in the catalog: the M4 guns (Thunder Sword, hyper beam and the rest; they
-can follow as their own release), in-flight power levels, gun XP tuning.
+**Scope.** In: the ladder and its 27 guns (16 new), market-bought gun levels, gun rows that say which
+hull and form they're for, special bays, the BEHEMOTH and the SPHINX, pilot perks, unique hull art,
+save v5, HOW TO pages and docs. Out: signature moves (dropped), in-flight power levels (catalog), the
+CERBERUS and NUE ideas (dropped).
 
-#### Moves and traits
+#### The ladder
 
-Every hull gets either an **active move** (charges per leg) or a **trait** (always on). Both are data on
-the hull: `HULLS[h].move = { id, name, uses, desc }` or `HULLS[h].trait = { id, name, desc }`, run in a new
-mixin `js/moves.js` (after `pilots.js`): `startMove()`, `updateMove()`, `drawMove()`, `moveCollide()`.
+`start → upgrade` per form. A gun is used by exactly two hulls: the one that buys it as an upgrade
+and the next one, which starts with it. CHIMERA has starters only. SPHINX's upgrades are its own.
+The rung sets the galaxy: rungs 0 to 3 sell in the Milky Way, 4 to 6 in the Magellanic Cloud and 7
+and 8 in Andromeda.
 
-- **Input: double-tap a direction** (the catalog's idea; it needs no new button, so it works on an NES
-  pad). `Input.dbl(dir)` is true when a direction is pressed, released within 10 frames and pressed again
-  within 12. It reads the merged actions, so it covers keys, D-pad, the analog stick and the touch
-  joystick (a double flick). Directional moves (the roll, the bash) use that direction through
-  `orient()`; the others go off on any direction.
-- **Charges:** `uses` per leg (3 by default), refilled at takeoff; shown as small icons next to the
-  special's ammo in the HUD. Each charge left when a leg clears pays 1,000 points on the clear banner
-  (1942's loops), counted in `tallyLeg`.
-- A move can't start during a transform (`morphT`), while silenced in that form, or in `gunsCold()`.
+| Rung | Hull | Galaxy | Fighter | Guardian | Battloid |
+|---|---|---|---|---|---|
+| 0 | VX-3 CHIMERA | Milky Way | TWIN | SPREAD | LASER |
+| 1 | VX-5 MANTICORE | Milky Way | TWIN → VULCAN | SPREAD → WAVE | LASER → GRENADE* |
+| 2 | VX-6 GRIFFIN | Milky Way | VULCAN → RIPPLE | WAVE → BOMB | GRENADE → CHARGE |
+| 3 | VX-9 HYDRA | Milky Way | RIPPLE → GUN POD* | BOMB → SWIVEL | CHARGE → RAIL |
+| 4 | VX-7 WYVERN | Magellanic | GUN POD → TAIL VULCAN* | SWIVEL → FLAK FIELD* | RAIL → HYPER BEAM* |
+| 5 | VX-8 BASILISK | Magellanic | TAIL VULCAN → NEEDLE* | FLAK FIELD → DIAGONAL* | HYPER BEAM → THUNDER SWORD* |
+| 6 | VX-10 BEHEMOTH (new) | Magellanic | NEEDLE → ROCKET SALVO* | DIAGONAL → MORTAR* | THUNDER SWORD → CANISTER* |
+| 7 | VX-12 PHOENIX | Andromeda | ROCKET SALVO → AFTERBURNER* | MORTAR → ORBIT RING* | CANISTER → HOMING |
+| 8 | VX-11 SPHINX (new) | Andromeda | AFTERBURNER → FREE WAY* | ORBIT RING → CHAIN ARC* | HOMING → LIGHTNING LOCK* |
 
-| # | Hull | Role | Move or trait | What it does |
-|---|---|---|---|---|
-| 0 | VX-3 CHIMERA | Balanced starter | Trait QUICK CHANGE | A transform is invulnerable while it morphs (14 frames), at most once a second |
-| 1 | VX-5 MANTICORE | Striker, fastest Fighter | Move ROLL | Barrel roll 40 px toward the tapped side, invulnerable 30 frames (the bank frames spun through) |
-| 2 | VX-6 GRIFFIN | Armor, Battloid | Move SHIELD BASH | Battloid only: a 24-frame dash forward behind the arm shield; blocks bullets, rams planes for 8x gun power |
-| 3 | VX-9 HYDRA | All-rounder | Trait THIRD HEAD | An escort drone in every form that fires with you (stacks with DRONE ESCORT) |
-| 4 | VX-7 WYVERN | Guardian | Move LOCK VOLLEY | Locks up to 6 targets on screen (`findTarget`/`targetable`) and fires a homing missile at each |
-| 5 | VX-8 BASILISK | Glass cannon | Move LANCE | A piercing beam the length of the screen, 6x gun power, hits every target in line |
-| 6 | VX-12 PHOENIX | Top of the line | Trait REBIRTH | Once per mission, a fatal hit leaves 3 shields and bursts in fire, clearing bullets nearby |
-| 7 | VX-10 BEHEMOTH | Ground attack (A-10) | Move CARPET | Drops 6 bombs along its path; also carries every bomb rack, and ground targets and boss parts take +50% |
-| 8 | VX-11 SPHINX | Stealth | Move CLOAK | 3 s unseen: planes aim at a decoy where you cloaked. Trait on top: `seek` bullets don't steer at it and methyl beams take twice as long to lock |
-| 9 | VX-14 CERBERUS | Drone carrier | Move PACK | Two escort drones in every form (trait); the move sends them to ram the two nearest targets, then they return |
-| 10 | VX-13 NUE | Prototype, won | Move OVERDRIVE | For 4 s, all three fitted guns fire at once (each at its form's power) |
+\* new gun. Themes: the Basilisk pierces, the Behemoth hits the ground, the Phoenix burns, the Sphinx
+locks on. Homing comes last on purpose: it's the strongest gun, so only the Phoenix (upgrade) and the
+Sphinx (start) carry it.
 
-Side missions use the same moves: the roll and bash run along `orient()`, CARPET bombs fall to
-`SIDE_GROUND`, the LANCE fires right.
+- **Data:** `HULLS[h].fit = [[start, upgrade], [start, upgrade], [start, upgrade]]` (CHIMERA's upgrades
+  are `null`) and `HULLS[h].rung`. It replaces `guns` and `mounts`; `canMount(h, f, g)` becomes
+  `HULLS[h].fit[f].includes(g)`, and the default fit is the starts. `GUNS[id]` gains `form` (0, 1 or 2)
+  and `rung`; `mount` goes away. HULLS keeps its index order (saves store it), so the BEHEMOTH is index 7
+  and the SPHINX index 8 even though their rungs are 6 and 8.
+- **Owning:** buying a hull gives you its three start guns (added to `camp.guns`), so climbing the
+  ladder never needs a gun purchase. The upgrade is the choice: buy it to use it now, on this hull.
+  Guns are owned across hulls, so an upgrade bought for the GRIFFIN is already yours, at its level, when
+  you buy the HYDRA.
+- **Hangar:** each gun row toggles between the two guns (the upgrade shows `NOT OWNED` until bought);
+  on the CHIMERA the rows show the gun and its level but can't change.
 
-#### Four late hulls
+#### Guns
 
-New `HULLS` entries at the end (indices 7 to 10, so saves keep working), each with `HULL_ART`, a `guns`
-default fit and `mounts`:
+The 11 guns keep their behavior and move to one form (the swivel, spread and laser change form). The
+16 new guns each need a `GUNS` entry with four level effects of 18 characters or fewer, a `fireWeapon`
+case, flight in `steerBullet` and art in `drawPlayerBullet`.
 
-| Hull | WPN SHD SPC | Speed | Form multipliers | Mounts | Default guns | Price | Where |
-|---|---|---|---|---|---|---|---|
-| VX-10 BEHEMOTH | +1 +3 0 | 0.85 | 1.1 / 1.0 / 1.2 | heavy all | vulcan, bomb, laser | 25,000 | N44 Bubble (Magellanic) |
-| VX-11 SPHINX | +1 0 +2 | 1.2 | 1.2 / 1.1 / 1.0 | light, heavy, light | wave, homing, vulcan | 50,000 | NGC 206 (Andromeda) |
-| VX-14 CERBERUS | 0 +2 +2 | 1.0 | 1.0 / 1.2 / 1.0 | light, heavy, heavy | twin, ripple, homing | 65,000 | M32 (Andromeda) |
-| VX-13 NUE | +3 +2 +2 | 1.2 | 1.4 all | heavy all | laser, ripple, homing | won | Mayall II stronghold |
+| Gun | Form | Rung | Price | What it does | Levels add |
+|---|---|---|---|---|---|
+| TWIN | Fighter | 0 | start | Two parallel shots (today's) | as today |
+| VULCAN | Fighter | 1 | 1,200 | Rapid narrow stream (today's) | as today |
+| RIPPLE | Fighter | 2 | 1,800 | Growing rings (today's) | as today |
+| GUN POD* | Fighter | 3 | 2,600 | Robotech VF-1 gun pod: heavy 3-round bursts | burst size, damage |
+| TAIL VULCAN* | Fighter | 4 | 4,000 | Fires forward and back (Gradius) | rate, angled tail shots |
+| NEEDLE* | Fighter | 5 | 5,000 | Very fast narrow shot, pierces one plane | pierces more, rate |
+| ROCKET SALVO* | Fighter | 6 | 6,000 | Unguided micro-missile volley, bursts on impact | rockets per volley, blast |
+| AFTERBURNER* | Fighter | 7 | 9,000 | Short flame cone, heavy damage up close | length, width |
+| FREE WAY* | Fighter | 8 | 12,000 | Shots angle toward where you steer (TF4) | spread, rate, damage |
+| SPREAD | Guardian | 0 | start | Three-way spread (today's) | as today |
+| WAVE | Guardian | 1 | 1,200 | Helix wave (today's) | as today |
+| BOMB | Guardian | 2 | 1,800 | Falling bombs (today's) | as today |
+| SWIVEL | Guardian | 3 | 2,600 | Swinging vulcan (today's) | as today |
+| FLAK FIELD* | Guardian | 4 | 4,000 | Shells burst and hang in the air, blocking missiles (Radiant Silvergun) | burst size, hang time |
+| DIAGONAL* | Guardian | 5 | 5,000 | Arcing shots that turn into four-way diagonal lasers (Darius Twin) | laser length, rate |
+| MORTAR* | Guardian | 6 | 6,000 | Lobbed shells, airburst over ground targets | shells, blast |
+| ORBIT RING* | Guardian | 7 | 9,000 | Shots circle the ship and block bullets (Axelay) | ring size, shots |
+| CHAIN ARC* | Guardian | 8 | 12,000 | Lightning that jumps between nearby planes | jumps, damage |
+| LASER | Battloid | 0 | start | Piercing laser (today's) | as today |
+| GRENADE* | Battloid | 1 | 1,200 | Thrown up and down, burns along the ground (TF4) | burn time, two at once |
+| CHARGE | Battloid | 2 | 1,800 | Charge shot (today's) | as today |
+| RAIL | Battloid | 3 | 2,600 | Rear rail gun (today's) | as today |
+| HYPER BEAM* | Battloid | 4 | 4,000 | Charge full, then heavy rapid fire until it overheats (R-Type III) | burst length, cooling |
+| THUNDER SWORD* | Battloid | 5 | 5,000 | Charges while you aren't firing, then a big piercing blade (TF4) | charge speed, length |
+| CANISTER* | Battloid | 6 | 6,000 | Short-range shotgun blast | pellets, range |
+| HOMING | Battloid | 7 | 9,000 | Homing missiles (today's) | as today |
+| LIGHTNING LOCK* | Battloid | 8 | 12,000 | Locks two targets, hits harder the longer it holds (Radiant Silvergun) | targets, ramp |
 
-- **Where they're sold:** `EXTRA_HULLS` in `world.js` (generated planets): `n44: 7`, `ngc206: 8`, `m32: 9`.
-  That replaces the Basilisk at NGC 206 and the Wyvern at M32; both are still sold in the Magellanic
-  Cloud, and a hull you own always shows in every shipyard.
-- **The prototype:** clearing the Mayall II stronghold for the first time adds NUE to `camp.hulls`, with
-  a Mira line in the debrief and a Voss taunt (it's her prototype). It can't be bought or sold.
-- **Bomb racks:** `ORDNANCE` bomb entries add the BEHEMOTH to `hulls` (`[0, 2, 4, 6, 7]`).
+New ids: `grenade`, `gunpod`, `tail`, `flak`, `hyper`, `needle`, `diagonal`, `sword`, `rocket`, `mortar`,
+`canister`, `burner`, `ring`, `freeway`, `chain`, `lock`. Every gun's `gal` follows its rung, so the
+swivel, charge and rail move to the Milky Way and the homing gun to Andromeda.
+Prices come from a `GUN_PRICE[rung]` table next to `PRICE` in `starbase.js`, so tuning is one edit.
 
-**Economy check** (against the table above): the Magellanic Cloud goes from about 93k of permanent
-sinks to 118k (79% of its 150k); Andromeda from about 88k to 203k (81% of 250k). Both sit at the top of
-the 70 to 80% target, before ordnance, so tune the two Andromeda prices down first if it feels grindy.
+#### Gun levels bought at markets
+
+- Gun XP goes away (`addGunXP`, `GUN_LEVELS`, the LV popup in flight). `camp.gunLv[id]` holds the bought
+  level (1 to 5); `gunLevel(id)` reads it. Every gun you own, the CHIMERA's starters included, can be
+  leveled; a level counts on every hull that carries the gun.
+- **Every starbase** sells levels for guns you own (a GUN LEVELS section on the market page), so a
+  level never depends on finding the right planet.
+- **Price:** LV2 0.2×, LV3 0.3×, LV4 0.5×, LV5 0.75× the gun's price (1.75× to max it). Starters level
+  from a base of 1,000. **Galaxy gates:** LV2 and LV3 anywhere, LV4 from the Magellanic Cloud, LV5 in
+  Andromeda. A gated row shows `NEEDS MAGELLANIC` or `NEEDS ANDROMEDA`.
+
+#### Market rows say who a gun is for
+
+A gun row in a market (`gunRow`) and in the GUN LEVELS section shows the form and the hulls:
+
+```
+VULCAN            FTR   1200 CR
+FIGHTER GUN. UPGRADE ON MANTICORE, START ON GRIFFIN. RAPID NARROW STREAM.
+```
+
+- The right column carries a form tag (`FTR`, `GRD`, `BTL`) in the form's color next to the price.
+- The info line names the form, then the hull that buys it as an upgrade and the hull that starts with
+  it (SPHINX's upgrades: `UPGRADE ON SPHINX ONLY`), then the gun's description.
+- A hull you own is named in white, one you don't in gray; a gun none of your hulls can fit says
+  `FOR A HULL YOU DONT OWN` (the font has no apostrophe). The hull page in the shipyard lists its
+  six guns the same way.
+
+#### Special bays
+
+Specials split into three families. Each hull has bays for some of them, and a hull's `special` bonus
+sets its uses per leg. The hangar's SPECIAL row grays out learned specials the hull can't use, and
+level-up offers favor families your hulls have bays for.
+
+| Family | Specials |
+|---|---|
+| ATTACK | THUNDER LASER, CLUSTER BOMB, MEGA CRUSH, GRAVITY BOMB, MISSILE BARRAGE |
+| DEFENSE | GENE SHIELD, REFLECT FIELD, EMP BLAST, CHRONO FIELD |
+| SUPPORT | TET BURST, WINGMAN, FORCE POD, HYPER MODE |
+
+| Hull | Bays | Uses |
+|---|---|---|
+| CHIMERA | ATTACK, DEFENSE, SUPPORT | +0 |
+| MANTICORE | ATTACK | +1 |
+| GRIFFIN | DEFENSE, ATTACK | +0 |
+| HYDRA | ATTACK, DEFENSE, SUPPORT | -1 |
+| WYVERN | SUPPORT, DEFENSE | +1 |
+| BASILISK | ATTACK | +2 |
+| BEHEMOTH | ATTACK, DEFENSE | +0 |
+| PHOENIX | ATTACK, DEFENSE, SUPPORT | +1 |
+| SPHINX | ATTACK, SUPPORT | +0 |
+
+Homing outside the gun follows the gun: MISSILE BARRAGE and the MISSILE POD ordnance work only on the
+PHOENIX and the SPHINX (`hulls: [6, 8]`), and MISSILE POD I moves from the Milky Way to the Magellanic
+Cloud. Bomb racks keep their hull list and add the BEHEMOTH.
+
+#### The two new hulls
+
+| Hull | WPN SHD SPC | Speed | Form multipliers | Price | Where |
+|---|---|---|---|---|---|
+| VX-10 BEHEMOTH | +1 +3 0 | 0.85 | 1.1 / 1.0 / 1.2 | 25,000 | N44 Bubble (Magellanic): `EXTRA_HULLS.n44 = 7` |
+| VX-11 SPHINX | +1 0 +2 | 1.2 | 1.2 / 1.1 / 1.0 | 60,000 | NGC 206 (Andromeda): `EXTRA_HULLS.ngc206 = 8`, replacing the Basilisk resale there |
+
+The other hulls keep their stats; their `desc` lines name their role (STRIKER, ARMOR, ALL-ROUNDER,
+GUARDIAN, PIERCING, GROUND ATTACK, TOP OF THE LINE, MISSILE CARRIER).
 
 #### Pilot perks
 
-Stats stay as they are; the perk line on the pilot card and in the starbase changes to the mechanic:
+Stats stay; the perk text on the pilot card changes to the mechanic:
 
 | Pilot | Perk | How |
 |---|---|---|
-| MAVERICK | GUNS LEVEL UP 50% FASTER | `addGunXP` multiplies by 1.5 |
+| MAVERICK | GUN LEVELS COST 25% LESS | the level price × 0.75 |
 | TURTLE | SHIELDS RECHARGE AFTER 10 QUIET SECONDS | 600 frames without a hit restores 1 shield (up to max), then the timer restarts; stacks with AUTO REPAIR |
-| DRAC | ONE MORE RACK AND ONE MORE MOVE | Ordnance `carry` + one rack's `uses`; +1 move charge per leg |
+| DRAC | ONE MORE RACK OF ORDNANCE | ordnance `carry` + one rack's `uses` |
 
 #### Art
 
-- **Fighters:** new top-down and side Fighter sprites for the WYVERN, BASILISK and PHOENIX and the four
-  new hulls (7 airframes, Truxton detail, Robotech VF lines): the BEHEMOTH heavy and twin-tailed with
-  wing pylons, the SPHINX a flat faceted wedge, the CERBERUS wide with three drone bays, the NUE a
-  forward-swept prototype.
+- **Fighters:** new top-down and side Fighter sprites for the WYVERN, BASILISK and PHOENIX and the two
+  new hulls (Truxton detail, Robotech VF lines): the BEHEMOTH heavy and twin-tailed with wing pylons,
+  the SPHINX a flat faceted wedge with missile bays.
 - **Guardian and Battloid by parts** (like the VF-1 A, J, S and R heads): one shared body, with each
   hull adding a head, shoulder armor and backpack, composited into the ASCII rows before baking
-  (`hullParts(h, form)` in `sprites.js`). That gives every hull its own GERWALK and robot without 40 new
-  full sprites; the bank frames and side profiles are built from the same parts.
-- Move effects: roll streaks, the bash shield flash, lock-on brackets, the lance beam, the cloak drawn
-  with `SNES.half`, Rebirth flames. All in 15-bit color with banded glows.
+  (`hullParts(h, form)` in `sprites.js`). Bank frames and side profiles come from the same parts.
+- **Bullets:** art for the 16 new guns in `drawPlayerBullet`, 15-bit colors with banded glows. Each
+  form keeps a color family so a shot tells you its form: Fighter white and yellow, Guardian aqua
+  and green, Battloid orange and red.
+
+#### Save v5
+
+`camp.v = 5`. `migrateV4()` in `continueCampaign`: turn `gunXP` into `gunLv` with the old thresholds
+(so levels already earned are kept), add every owned hull's start guns to `camp.guns`, and reset any
+fit that the new `fit` table doesn't allow to the hull's start gun. Guns owned that no hull uses stay
+owned. Test campaigns (`camp.test`) own every gun at LV1.
 
 #### HOW TO PLAY and docs
 
-New pages: *WHAT IS MY HULL'S MOVE?* (double-tap, charges, the bonus for charges left, animated roll),
-and the hull list gains each hull's role and move. README (hulls table, pilots, moves), CLAUDE.md
-(`moves.js` in the load order and table, `HULLS[h].move`/`trait`, `Input.dbl`, a recipe for a new move).
+New or rewritten pages: *HOW DO GUNS WORK?* (two guns per form, the ladder, buying levels), *WHAT
+CAN EACH HULL CARRY?* (a list page: each hull's six guns and bays, drawn with the hull), *WHAT ARE
+SPECIAL BAYS?*. The gun list picks up the new guns. README (hulls, guns, levels, pilots), CLAUDE.md
+(`fit`, `rung`, `gunLv`, `bays`, save v5, an updated recipe for a new gun and a new hull).
 
 #### Build order
 
 Each step is playable and committed on its own, checked in Chrome with frames stepped by hand, the
 console watched, and `chimera.*` keys put back.
 
-1. **Move framework** (`input.js`, new `js/moves.js`, `index.html`, `game.js` HUD and `tallyLeg`):
-   `Input.dbl`, charges, HUD icons, the clear bonus, and the MANTICORE roll as the first move. *Check:*
-   double-taps fire the roll on keys, pad and touch; tapping a direction quickly to dodge doesn't
-   (single taps under 10 frames apart without a release don't count); the roll works in side missions.
-2. **The other six existing hulls' moves and traits.** *Check:* each one in a vertical and a side leg,
-   on a boss leg (bash and lance on boss parts, the volley on capital-ship targets).
-3. **Pilot perks.** *Check:* XP rate with MAVERICK, TURTLE's recharge timing, DRAC's carry and charges.
-4. **The four late hulls:** stats, moves (CARPET, CLOAK, PACK, OVERDRIVE), shipyards, the prototype
-   reward, bomb racks. Placeholder art (recolors) until step 5. *Check:* `?stage=` legs with each hull
-   via `&hull=N`; buying in a test campaign; the Mayall II reward once and only once.
-5. **Art:** seven Fighters and the Guardian and Battloid parts kit. *Check:* every hull in all three
+1. **Ladder data and save v5** (`pilots.js`, `weapons.js`, `campaign.js`, `specials.js` hangar):
+   `fit`, `rung`, `GUNS[id].form`, the new `canMount`, starters on hull purchase, the hangar's two-gun
+   rows, the BEHEMOTH and SPHINX with recolored placeholder art and their shipyards, `migrateV4`. Upgrade
+   slots whose gun isn't built yet show as `COMING SOON`. *Check:* a v4 save loads with its levels and
+   a legal fit; `?stage=N&hull=7` and `&hull=8` fly.
+2. **Bought levels and market rows** (`starbase.js`, `weapons.js`, `howto.js`): remove gun XP, the GUN
+   LEVELS section, `GUN_PRICE`, the gates, the form tag and hull names on every gun row, MAVERICK's
+   discount. *Check:* every row's hull names against the ladder table; gated rows in each galaxy.
+3. **Milky Way guns:** GRENADE and GUN POD. *Check:* rungs 0 to 3 are complete and playable in vertical
+   and side legs, on boss legs too.
+4. **Magellanic guns:** TAIL VULCAN, FLAK FIELD, HYPER BEAM, NEEDLE, DIAGONAL, THUNDER SWORD, ROCKET SALVO,
+   MORTAR, CANISTER. *Check:* each at LV1 and LV5, in both modes, against capital-ship and boss targets
+   (`findTarget`/`targetable` for anything that seeks).
+5. **Andromeda guns:** AFTERBURNER, ORBIT RING, FREE WAY, CHAIN ARC, LIGHTNING LOCK. *Check:* as step 4.
+6. **Special bays, the missile limits and pilot perks.** *Check:* the hangar grays the right specials
+   on each hull; offers favor open bays; TURTLE's timing; DRAC's carry.
+7. **Art:** five Fighters and the Guardian and Battloid parts kit. *Check:* every hull in all three
    forms, banking, side profile, silenced and white flash, in the hangar and the shipyard.
-6. **Tuning, HOW TO pages and docs.** Scripted runs with each move at stages about 1, 7, 13 and 18: a move
-   should save about one hit a leg, not trivialize a boss; recheck the economy totals.
+8. **Tuning, HOW TO pages and docs.** Scripted runs at stages about 1, 7, 13 and 18 with each hull's
+   start and upgrade guns: an upgrade should feel stronger than its start gun, and a rung's start guns
+   should hold up in that galaxy without levels. Recheck the economy totals below.
 
-**Decisions to confirm before step 1:**
+#### Economy check
 
-- The double-tap trigger, or a held button (hold SELECT for 20 frames; slower, but no accidental moves).
-- Whether existing hulls keep their stats (recommended) or get rebalanced around their roles.
-- Whether the M4 guns ship now or as their own release after M4 (recommended: after).
+A typical run flies one hull per galaxy, buys its three upgrades and levels its six guns as far as the
+gates allow (LV3, LV4, LV5), on top of the hulls and the M2 sinks:
+
+| Galaxy | Pays | Hull flown | Upgrades | Levels | Hulls bought | M2 sinks | Total | Share |
+|---|---|---|---|---|---|---|---|---|
+| Milky Way | 65k | HYDRA | 7.8k | 6.6k | 18k | about 30k | about 62k | 95% |
+| Magellanic | 150k | BASILISK | 15k | 27k | 30k (Wyvern, Basilisk) | about 63k | about 135k | 90% |
+| Andromeda | 250k | PHOENIX | 27k | 79k | 30k (Phoenix) | about 58k | about 194k | 78% |
+
+The SPHINX (60k) and a second hull's guns are the stretch goals on top. Leveling every gun in the game
+costs about 225k, so no one does it all. The early galaxies run above the 70 to 80% target, but their
+hull purchases are optional (the CHIMERA can finish the Milky Way). If the climb feels slow, lower
+`GUN_PRICE` for rungs 4 to 8 first, then the level multipliers.
 
 ## Idea catalog
 
-### Hulls (M4)
+### Hulls (M4 spec above; what's left)
 
-- **Clear roles, not just bigger numbers (U.N. Squadron, Carrier Air Wing).** U.N. Squadron's planes each
-  do one thing: the F-14 is fastest but carries few ground weapons, the A-10 is slowest with the best
-  ground weapons, the YF-23 stealth plane can't be locked onto by homing missiles, and the endgame F-200
-  carries every weapon and more of each (two Mega Crushes instead of one). Carrier Air Wing offers its
-  biggest homing missile only to the F-14. Our hulls mostly differ in stats; give each a job through its
-  mounts and the ordnance it can carry.
-- **A signature move per hull.** Manticore: an evasive roll (1942's loop: invulnerable, three per leg,
-  1,000 points for each one left at the end). Griffin: Battloid shield bash. Hydra: a third drone.
-  Wyvern: Guardian lock-on volley. Basilisk: charged piercing shot. Phoenix: revives once per mission.
-  Moves need no new button: a double-tap on a direction, or holding a form button.
-- **Four late hulls.** Andromeda sells no new hull today. Add a ground-attack hull (A-10 or A-6 style:
-  heavy mounts, bombs in every form), a stealth hull (enemy homing missiles lose it, methyl beams take
-  longer to lock on), a drone carrier (escorts in every form), and a prototype won from a boss instead of
-  bought. Prices follow the Economy table.
-- **Pilot perks with a mechanic.** Pilots have perks today, but they're only stats (MAVERICK starts with
-  8 weapons, TURTLE 8 shields, DRAC 6 special). U.N. Squadron's pilots differ in how they play: Shin
-  powers up his gun fastest, Mickey carries the most special weapons, Greg recovers from damage fastest.
-  For us: MAVERICK's guns level up faster, TURTLE's shields recharge after a quiet spell, DRAC carries
-  one more ordnance slot.
-- **Unique hull art.** The Wyvern, Basilisk and Phoenix reuse the Griffin, Manticore and Hydra airframes
-  in new colors. Each should get its own Fighter shape, and every hull its own Guardian and Battloid art.
+The M4 spec covers clear roles (U.N. Squadron's planes each do one thing; Carrier Air Wing offers its
+biggest homing missile only to the F-14), pilot perks with a mechanic (U.N. Squadron's Shin, Mickey and
+Greg) and unique hull art. Left for later:
 
-### Guns (M4)
+- **Signature moves** (1942's loop, a shield bash, a lock-on volley): tried in the first M4 draft and
+  dropped; hulls are set apart by their guns and bays instead.
+- **More late hulls:** a stealth hull (enemy homing loses it, methyl beams lock on slower; U.N.
+  Squadron's YF-23), a drone carrier (escorts in every form), and a prototype won from a boss instead of
+  bought. Each would need a ladder rung or a branch off it.
 
-Guns as parts, gun levels, the charge shot, the rear rail gun and the swivel vulcan shipped in M1
-(README: Guns). Still to build, each as a `GUNS` entry with a `fireWeapon` case, `steerBullet` flight,
-`drawPlayerBullet` art and four level effects:
+### Guns (M4 spec above; what's left)
 
-- **More guns:**
-  - *Charge shot, Thunder Sword variant* (TF4): charges while you aren't firing, instead of while held.
-  - *Hyper beam* (R-Type III): charge fully, then fire a burst of heavy shots for a few seconds until the
-    gun overheats and can't charge until it cools.
-  - *Wall-hugging grenades* (TF4 Snake): fired up and down, they burn along the ground they hit; good
-    against turrets on side missions.
-  - *Free Way* (TF4): bullets toward where you steer, missiles the opposite way.
-  - *Orbiting shots* (Axelay Morning Star): a ring that circles the ship and also blocks bullets.
-  - *Spread field* (Radiant Silvergun): angled shots that burst and hang in the air, blocking missiles.
-  - *Lightning lock* (Radiant Silvergun homing plasma): locks two targets and hits harder the longer
-    it holds, even through walls.
-  - *Rear-guard vulcan* (Gradius Tailgun and 2-Way Back): covers the ship's back.
-  - *Diagonal bombs* (Darius Twin secondary): arcing bombs that become four-way diagonal lasers as they level.
-- **Gun XP tuning.** The level thresholds (2,000 to 35,000) are a first guess: time them in a real run.
-  Radiant Silvergun splits XP between combined weapons; boss and capital-ship targets could train the
-  gun too (today only planes do).
+The M4 ladder takes the catalog's guns: Thunder Sword (TF4), hyper beam (R-Type III), grenades (TF4
+Snake), Free Way (TF4), orbiting shots (Axelay Morning Star) as ORBIT RING, the spread field (Radiant
+Silvergun) as FLAK FIELD, Lightning lock (Radiant Silvergun), the rear-guard vulcan (Gradius) as TAIL
+VULCAN and the diagonal bombs (Darius Twin) as DIAGONAL. Gun XP goes away with it. Left for later:
+
 - **The rear rail gun in vertical stages.** It fires down off the bottom of the screen; rear attacks (M3)
   now give it targets there, but a shorter-range spread would still help it against divers.
 - **In-flight power level (Carrier Air Wing, U.N. Squadron, Darius Twin).** Carrier Air Wing's gun levels
   come at 2, 8, 15, 23 and 31 pickups; U.N. Squadron's planes cap between 3 and 7; Darius Twin drops a
-  power-up only from the last of six cubes. Optional on top of gun XP: pickups that raise the gun for the
+  power-up only from the last of six cubes. Optional on top of bought levels: pickups that raise the gun for the
   current leg only, capped per hull.
 
 ### Markets and ordnance (M2, shipped; what's left)
