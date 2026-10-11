@@ -23,7 +23,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 |---|---|---|---|
 | M1 | **Loadout** (shipped, see the README) | Guns as parts, new guns sold at markets, guns that level up with use, a hangar that fits guns, save v3 | The core of both problems: markets run out of stock, and progress stops once stats cap |
 | M2 | **Arsenal and economy** (shipped, see the README) | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, a price table, supply raids, save v4 | Gives credits a use in every galaxy (see Economy) |
-| M3 | **Vertical stages** | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
+| M3 | **Vertical stages** (spec below) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls** | Hull roles and signature moves, four late hulls, pilot perks with a mechanic, unique hull art | New ships to chase in the Magellanic Cloud and Andromeda |
 | M5 | **Bosses and rewards** | Part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
 | M6 | **Stages** | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
@@ -103,6 +103,139 @@ real play:
   ordnance feels too safe.
 - **One module slot.** A second slot (or pilot perks like DRAC's extra ordnance, M4) would make the
   escorts and barriers compete less.
+
+### M3: vertical stages
+
+**Goal.** A vertical leg today is 2 to 4 squadrons of the same five Galaga waves, with a dead pause
+while each one forms up and between squadrons. M3 keeps the squadrons (they're the Galaga core) and
+wraps them in a 1942-style run: traffic that flies through the whole leg, a mini-boss between
+squadrons, a bonus line to chase, attacks from behind, bullets you can read by color, and a score for
+how much you shot down. No save change: everything is per leg.
+
+**Scope.** In: traffic, three new enemy types, the mini-boss, squadron bonus, rear attacks, fire
+budgets, bullet kinds, edge warnings, shot-down %, screen shake, readable invulnerability, near-miss
+sound. Left in the catalog: gun heat (M4, with the guns), interceptors from every edge, mission cards
+(M6), boss in a band beyond the mini-boss (M5).
+
+#### New enemy types
+
+Each gets an `ENEMY` entry, top-down and side art in `ENEMY_DEFS` (machines, Truxton detail), an hp in
+`spawnSideEnemy`, and shows up in the HOW TO enemy list by itself.
+
+| Type | Name | hp (× `hpMul`) | Points (normal, gold) | Ammo | Role |
+|---|---|---|---|---|---|
+| `gunship` | GUNSHIP | 4 | 300, 600 | 6 | Medium plane. Crosses the screen in traffic, firing aimed pairs at set points of its path |
+| `sniper` | SNIPER | 3 | 250, 500 | 9 | Slides in to a spot in the top band, parks, fires aimed 3-round bursts until it runs dry, then leaves (Typhoon Force) |
+| `heavy` | HEAVY | 12 + stage / 2 | 2,000, 4,000 | 40 | The mini-boss. Descends into the top band and holds there, picking a new heading every 75 frames inside the band (theonlyrao's boss rule), fires fans; leaves after 12 seconds if you haven't killed it (1942) |
+
+The heavy shows a small hp bar under it, Mira calls it in (`say`), and an escape pops `ESCAPED` and
+costs only the bonus, never a hit. Side missions pick up `gunship` (pairs, from stage 6) and `sniper`
+(from stage 9) as new `sideKinds`, parking at the right edge instead of the top.
+
+#### Traffic (`js/traffic.js`, a new mixin after `side.js`)
+
+- `VTRAFFIC` lists the group kinds a leg can draw: `{ kind, types, count, gap, from, beh, minStage,
+  weight }`. Kinds: `pair` (2 MiGs crossing), `vee` (3 to 5 MiGs or drones in a V), `gunship`
+  (1 or 2), `snipers` (2 or 3, staggered stops), `rear` (rear attack), `redline` (squadron bonus).
+- `buildTraffic(stage, squads)` lays a timeline over the whole leg: a group every 8 to 14 seconds in
+  band A, down to every 4 to 7 in band D. Traffic only pauses while a squadron flies in (its paths are
+  busy) and resumes once the formation is ready.
+- Traffic planes carry `transit: true` and their own `beh` (`cross`, `vee`, `park`, `climb`, `hold`),
+  driven by `updateTraffic(e)`. They fly through and leave; they never take a formation slot.
+- A cap keeps it fair: at most `4 + stage / 3` traffic planes on screen, and none spawn while 30 or
+  more bullets are in the air.
+- **Stage end:** `checkStageEnd` waits only for planes without `transit`. When a leg clears, traffic
+  breaks off and flies away (`updateClear` keeps moving enemies; `enemyFire` is off outside `play`).
+
+Difficulty bands (stage numbers from `difficulty()`: Milky Way about 1 to 7, Magellanic 7 to 13,
+Andromeda 12 to 18):
+
+| Band | Stages | Traffic every | Kinds added | Mini-boss | Bullet kinds |
+|---|---|---|---|---|---|
+| A | 1 to 4 | 8 to 14 s | pair, vee, redline | from stage 3, once per leg | aim, drop |
+| B | 5 to 9 | 6 to 11 s | gunship, rear, snipers | once per leg | + split |
+| C | 10 to 14 | 5 to 9 s | gold gunships | twice per leg | + seek |
+| D | 15 and up | 4 to 7 s | everything, larger groups | twice per leg, faster fans | all four, more of them |
+
+#### Squadrons and set pieces
+
+- The pause between squadrons becomes an **intermission** of 6 to 8 seconds: traffic keeps coming,
+  and in legs that have one, the heavy mini-boss arrives. The next squadron flies in when the heavy is
+  dead or gone, or when the intermission ends.
+- **Squadron bonus (redline):** 5 planes in red enter in a line from one side, 24 frames apart (1942's
+  red squadron), and cross the screen. A red palette is baked next to `normal`/`acetyl`. Shoot all five
+  and the last one drops a **shield cell** pickup (+1 shield, or 500 points at full) with the popup
+  `SQUADRON BONUS 1000`. One per leg in band A, up to two later. Pickups gain a `kind` (`tet` or
+  `cell`); `dropTet` stays as it is.
+- **Rear attack:** 2 or 3 planes (MiGs, gunships from band C) climb in from below the screen near your
+  x, pass you and fire once when they're 40 px above you, aimed down. A warning arrow flashes at the
+  bottom edge under each entry point for 50 frames first.
+
+#### Enemy fire
+
+- **Bullet kinds by color** (Typhoon Force: the behavior belongs to the bullet, not the plane).
+  `eBul` entries get a `k`; each kind has its own sprite and glow in `SPR.ebul`:
+  - `aim` (red, today's bullet): straight at where you were. MiGs, gunships, snipers, turrets, bosses.
+  - `drop` (orange): straight down (left in side missions), a little slower. Bombers, the heavy's
+    curtain.
+  - `split` (yellow): slow; after 40 frames bursts into 3 `aim` shards. The heavy and gold gunships,
+    from band B.
+  - `seek` (violet): slow, turns gently toward you for 90 frames, then flies straight. Snipers and the
+    heavy, from band C.
+  - The methyl beam stays its own thing.
+- **Fire budgets:** every plane carries `ammo` (table above; MiG 2, bomber 3, splitter 2, drone 1,
+  armored 6, tank 6, SAM 8; gold planes 1.5×). Each bullet spends one, a plane with none stops firing,
+  and `formationFire` only picks planes with ammo left, so an old formation goes quiet. Bosses,
+  capital ships and their turrets have no budget.
+- Keep `enemyFire`'s bullet cap (`10 + stage`), raised to `14 + stage` for `drop` curtains.
+
+#### Feedback
+
+- **Edge warnings:** `side.warns` becomes `this.warns` for both modes: `{ x, y, dir, t }`, drawn as a
+  small blinking arrow sprite at the screen edge. Used by rear attacks, the heavy's entry and side
+  ambushes (`migRear`), replacing the `!>` text.
+- **Shot-down %:** every leg (vertical and side, not capital flyovers) counts planes spawned and planes
+  destroyed. The clear banner shows `SHOT DOWN 87%` under any boss text, adds `pct × 100` points and
+  `round10(pct / 100 × (150 + 50 × tier))` credits to `bonusCr`; 100% shows `PERFECT` and doubles it.
+  The debrief adds a `SHOT DOWN` line with the mission's average. Traffic that leaves counts as missed.
+- **Screen shake:** a `shake` punch offsets the playfield (not the HUD) by whole pixels, 3 px at most,
+  decaying 10% a frame; only the strongest punch counts, scaled down by distance from the ship. Fired
+  by hits on you, heavy and boss-part kills, Mega Crush and bomb blasts. A **SHAKE: ON/OFF** row in the
+  game menu, saved in a new `localStorage['chimera.opts']` (in try/catch).
+- **Readable invulnerability:** the ship draws half-transparent (`SNES.half`) for the first two thirds
+  of `p.invuln` and blinks only in the last third, so you can see when it ends.
+- **Near miss:** a short whoosh (new `SFX.whoosh`) the first time a diver, rear attacker or traffic
+  plane passes within 16 px of the ship.
+
+#### HOW TO PLAY and docs
+
+New pages: *WHAT ELSE FLIES THROUGH?* (traffic, the heavy, the red line), *WHAT DO THE BULLET COLORS
+MEAN?* (the four kinds, animated), and *WHAT IS THE SHOT-DOWN BONUS?*. The enemy list picks up the new
+types itself. README (vertical stages, enemies, bullets), CLAUDE.md (`traffic.js` in the load order and
+table, `transit`, `k` bullet kinds, `ammo`, `warns`, `chimera.opts`, a recipe for a new traffic group).
+
+#### Build order
+
+Each step is playable and committed on its own; every step is checked in Chrome with frames stepped by
+hand (as in CLAUDE.md), the console watched, and `chimera.*` keys put back afterwards.
+
+1. **Fire and feedback groundwork** (`game.js`, `weapons.js`, `sprites.js`, `side.js`): bullet kinds
+   (`aim` and `drop` first), fire budgets, `this.warns` with the arrow sprite, readable invulnerability,
+   screen shake with the menu option. *Check:* the patrol still fires about as often as today early on;
+   formations go quiet as ammo runs out; shake can be turned off and stays off after a reload.
+2. **New enemies** (`game.js` `ENEMY`, `sprites.js` art, `side.js` hp and `sideKinds`): gunship, sniper,
+   heavy, with top-down and side art. *Check:* each draws in both modes, the HOW TO list shows them.
+3. **Traffic** (new `js/traffic.js`, `index.html`, `game.js` stage end and `updateClear`): `VTRAFFIC`,
+   `buildTraffic`, `updateTraffic`, the cap, transit rules, intermissions. *Check:* at stage 1, 7, 13
+   and 18 count groups per minute and bullets on screen; a leg still ends when the last squadron dies.
+4. **Set pieces:** the heavy mini-boss (hold band, fans, escape), redline bonus with the shield-cell
+   pickup, rear attacks with warnings, `split` and `seek` bullets. *Check:* kill and escape paths for
+   the heavy; all-five and four-of-five redline; rear warnings show before every entry.
+5. **Shot-down %** on the clear banner, credits in `bonusCr`, debrief line; near-miss sound.
+   *Check:* a perfect leg (kill everything by script) shows PERFECT and the doubled credits.
+6. **Tuning, HOW TO pages and docs.** Play a Milky Way, a Magellanic and an Andromeda patrol by hand
+   (or scripted with an invulnerable ship) and adjust the band table: a leg should run 90 to 150
+   seconds and stay readable.
 
 ## Idea catalog
 
