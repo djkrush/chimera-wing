@@ -202,11 +202,12 @@ Object.assign(Game, {
     if (gone) e.dead = true;
   },
 
-  // A parked sniper (side and vertical): a 3-round burst (8 frames apart) every 80 frames; once dry it leaves.
+  // A parked sniper (side and vertical): a 3-round burst (8 frames apart) every 100 frames; once dry it leaves.
   parkFire(e) {
     e.pt = (e.pt || 0) + 1;
-    const ph = e.pt % 80;
-    if (e.pt > 20 && (ph === 0 || ph === 8 || ph === 16)) this.enemyFire(e, this.vband() >= 2 ? 'seek' : 'aim', 1);   // seekers from band C
+    const ph = e.pt % 100;
+    const seek = this.vband() >= 2;   // from band C: seekers, two to a burst
+    if (e.pt > 20 && (ph === 0 || ph === 8 || (ph === 16 && !seek))) this.enemyFire(e, seek ? 'seek' : 'aim', 1);
     if (e.ammo <= 0 && ph === 40) e.phase = 'out';
   },
 

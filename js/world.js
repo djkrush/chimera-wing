@@ -38,7 +38,7 @@ const TERRAIN_CODE = { O: 'ocean', D: 'desert', C: 'clouds', H: 'hive', F: 'fiel
 // Mission kinds. legs: the stage types flown in order ('boss' = the stronghold's two legs, set by
 // the planet's order). pay/xp multiply the base reward.
 const MISSION_KINDS = {
-  patrol: { name: 'PATROL', legs: ['normal'], pay: 0.8, desc: 'VERTICAL. BREAK HER SQUADRON.' },
+  patrol: { name: 'PATROL', legs: ['normal'], pay: 0.8, desc: 'VERTICAL. SQUADRONS AND TRAFFIC.' },
   intercept: { name: 'INTERCEPT', legs: ['side'], pay: 0.8, desc: 'SIDE-SCROLLING. CUT OFF HER FIGHTERS.' },
   raid: { name: 'GROUND RAID', legs: ['raid'], pay: 0.9, desc: 'SIDE-SCROLLING. TANKS AND MISSILE SITES.' },
   bonus: { name: 'CONTROL GROUP', legs: ['challenge'], pay: 0.7, desc: 'BONUS STAGE. LIGHT FIRE. HIT EVERY ONE.' },

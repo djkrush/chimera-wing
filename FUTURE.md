@@ -23,7 +23,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 |---|---|---|---|
 | M1 | **Loadout** (shipped, see the README) | Guns as parts, new guns sold at markets, guns that level up with use, a hangar that fits guns, save v3 | The core of both problems: markets run out of stock, and progress stops once stats cap |
 | M2 | **Arsenal and economy** (shipped, see the README) | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, a price table, supply raids, save v4 | Gives credits a use in every galaxy (see Economy) |
-| M3 | **Vertical stages** (spec below) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
+| M3 | **Vertical stages** (shipped, see the README) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls** | Hull roles and signature moves, four late hulls, pilot perks with a mechanic, unique hull art | New ships to chase in the Magellanic Cloud and Andromeda |
 | M5 | **Bosses and rewards** | Part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
 | M6 | **Stages** | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
@@ -104,138 +104,37 @@ real play:
 - **One module slot.** A second slot (or pilot perks like DRAC's extra ordnance, M4) would make the
   escorts and barriers compete less.
 
-### M3: vertical stages
+### M3 (shipped)
 
-**Goal.** A vertical leg today is 2 to 4 squadrons of the same five Galaga waves, with a dead pause
-while each one forms up and between squadrons. M3 keeps the squadrons (they're the Galaga core) and
-wraps them in a 1942-style run: traffic that flies through the whole leg, a mini-boss between
-squadrons, a bonus line to chase, attacks from behind, bullets you can read by color, and a score for
-how much you shot down. No save change: everything is per leg.
+Traffic, the gunship, sniper and heavy, the red squadron, rear attacks, fire budgets, bullet kinds by
+color, edge warnings, shot-down %, screen shake, readable invulnerability and the near-miss sound are in
+the README (vertical stages, the epigenetics) and CLAUDE.md (`traffic.js`, fire budgets, enemy bullets,
+feedback, shot-down %).
 
-**Scope.** In: traffic, three new enemy types, the mini-boss, squadron bonus, rear attacks, fire
-budgets, bullet kinds, edge warnings, shot-down %, screen shake, readable invulnerability, near-miss
-sound. Left in the catalog: gun heat (M4, with the guns), interceptors from every edge, mission cards
-(M6), boss in a band beyond the mini-boss (M5).
+Tuned with scripted runs at difficulty 1, 7, 13 and 18 (a bot that re-aims twice a second with some
+error, fires in bursts and sidesteps bullets it sees coming):
 
-#### New enemy types
+| Change from the spec | Why |
+|---|---|
+| Four squadrons in every vertical leg (was 2 / 3 / 4 by difficulty) | Leg length is set by the squadrons, not by skill: with 2 or 3 an early leg ran 45 to 70 s whoever flew it. Now about 80 to 95 s at difficulty 1 and 7, 100 to 125 s at 13 and 18 |
+| Intermissions 7 to 9 s (was 6 to 8) | A little more air between squadrons for traffic and the heavy |
+| Traffic every 6 to 10 s in band A and 5 to 9 s in band B (was 8 to 14 and 6 to 11) | The clock stops while a squadron flies in, so the spec's gaps sent only one or two groups in an early leg |
+| Band A's red squadron is the first or second group | Otherwise a short leg could end before it came |
+| Snipers burst every 100 frames; from band C a burst is two seekers, not three | Parked snipers caused about one hit in eight late on |
 
-Each gets an `ENEMY` entry, top-down and side art in `ENEMY_DEFS` (machines, Truxton detail), an hp in
-`spawnSideEnemy`, and shows up in the HOW TO enemy list by itself.
+Measured: the stage-1 fire rate is unchanged early on (10.5 shots a leg with budgets against 10.8
+without; a passive player sees the same first 30 seconds, then the formation runs dry). Late on traffic
+adds about 30% to the hits taken (12.7 against 9.7 a minute at difficulty 18 for the bot), and bullets
+on screen average 0.5 early to 3 late, peaking at 18.
 
-| Type | Name | hp (× `hpMul`) | Points (normal, gold) | Ammo | Role |
-|---|---|---|---|---|---|
-| `gunship` | GUNSHIP | 4 | 300, 600 | 6 | Medium plane. Crosses the screen in traffic, firing aimed pairs at set points of its path |
-| `sniper` | SNIPER | 3 | 250, 500 | 9 | Slides in to a spot in the top band, parks, fires aimed 3-round bursts until it runs dry, then leaves (Typhoon Force) |
-| `heavy` | HEAVY | 12 + stage / 2 | 2,000, 4,000 | 40 | The mini-boss. Descends into the top band and holds there, picking a new heading every 75 frames inside the band (theonlyrao's boss rule), fires fans; leaves after 12 seconds if you haven't killed it (1942) |
+To revisit after real play:
 
-The heavy shows a small hp bar under it, Mira calls it in (`say`), and an escape pops `ESCAPED` and
-costs only the bonus, never a hit. Side missions pick up `gunship` (pairs, from stage 6) and `sniper`
-(from stage 9) as new `sideKinds`, parking at the right edge instead of the top.
-
-#### Traffic (`js/traffic.js`, a new mixin after `side.js`)
-
-- `VTRAFFIC` lists the group kinds a leg can draw: `{ kind, types, count, gap, from, beh, minStage,
-  weight }`. Kinds: `pair` (2 MiGs crossing), `vee` (3 to 5 MiGs or drones in a V), `gunship`
-  (1 or 2), `snipers` (2 or 3, staggered stops), `rear` (rear attack), `redline` (squadron bonus).
-- `buildTraffic(stage, squads)` lays a timeline over the whole leg: a group every 8 to 14 seconds in
-  band A, down to every 4 to 7 in band D. Traffic only pauses while a squadron flies in (its paths are
-  busy) and resumes once the formation is ready.
-- Traffic planes carry `transit: true` and their own `beh` (`cross`, `vee`, `park`, `climb`, `hold`),
-  driven by `updateTraffic(e)`. They fly through and leave; they never take a formation slot.
-- A cap keeps it fair: at most `4 + stage / 3` traffic planes on screen, and none spawn while 30 or
-  more bullets are in the air.
-- **Stage end:** `checkStageEnd` waits only for planes without `transit`. When a leg clears, traffic
-  breaks off and flies away (`updateClear` keeps moving enemies; `enemyFire` is off outside `play`).
-
-Difficulty bands (stage numbers from `difficulty()`: Milky Way about 1 to 7, Magellanic 7 to 13,
-Andromeda 12 to 18):
-
-| Band | Stages | Traffic every | Kinds added | Mini-boss | Bullet kinds |
-|---|---|---|---|---|---|
-| A | 1 to 4 | 8 to 14 s | pair, vee, redline | from stage 3, once per leg | aim, drop |
-| B | 5 to 9 | 6 to 11 s | gunship, rear, snipers | once per leg | + split |
-| C | 10 to 14 | 5 to 9 s | gold gunships | twice per leg | + seek |
-| D | 15 and up | 4 to 7 s | everything, larger groups | twice per leg, faster fans | all four, more of them |
-
-#### Squadrons and set pieces
-
-- The pause between squadrons becomes an **intermission** of 6 to 8 seconds: traffic keeps coming,
-  and in legs that have one, the heavy mini-boss arrives. The next squadron flies in when the heavy is
-  dead or gone, or when the intermission ends.
-- **Squadron bonus (redline):** 5 planes in red enter in a line from one side, 24 frames apart (1942's
-  red squadron), and cross the screen. A red palette is baked next to `normal`/`acetyl`. Shoot all five
-  and the last one drops a **shield cell** pickup (+1 shield, or 500 points at full) with the popup
-  `SQUADRON BONUS 1000`. One per leg in band A, up to two later. Pickups gain a `kind` (`tet` or
-  `cell`); `dropTet` stays as it is.
-- **Rear attack:** 2 or 3 planes (MiGs, gunships from band C) climb in from below the screen near your
-  x, pass you and fire once when they're 40 px above you, aimed down. A warning arrow flashes at the
-  bottom edge under each entry point for 50 frames first.
-
-#### Enemy fire
-
-- **Bullet kinds by color** (Typhoon Force: the behavior belongs to the bullet, not the plane).
-  `eBul` entries get a `k`; each kind has its own sprite and glow in `SPR.ebul`:
-  - `aim` (red, today's bullet): straight at where you were. MiGs, gunships, snipers, turrets, bosses.
-  - `drop` (orange): straight down (left in side missions), a little slower. Bombers, the heavy's
-    curtain.
-  - `split` (yellow): slow; after 40 frames bursts into 3 `aim` shards. The heavy and gold gunships,
-    from band B.
-  - `seek` (violet): slow, turns gently toward you for 90 frames, then flies straight. Snipers and the
-    heavy, from band C.
-  - The methyl beam stays its own thing.
-- **Fire budgets:** every plane carries `ammo` (table above; MiG 2, bomber 3, splitter 2, drone 1,
-  armored 6, tank 6, SAM 8; gold planes 1.5×). Each bullet spends one, a plane with none stops firing,
-  and `formationFire` only picks planes with ammo left, so an old formation goes quiet. Bosses,
-  capital ships and their turrets have no budget.
-- Keep `enemyFire`'s bullet cap (`10 + stage`), raised to `14 + stage` for `drop` curtains.
-
-#### Feedback
-
-- **Edge warnings:** `side.warns` becomes `this.warns` for both modes: `{ x, y, dir, t }`, drawn as a
-  small blinking arrow sprite at the screen edge. Used by rear attacks, the heavy's entry and side
-  ambushes (`migRear`), replacing the `!>` text.
-- **Shot-down %:** every leg (vertical and side, not capital flyovers) counts planes spawned and planes
-  destroyed. The clear banner shows `SHOT DOWN 87%` under any boss text, adds `pct × 100` points and
-  `round10(pct / 100 × (150 + 50 × tier))` credits to `bonusCr`; 100% shows `PERFECT` and doubles it.
-  The debrief adds a `SHOT DOWN` line with the mission's average. Traffic that leaves counts as missed.
-- **Screen shake:** a `shake` punch offsets the playfield (not the HUD) by whole pixels, 3 px at most,
-  decaying 10% a frame; only the strongest punch counts, scaled down by distance from the ship. Fired
-  by hits on you, heavy and boss-part kills, Mega Crush and bomb blasts. A **SHAKE: ON/OFF** row in the
-  game menu, saved in a new `localStorage['chimera.opts']` (in try/catch).
-- **Readable invulnerability:** the ship draws half-transparent (`SNES.half`) for the first two thirds
-  of `p.invuln` and blinks only in the last third, so you can see when it ends.
-- **Near miss:** a short whoosh (new `SFX.whoosh`) the first time a diver, rear attacker or traffic
-  plane passes within 16 px of the ship.
-
-#### HOW TO PLAY and docs
-
-New pages: *WHAT ELSE FLIES THROUGH?* (traffic, the heavy, the red line), *WHAT DO THE BULLET COLORS
-MEAN?* (the four kinds, animated), and *WHAT IS THE SHOT-DOWN BONUS?*. The enemy list picks up the new
-types itself. README (vertical stages, enemies, bullets), CLAUDE.md (`traffic.js` in the load order and
-table, `transit`, `k` bullet kinds, `ammo`, `warns`, `chimera.opts`, a recipe for a new traffic group).
-
-#### Build order
-
-Each step is playable and committed on its own; every step is checked in Chrome with frames stepped by
-hand (as in CLAUDE.md), the console watched, and `chimera.*` keys put back afterwards.
-
-1. **Fire and feedback groundwork** (`game.js`, `weapons.js`, `sprites.js`, `side.js`): bullet kinds
-   (`aim` and `drop` first), fire budgets, `this.warns` with the arrow sprite, readable invulnerability,
-   screen shake with the menu option. *Check:* the patrol still fires about as often as today early on;
-   formations go quiet as ammo runs out; shake can be turned off and stays off after a reload.
-2. **New enemies** (`game.js` `ENEMY`, `sprites.js` art, `side.js` hp and `sideKinds`): gunship, sniper,
-   heavy, with top-down and side art. *Check:* each draws in both modes, the HOW TO list shows them.
-3. **Traffic** (new `js/traffic.js`, `index.html`, `game.js` stage end and `updateClear`): `VTRAFFIC`,
-   `buildTraffic`, `updateTraffic`, the cap, transit rules, intermissions. *Check:* at stage 1, 7, 13
-   and 18 count groups per minute and bullets on screen; a leg still ends when the last squadron dies.
-4. **Set pieces:** the heavy mini-boss (hold band, fans, escape), redline bonus with the shield-cell
-   pickup, rear attacks with warnings, `split` and `seek` bullets. *Check:* kill and escape paths for
-   the heavy; all-five and four-of-five redline; rear warnings show before every entry.
-5. **Shot-down %** on the clear banner, credits in `bonusCr`, debrief line; near-miss sound.
-   *Check:* a perfect leg (kill everything by script) shows PERFECT and the doubled credits.
-6. **Tuning, HOW TO pages and docs.** Play a Milky Way, a Magellanic and an Andromeda patrol by hand
-   (or scripted with an invulnerable ship) and adjust the band table: a leg should run 90 to 150
-   seconds and stay readable.
+- **Four squadrons from the first mission.** If early patrols drag, go back to three in band A and lean
+  on traffic instead.
+- **PERFECT is very hard** once traffic is busy, because every plane that flies off counts as missed. A
+  softer rule would count traffic only once it has fired or been hit.
+- **Gold planes and fire budgets.** Gold planes fire pairs, so their 1.5x ammo goes in fewer volleys.
+  Try counting a pair as one round.
 
 ## Idea catalog
 
@@ -285,8 +184,8 @@ Guns as parts, gun levels, the charge shot, the rear rail gun and the swivel vul
 - **Gun XP tuning.** The level thresholds (2,000 to 35,000) are a first guess: time them in a real run.
   Radiant Silvergun splits XP between combined weapons; boss and capital-ship targets could train the
   gun too (today only planes do).
-- **The rear rail gun in vertical stages.** It fires down off the bottom of the screen, so it only
-  helps against divers that pass below you. Consider rear attacks (M3) or a shorter-range spread.
+- **The rear rail gun in vertical stages.** It fires down off the bottom of the screen; rear attacks (M3)
+  now give it targets there, but a shorter-range spread would still help it against divers.
 - **In-flight power level (Carrier Air Wing, U.N. Squadron, Darius Twin).** Carrier Air Wing's gun levels
   come at 2, 8, 15, 23 and 31 pickups; U.N. Squadron's planes cap between 3 and 7; Darius Twin drops a
   power-up only from the last of six cubes. Optional on top of gun XP: pickups that raise the gun for the
@@ -316,97 +215,43 @@ raids (U.N. Squadron's money missions). The notes below keep the ideas M2 didn't
 - **Money missions (U.N. Squadron).** A short, optional supply-convoy raid that pays well and can be
   replayed; a safety valve for players short of credits.
 
-### Vertical stages (M3)
+### Vertical stages (M3 shipped; what's left)
 
-What the 1942 remakes do that our vertical stages don't. Today a vertical stage is 2 to 4 squadrons,
-each the same five Galaga waves (mirrored every other squadron), and the next squadron only comes once
-the last is cleared (`buildNormalWaves`, `nextSquadron` in `js/game.js`).
+Shipped in M3: traffic between squadrons and three weight classes (kavros 1942: the gunship and the
+heavy), the gunship mini-boss that can escape, the red squadron bonus, attacks from behind, fire budgets
+with formation fire, shot-down %, bullet kinds by color (Typhoon Force), the park-and-snipe plane, edge
+warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readable invulnerability
+(Typhoon Force). See the README. Still open:
 
-- **Traffic between squadrons (kavros 1942).** Its stage is a 150-second timeline of overlapping groups
-  in JSON: each type starts on its own delay (small jets every 9 to 16 s, eight times; medium planes at 18
-  to 34 s; big planes at 40 and 120 s), and planes fly through and leave instead of forming up. For us: a
-  `VTRAFFIC` table of groups (type, entry, count, spacing) that plays while a squadron flies in and
-  between squadrons, spawned from `updateSpawns`. The stage keeps moving instead of pausing on the
-  formation.
-- **Three weight classes (kavros 1942).** Small planes die to 1 hit (30 to 70 points), medium ones take
-  3 to 4 (1,000 to 1,500 points when destroyed, 100 per hit), big ones 8 to 10 (2,000); grey versions are
-  tougher than green. For us: a medium gunship (3 to 4 hp) and a big bomber (8 to 10 hp) for vertical
-  stages. Each needs an `ENEMY` entry, top-down and side art in `ENEMY_DEFS` and an hp in `spawnSideEnemy`.
-- **Gunship mini-boss that can escape (kavros 1942, R-Type III, Darius Twin).** 1942's big plane climbs
-  in from below, holds still, then leaves if you haven't killed it; its volleys spend ammo (the green one
-  fires 2 angled shots, the grey one 4). R-Type III's early robots run away when the next one arrives.
-  Darius Twin's mini-bosses, in contrast, stay until killed. For us: the gunship enters, holds and fires
-  fans through `spreadShot`, and leaves after a while; escaping costs the kill bonus, not a hit.
-- **Squadron bonus (kavros 1942, Darius Twin).** 1942's red squadron of 5 enters in a line from one side,
-  0.4 s apart, and drops a power-up only when the last one dies. Darius Twin does the same with six
-  cubes. For us: a marked line of 5 that drops a TET capsule or shield cell through `dropTet` when all
-  five are shot down.
-- **Attacks from behind (kavros 1942, Darius Twin).** 1942's medium planes enter from the bottom moving up.
-  Darius Twin sends cubes and red ships from behind in later zones. For us: occasional rear entries,
-  flagged by a warning arrow at the screen edge first.
-- **Fire budgets and formation fire (kavros 1942).** Every second, each enemy on screen has a 20% chance
-  to shoot, and each carries limited ammo (big planes spend 3 to 5 per volley), so old planes run dry.
-  Ours cap bullets on screen (`10 + stage`), fire on entry and on the way down a dive, and the formation
-  takes a potshot every two or three seconds (`formationFire`). Still to try: an ammo count per plane in
-  `enemyFire`, with more for acetylated planes.
 - **Fair homing (kavros 1942).** Its grey planes pick a down-left, down-right or straight path from where
   the player is, with a 10 px dead zone, and stop steering and shooting within 100 px. Ours spread two or
-  three shots down each dive and skip a shot within 24 px above the ship; a wider dead zone could follow.
-- **Shot-down % at stage clear (kavros 1942).** Its clear screen shows the percent of enemies destroyed
-  and 1,000 points per unused loop. For us: show the percent and pay credits for it. We already pay
-  `stageHits * 10` and 500 for a perfect challenge stage (`checkStageEnd`); extend that to every leg.
-- **Boss in a band (theonlyrao 1942).** Its boss wanders at random but stays in a band at the top of the
-  screen and picks a new heading every 75 frames; its levels shorten the gap between planes by a fixed step. For
-  us: a simple rule for any new free-flying vertical boss.
-
-### Enemy AI and game feel (M3)
-
-From the source code of Typhoon Force, SUPERCRUISE and Astral Shooter. All three are small, but a few of
-their rules are clearer than ours.
-
-- **Bullet types by color (Typhoon Force).** Its changelog makes "bullet behaviour bound to the bullet
-  type, not enemy type, so bullets of one colour always act the same way". Its enemies fire `aim`
-  (at the player) or `straight` bullets. We have one enemy bullet (`SPR.ebullet`, drawn with one glow).
-  For us: three or four bullet kinds with their own colors (aimed, straight down, slow homing,
-  splitting), chosen per enemy in `enemyFire`/`spreadShot`, so a player can read a pattern at a glance.
-  Keep the methyl beam as its own thing.
+  three shots down each dive and skip a shot within 24 px above the ship; a wider dead zone could follow. (M5)
+- **Boss in a band (theonlyrao 1942).** The heavy uses its rule (a new heading every 75 frames inside a
+  band at the top). Use it for any new free-flying vertical boss, and its levels' shorter gaps between
+  planes for later loops. (M5)
 - **Scripted volleys (Typhoon Force).** Each enemy type lists the ticks it fires on: `fire_at` 200, 210,
   220 and again 650, 660, 670, so a volley is a burst of three shots 10 frames apart at a fixed point in
   its flight. It moves by a function of its own tick with an `offset` per member, so a group staggers
   without separate paths. For us: a `fire` list on wave entries (frames into the path) beside today's
-  random `enterFireAt`, for hand-made bursts in set pieces.
-- **Park-and-snipe enemy (Typhoon Force).** Its third enemy slides in to a set position, stops and keeps
-  aiming at the player until destroyed; waves of four or five stagger their stop positions. For us: a
-  turret plane that parks at the top of a vertical stage (or the right edge of a side mission) and
-  fires aimed bursts; the player has to go and kill it, which breaks up camping in one spot.
+  random `enterFireAt`, for hand-made bursts in set pieces. (M5)
 - **Interceptors from every edge (SUPERCRUISE).** Enemies spawn from all four sides at random speeds and
   turn toward the player at a fixed 0.1 degrees per step, so faster ones overshoot. Each kill scores the
   enemy's speed squared, so the fastest planes pay most. For us: a fast interceptor type (kamikaze
-  family, `spawnKamikaze`) whose points scale with speed.
-- **Off-screen threat markers (SUPERCRUISE).** For every enemy flying toward the player it projects the
-  approach line onto the screen border and draws a WARNING marker there: yellow when far, red within
-  500 px, brighter as it closes. For us: small edge markers for rear entries, kamikazes and interceptors
-  (the same marker as the rear-attack warning in Vertical stages).
+  family, `spawnKamikaze`) whose points scale with speed, as a new traffic group. (M6)
+- **Threat markers that track (SUPERCRUISE).** It projects every approaching enemy's line onto the
+  screen border: yellow when far, red within 500 px, brighter as it closes. Ours are fixed arrows for
+  rear attacks, the heavy and side ambushes; interceptors and kamikazes would want the tracking kind. (M6)
 - **Gun heat (SUPERCRUISE).** Each shot adds heat (3.3 of 100), heat bleeds off 1.5% per frame, a
   caution sound plays above 80, and at 100 the gun locks until it drops to 5. For us: a heat meter
   instead of the bullets-on-screen `cap` for some guns (vulcan, hyper beam), and it gives the GUN
-  COOLERS upgrade a literal job.
-- **Screen shake by distance (SUPERCRUISE).** Each explosion "punches" the view by an amount that falls off
-  with distance from the player; only the strongest punch counts, and it decays 10% a frame. Firing and
-  the afterburner add small punches. For us: SNES games shook by offsetting the background scroll a few
-  whole pixels. Use it for boss deaths, big kills and hits on the player, scaled by distance and capped
-  low, with a setting to turn it off.
-- **Near-miss sounds (SUPERCRUISE).** A flyby sound plays once when an enemy passes within range. For us:
-  a whoosh when a diver or kamikaze passes close; it pairs with grazing (Rewards).
-- **Readable invulnerability and timers (Typhoon Force, Astral Shooter).** Typhoon Force draws the ship
-  translucent for the first two thirds of its 3-second invulnerability and blinks it for the last third,
-  so the player knows when it ends. Astral Shooter's 15-second shield starts blinking 5 seconds before it
-  runs out. Ours blink the whole time (`drawWorld`, `p.invuln`). For us: steady, then blinking near the
-  end, for invulnerability and for Gene Shield, Reflect Field, Force Pod and Hyper Mode.
+  COOLERS upgrade a literal job. (M4)
+- **Readable timers for specials (Typhoon Force, Astral Shooter).** Astral Shooter's 15-second shield
+  starts blinking 5 seconds before it runs out. Invulnerability does this now; Gene Shield, Reflect
+  Field, Force Pod and Hyper Mode still don't. (Later)
 - **Mission cards (SUPERCRUISE).** A typed-out title card on takeoff ("International Waters, Bering Sea,
   May 3rd, 1984, 1800 hours, DEFCON 3") and a KIA card with kills and time survived. For us: a short
   typed card at takeoff (planet, system, time, mission kind) and kills and time on the failed-mission
-  screen.
+  screen. (M6)
 
 ### Bosses (M5)
 

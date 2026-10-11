@@ -32,7 +32,7 @@ Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load orde
 
 ```
 nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js
-       → scenery.js → specials.js → weapons.js → arsenal.js → pilots.js → skills.js → world.js → campaign.js → starmap.js
+       → traffic.js → scenery.js → specials.js → weapons.js → arsenal.js → pilots.js → skills.js → world.js → campaign.js → starmap.js
        → starbase.js → carrier.js → story.js → tet.js → howto.js → touch.js → main.js
 ```
 
@@ -48,7 +48,7 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 | `Touch` | `js/touch.js` | Touch controls (DOM overlay): floating joystick in flight, A/B/X/START buttons, taps elsewhere go to `Game.tap(x, y)`. On for Android/Samsung UAs, `?touch`, or the first touch. `Touch.on` switches `main.js` to fill-the-screen scaling. |
 | world data | `js/world.js` | `GALAXIES` → systems → planets, flattened into `SYSTEMS`, `PLANETS` and the `*_BY_ID` maps. Also `MISSION_KINDS`, `MARKET_POOL`, `TERRAIN_PAL`, `seededRand`. Loads after `game.js` (uses `C`, `TAU`). |
 | `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, HUD and rendering |
-| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/weapons.js`, `js/arsenal.js`, `js/pilots.js`, `js/skills.js`, `js/campaign.js`, `js/starmap.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js`, `js/howto.js`, `js/touch.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
+| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/traffic.js`, `js/scenery.js`, `js/specials.js`, `js/weapons.js`, `js/arsenal.js`, `js/pilots.js`, `js/skills.js`, `js/campaign.js`, `js/starmap.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js`, `js/howto.js`, `js/touch.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
 | boot | `js/main.js` | Scales the canvas to whole-number sizes, sets global hotkeys, runs a **fixed 60 Hz** accumulator loop (`Input.update(); Game.update();` per tick, `Game.draw(ctx)` per frame) |
 
 ### Game state machine
@@ -57,7 +57,7 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 takeoff | play | clear | result | landing | debrief | learn | gameover`. `Game.update()` and `Game.draw()`
 switch on it. Change state with `setState(s)`, which also resets `stateT`. `Game.paused` shows the
 in-game menu over any state; START opens it on every screen past the title (so menus confirm with A,
-not START). It offers RESUME, SKIP BRIEFING, SOUND, ABORT MISSION, QUIT TO TITLE and EXIT GAME
+not START). It offers RESUME, SKIP BRIEFING, SOUND, SHAKE (screen shake, saved in `chimera.opts`), ABORT MISSION, QUIT TO TITLE and EXIT GAME
 (`exitGame()`: save, leave fullscreen, go back a page). `inMenu()` lists the full-screen menu states (no playfield; `draw()` sends
 them to `drawMenuScreen`). While `inBase` is set, `intro`/`hangar` draw over the starbase (`drawInBase`).
 
@@ -119,8 +119,32 @@ leg (`MISSION_KINDS`). `Game.legBoss` is true on a boss leg (side.js only adds t
 it grows with the system's `tier` (its place in the galaxy chain) and the planet's place in its system,
 like open-world zones. `hpMul()` makes enemies and bosses tougher in later galaxies.
 
-- **Vertical stages:** several squadrons in turn (`squads`, `nextSquadron()`), wave layouts (`buildNormalWaves`, `buildChallengeWaves`), spline flight paths
-  (`PATH_DEFS` → `PATHS`), formation slots, dives, methylator beams.
+- **Vertical stages:** four squadrons in turn (`squads`, `nextSquadron()`), wave layouts (`buildNormalWaves`, `buildChallengeWaves`), spline flight paths
+  (`PATH_DEFS` → `PATHS`), formation slots, dives, methylator beams. Between squadrons, `checkStageEnd` runs an
+  intermission (`startIntermission`, `this.inter`) that waits for a called heavy to die or leave.
+- **Traffic** (`traffic.js`, vertical `normal` legs): `buildTraffic(stage, squads)` lays a timeline of groups
+  (`VTRAFFIC` kinds, gaps from `VBANDS` by difficulty band `vband()`: A 1-4, B 5-9, C 10-14, D 15+), plus red
+  squadrons and which intermissions bring the HEAVY. `trafficTick()` sends the next group, but not while a
+  squadron flies in (`squadFlyingIn()`), over `trafficCap()` planes, or with 30+ bullets in the air. Traffic
+  planes have `state: 'traffic'`, `transit: true` and a `beh` (`cross`, `vee`, `red`, `climb`, `park`, `hold`,
+  `flee`) run by `updateTraffic(e)`; they never take a slot, and `checkStageEnd` ignores them. A plane queued
+  off screen is only culled after it has been `seen`. When a leg clears, traffic flees (`updateClear` still
+  moves enemies; `enemyFire` only fires in `play`).
+- **Fire budgets:** every plane carries `ammo` (`ENEMY[type].ammo`, gold planes 1.5×, `ammoFor()`); each bullet
+  spends one (`spendAmmo`), and `formationFire` only picks planes with ammo. Bosses, capital ships and their
+  turrets have none (`ammo` undefined).
+- **Enemy bullets** carry a kind `k`: `aim` (red), `drop` (orange, straight back), `split` (yellow, bursts into
+  three `aim` shards at 40 frames) and `seek` (violet, turns toward you for 90 frames), each with its art in
+  `SPR.ebul` and glow in `EBUL_GLOW`. Make them with `eShot(x, y, vx, vy, k)` (or `enemyFire(e, k, n, gap)`,
+  `spreadShot`, `ringShot`); `steerEnemyBullet()` (`weapons.js`) flies the newer kinds. `eBulRoom(k)` is the cap.
+- **Feedback:** `this.warns` (`{ x, y, dir, t }`, `dir` = the angle the threat flies in at) draws a blinking
+  `SPR.warnArrow` at a screen edge in both modes. `punch(amt, x, y)` shakes the playfield (not the HUD) by up to
+  3 px, falling off with distance from the ship; `opts.shake` turns it off. `p.invMax` lets the ship draw
+  see-through for the first two thirds of `p.invuln`, then blink. `nearMiss(e)` plays `SFX.whoosh` once per plane.
+- **Shot-down %:** `this.tally` (`n` planes spawned, `k` destroyed) is reset per leg and counted in the spawn
+  functions and `killEnemy`; `tallyLeg()` runs on entering `clear` (not for `capital` or `challenge` legs), pays
+  points and `bonusCr`, sets `this.shotDown` for the banner and pushes the percent to `mission.shotDown` for the
+  debrief.
 - **Side missions** (`side.js`): `initSide()` builds a timed event script. `updateSide()` spawns patterns
   (`migLine`, `migSwoop`, `migRear`, `bomber`, `sam`, `methyl`, `splitterLine`, `droneSwarm`,
   `armoredPair`, `boss`). Each enemy's `beh` field picks its movement in `updateSideEnemy`. Everything
@@ -172,8 +196,8 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   `fireWeapon()`; it, `updateBullets()`, `steerBullet()` and `drawPlayerBullet()` live in `weapons.js`;
   `collide()` calls `bulletHits(b, e)` there (piercing shots carry `pierce` and a `hit` list; wide ones a
   `rad`; `bulletEnd(b)` bursts bombs, clusters and charge balls).
-- `ENEMY`: enemy types (hp, points `[normal, acetylated]`, hit radius). A new enemy type needs an entry
-  here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`), and an hp in `spawnSideEnemy`.
+- `ENEMY`: enemy types (hp, points `[formation, diving]` (gold doubles them), hit radius, `ammo`). A new enemy type needs an entry
+  here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`; each is baked `normal`, `acetyl`, `red`, `dmg` and `white`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
 - `SPECIALS` (in `specials.js`): special weapons, learned at even levels. The hangar (`hangarRowIds()`:
   0-2 guns, 3 SPECIAL, 4 MODULE; `hangarRow` indexes that list, `hangarChange(dir)`, `tapHangar`) opens
@@ -211,7 +235,8 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   `saveCampaign()` whenever the carrier docks, you buy something or you launch from the hangar.
   `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), `migrateV2()` (v2 → v3), then
   `migrateV3()` (v3 → v4).
-- TET capsules (`tet.js`): acetylated kills may drop one (`dropTet`); collecting it restores a silenced form.
+- Pickups (`tet.js`): `this.pickups` entries have a `kind`. `tet`: acetylated kills may drop one (`dropTet`); collecting
+  it restores a silenced form. `cell`: the red squadron's shield cell (`dropCell`, `collectCell`).
 
 ## Conventions
 
@@ -233,7 +258,7 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - Every file starts with `'use strict';`. Shared helpers in `game.js` (`rand`, `randi`, `pick`, `clamp`,
   `angDiff`, `TAU`, `C`, `W`, `H`, `CX`, `OX`) are globals and available to the files loaded after it.
 - Keep the style: short methods on `Game`, compact one-line statements, and brief comments that explain *why*.
-- Wrap all `localStorage` access in try/catch (keys: `chimera.hi`, `chimera.padmap`, `chimera.save`).
+- Wrap all `localStorage` access in try/catch (keys: `chimera.hi`, `chimera.padmap`, `chimera.save`, `chimera.opts`).
   If you change the shape of `Game.camp`, bump its `v` and handle old saves in `continueCampaign`.
 - Keep the game playable with only a D-pad, A, B, Select and Start (NES-style pads), and with touch
   (joystick, A, B, X, START and taps). Put keyboard-only extras (like `back`) on top of that; don't make
@@ -263,6 +288,12 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - **New module:** add it to `MODULES` (`arsenal.js`) and give its `kind`/`id` effects in
   `setupModule`, `updateModule`, `moduleCollide` and `drawModule`. Markets draw `mod:<id>` from
   `MARKET_POOL` by its `gal`.
+- **New traffic group:** add a kind to `VTRAFFIC` (`traffic.js`: `types`, `count`, `gap`, `band`, `weight`) and a
+  `case` in `spawnTraffic` that places its planes with `trafficPlane(type, x, y, beh, extra)`; give a new `beh` a
+  case in `updateTraffic`. A group that comes from an edge should push `this.warns` first. Set pieces placed by
+  hand (like `redline`) take `weight: 0` and are spliced into the timeline in `buildTraffic`.
+- **New enemy bullet kind:** add art to `SPR.ebul`, a glow pair to `EBUL_GLOW`, a speed in `enemyFire` and its
+  flight in `steerEnemyBullet`; add it to the HOW TO bullet list.
 - **New side-mission pattern:** add a `case` to `spawnSidePattern`, add it to the `kinds` list in `initSide`,
   and add a `beh` case in `updateSideEnemy` if it needs new movement.
 - **New story beat:** edit `PLANET_STORY` (per planet), `STORY_BEATS` (Voss's arc) or

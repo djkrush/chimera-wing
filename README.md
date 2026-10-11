@@ -181,7 +181,8 @@ No install or build step. Open `index.html` in Chrome, Edge or Firefox.
   `&fit=charge,swivel,rail` for the three forms' guns, `&mod=barrier2` for a module and `&ord=missile2`
   to carry ordnance (test runs own every gun and module, and 6 of each ordnance). Test runs don't save.
 - `index.html?touch` turns on the touch controls on a desktop browser.
-- `F` toggles fullscreen and `M` mutes the sound.
+- `F` toggles fullscreen and `M` mutes the sound. The game menu (Start) turns **SHAKE** (screen shake on
+  hits and big blasts) on or off; the setting is remembered.
 
 ## Controls
 
@@ -245,15 +246,34 @@ upgrades and level-up training add to them, up to 16):
 - **TET capsules:** gold planes sometimes drop a green-and-white capsule (more often when a form
   is silenced). Fly into it to demethylate one silenced form. With nothing silenced, it's worth
   1000 points. Real TET enzymes start the process that removes methyl marks from DNA.
+- **Bullet colors:** the color says what a bullet does, whoever fires it. **Red** flies straight at
+  where you were. **Orange** falls straight back, a little slower (bombers, the heavy's curtains).
+  **Yellow** is slow, then bursts into three red shards (the heavy, gold gunships). **Violet** is slow
+  and bends toward you for a moment (snipers and the heavy, in the far galaxies).
+- **Shot-down bonus:** every leg except control groups and capital-ship flyovers counts the planes
+  that came and the ones you shot down (traffic that gets away is missed). The clear screen shows
+  SHOT DOWN and pays 100 points per percent plus credits; 100% is PERFECT and pays double. The debrief
+  shows the mission's average.
 - **Epigenetic memory:** if one form gets 60% or more of your kills in a stage, the next squadron
   adapts and takes half damage from it. Keep transforming.
 ## The two kinds of stage
 
-- **Vertical** (Galaga-style, top-down, you fly up): squadrons of 40 planes fly into formation and dive
-  at you, one after another (2 squadrons early on, up to 4 in the far galaxies). Every form can fly up,
-  down, left and right in the lower part of the screen, and the ship banks as it turns.
-  Planes shoot as they fly in, as they dive, and now and then from the formation. On a challenging
-  stage they only take the odd shot.
+- **Vertical** (Galaga-style, top-down, you fly up): four squadrons of 40 planes fly into formation and
+  dive at you, one after another. Every form can fly up, down, left and right in the lower part of the
+  screen, and the ship banks as it turns. Planes shoot as they fly in, as they dive, and now and then
+  from the formation, but each carries only so many rounds, so an old formation goes quiet. On a
+  challenging stage they only take the odd shot. Around the squadrons, the leg plays like 1942:
+  - **Traffic** flies through and leaves instead of forming up: MiG pairs crossing, vees that break
+    away above you, gunships that dive in and cross firing aimed pairs, snipers that park at the top and
+    fire bursts until they run dry, and attacks **from behind**, flagged by arrows at the bottom edge.
+    Later systems send more of it, and more kinds.
+  - Between squadrons comes a 7 to 9 second **intermission**. Past the first few planets, a
+    **HEAVY** gunship comes down from the top in one of them (two in the far galaxies): it holds the
+    top of the screen, fires fans, falling curtains and later splitting and seeking shells, and leaves
+    after 12 seconds. Let it escape and you only lose its 2,000-point bonus.
+  - A **red squadron** of five crosses in a line once or twice a leg. Down all five and the last one
+    drops a **shield cell** (+1 shield, or 500 points at full shields) and SQUADRON BONUS 1000.
+  - A leg runs about 90 to 150 seconds.
 - **Capital-ship flyover** (vertical boss): a giant Star Destroyer-style ship scrolls beneath you.
   Knock out its gun turrets, fighter hangars and histone reactor cores, and the fighters it
   launches. If you reach the end of the ship with targets left, you come about and fly over it
@@ -262,7 +282,8 @@ upgrades and level-up training add to them, up to 16):
   on the left side of the screen. Every ship here, yours and the enemy's, is drawn in side profile.
   Enemies include:
   - MiG squadrons flying in lines or swooping at you
-  - Ambushes from behind, with a red `!>` warning on the left edge first
+  - Ambushes from behind, with warning arrows on the left edge first
+  - Gunship pairs (later systems) and snipers that park at the right edge (further out still)
   - Slow, tough bombers
   - SAM sites on the ground
   - Methylators that park on the right and fire their silencing beam sideways. If one gets away
@@ -315,6 +336,7 @@ js/game.js        game states, Galaga stages, player, enemies, rendering
 js/bosses.js      side-mission boss warships (turrets, hardpoints, cores, shields, beams)
 js/capital.js     vertical boss fights: capital-ship flyovers
 js/side.js        side-scrolling assaults: enemy script, behaviors
+js/traffic.js     vertical-stage traffic, the heavy mini-boss, red squadrons, rear attacks, intermissions
 js/scenery.js     per-planet scenery: Mode 7 surfaces, parallax layers, nebula
 js/specials.js    hangar screen (gun fit, special or ordnance, module) + special weapons
 js/weapons.js     gun parts, mounts, gun levels, firing, bullet flight, drawing

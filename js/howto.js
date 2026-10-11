@@ -283,6 +283,26 @@ Object.assign(Game, {
       this.howBig(ctx, SPR.enemy.fighter.acetyl[(this.t >> 3) & 1], x, y - 30, Math.PI);
       NES.draw(ctx, SPR.tet, x, y + 20 + Math.round(Math.sin(this.t * 0.1) * 3));
     });
+    page('WHAT ELSE FLIES THROUGH?', [
+      'IN A PATROL, TRAFFIC FLIES THROUGH AROUND THE SQUADRONS: MIG PAIRS, VEES, GUNSHIPS, SNIPERS THAT PARK AND SHOOT, AND PLANES FROM BEHIND. WATCH THE ARROWS AT THE EDGE.',
+      'BETWEEN SQUADRONS A HEAVY MAY COME DOWN. IT LEAVES AFTER 12 SECONDS, AND ITS BONUS GOES WITH IT.',
+      'SHOOT DOWN ALL FIVE OF A RED SQUADRON AND THE LAST ONE DROPS A SHIELD CELL.'],
+    (ctx, x, y) => this.howArtTraffic(ctx, x, y));
+    list('WHAT DO THE BULLET COLORS MEAN?', [
+      ['RED: AIMED', 'FLIES STRAIGHT AT WHERE YOU WERE.', C.red],
+      ['ORANGE: DROP', 'FALLS STRAIGHT BACK, A LITTLE SLOWER. BOMBERS AND THE HEAVY.', C.orange],
+      ['YELLOW: SPLIT', 'SLOW, THEN BURSTS INTO THREE AIMED SHARDS.', C.yellow],
+      ['VIOLET: SEEK', 'SLOW. IT BENDS TOWARD YOU FOR A WHILE, THEN FLIES STRAIGHT.', C.lavender],
+    ], (ctx, x, y, hi) => this.howArtBullets(ctx, x, y, ['aim', 'drop', 'split', 'seek'][hi]));
+    page('WHAT IS THE SHOT-DOWN BONUS?', [
+      'EVERY LEG COUNTS THE PLANES THAT CAME AND THE ONES YOU SHOT DOWN. TRAFFIC THAT GETS AWAY COUNTS AS MISSED. CONTROL GROUPS AND CAPITAL SHIPS KEEP THEIR OWN SCORE.',
+      'THE CLEAR SCREEN PAYS 100 POINTS PER PERCENT, PLUS CREDITS. 100% IS PERFECT AND PAYS DOUBLE.'],
+    (ctx, x, y) => {
+      const n = Math.min(100, 60 + ((this.t >> 2) % 60)), perfect = n >= 100;
+      NES.text(ctx, 'SHOT DOWN', x, y - 30, C.aqua, { align: 'center' });
+      NES.text(ctx, n + '%', x, y - 14, perfect ? C.gold : C.white, { align: 'center', scale: 2 });
+      if (perfect && (this.t >> 3) & 1) NES.text(ctx, 'PERFECT!', x, y + 14, C.gold, { align: 'center', scale: 2, shadow: C.darkred });
+    });
 
     topic('THE SCIENCE');
     list('WHAT DO THE WORDS MEAN?', [
@@ -499,6 +519,40 @@ Object.assign(Game, {
   },
 
   // A sprite at twice its size (whole-pixel scaling, like the SNES's scaled sprites).
+  // Traffic: a heavy holding its band, a red squadron crossing, a rear attacker under its arrow.
+  howArtTraffic(ctx, x, y) {
+    const f = (this.t >> 3) & 1, T = this.t % 240;
+    NES.drawRot(ctx, SPR.enemy.heavy.normal[f], x + Math.round(Math.sin(this.t * 0.02) * 20), y - 62, Math.PI);
+    for (let i = 0; i < 5; i++) {
+      const rx = x - 80 + ((T * 1.2 - i * 26 + 600) % 200);
+      if (rx > x - 64 && rx < x + 64) NES.drawRot(ctx, SPR.enemy.fighter.red[f], rx, y - 16 + Math.round(Math.sin(rx * 0.05) * 10), Math.PI / 2);
+    }
+    const ry = y + 92 - Math.max(0, T - 120) * 1.4;
+    if (T < 120) { if ((this.t >> 2) & 1) NES.drawRot(ctx, SPR.warnArrow, x + 30, y + 88, 0); }
+    else if (ry > y + 10) NES.draw(ctx, SPR.enemy.fighter.normal[f], x + 30, ry);
+    this.drawShip(ctx, 0, x, y + 60, 0, true, false, 0);
+  },
+
+  // One bullet kind in flight: a shooter at the top fires at a ship swaying at the bottom.
+  howArtBullets(ctx, x, y, k) {
+    const f = (this.t >> 3) & 1, T = this.t % 150, sx = x + Math.round(Math.sin(this.t * 0.03) * 40), sy = y + 66, ox = x, oy = y - 70;
+    NES.drawRot(ctx, SPR.enemy[k === 'drop' ? 'bomber' : k === 'seek' ? 'sniper' : k === 'split' ? 'gunship' : 'fighter'].normal[f], ox, oy, Math.PI);
+    this.drawShip(ctx, 0, sx, sy, 0, true, false, 0);
+    const tx = x + Math.round(Math.sin((this.t - T) * 0.03) * 40);   // where the ship was when it fired
+    const bul = (bx, by, vx = 0, vy = 1) => {   // only inside the picture pane
+      if (Math.abs(bx - x) < 62 && by < y + 92) this.drawEBul(ctx, { k: k === 'split' && T > 50 ? 'aim' : k, x: bx, y: by, vx, vy });
+    };
+    if (k === 'aim') bul(ox + (tx - ox) * T / 110, oy + (sy - oy) * T / 110);
+    else if (k === 'drop') bul(ox, oy + T * 1.1);
+    else if (k === 'split') {
+      if (T <= 50) bul(ox, oy + T * 0.8);
+      else for (const d of [-0.3, 0, 0.3]) { const a = Math.atan2(sy - oy - 40, tx - ox) + d, r = (T - 50) * 1.6; bul(ox + Math.cos(a) * r, oy + 40 + Math.sin(a) * r); }
+    } else {
+      const bend = Math.min(1, T / 90);   // bends toward the ship, then straight
+      bul(ox + (sx - ox) * bend * (T / 140), oy + T * 1.0);
+    }
+  },
+
   howBig(ctx, img, x, y, ang, s = 2) {
     ctx.save();
     ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(ang); ctx.scale(s, s);
@@ -523,7 +577,7 @@ Object.assign(Game, {
         NES.drawRot(ctx, SPR.enemy[r && kind === 'v' ? 'bomber' : type].normal[f], x - 45 + c * 30 + Math.round(Math.sin(this.t * 0.04) * 6), y - 70 + r * 22, Math.PI);
       }
       this.howArtGun(ctx, 'twin', x, y + 70, 1);
-      NES.text(ctx, kind === 'bonus' ? 'NO RETURN FIRE' : 'VERTICAL', x, HOW_ART.y + 20, C.gold, { align: 'center' });
+      NES.text(ctx, kind === 'bonus' ? 'BARELY ARMED' : 'VERTICAL', x, HOW_ART.y + 20, C.gold, { align: 'center' });
       return;
     }
     const gy = y + 70;

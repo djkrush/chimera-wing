@@ -241,7 +241,7 @@ const Game = {
     this.waves = type === 'normal' ? buildNormalWaves() : type === 'challenge' ? buildChallengeWaves(this.stage) : [];
     this.waveI = 0;
     this.squad = 0;                                        // squadrons flown so far in a vertical stage
-    this.squads = this.stage < 4 ? 2 : this.stage < 10 ? 3 : 4;
+    this.squads = 4;   // with traffic, intermissions and heavies a leg runs about 90 to 150 seconds
     this.traffic = type === 'normal' ? this.buildTraffic(this.stage, this.squads) : null;   // traffic.js
     this.inter = null;
     this.challengeTotal = this.waves.reduce((n, w) => n + w.list.length, 0);
@@ -1338,10 +1338,12 @@ const Game = {
   drawEnemyBullets(ctx) {
     const ph = (this.t >> 2) & 1;
     SNES.add(ctx, () => { for (const b of this.eBul) NES.draw(ctx, SNES.glow(4, EBUL_GLOW[b.k || 'aim'][ph]), b.x, b.y); });
-    for (const b of this.eBul) {
-      const img = SPR.ebul[b.k || 'aim'];
-      if (b.k === 'drop') NES.drawRot(ctx, img, b.x, b.y, Math.atan2(b.vy, b.vx) + Math.PI / 2); else NES.draw(ctx, img, b.x, b.y);
-    }
+    for (const b of this.eBul) this.drawEBul(ctx, b, false);
+  },
+  drawEBul(ctx, b, glow = true) {
+    if (glow) SNES.add(ctx, () => NES.draw(ctx, SNES.glow(4, EBUL_GLOW[b.k || 'aim'][(this.t >> 2) & 1]), b.x, b.y));
+    const img = SPR.ebul[b.k || 'aim'];
+    if (b.k === 'drop') NES.drawRot(ctx, img, b.x, b.y, Math.atan2(b.vy, b.vx) + Math.PI / 2); else NES.draw(ctx, img, b.x, b.y);
   },
 
   // Edge warnings ({ x, y, dir, t }: dir = the angle the threat flies in at): a blinking arrow.

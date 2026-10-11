@@ -18,7 +18,7 @@ const VTRAFFIC = [
   { kind: 'rear', types: ['fighter'], count: [2, 3], gap: 34, from: 'bottom', beh: 'climb', band: 1, weight: 2 },
 ];
 // Difficulty bands by stage: A 1-4, B 5-9, C 10-14, D 15+. Seconds between groups for each.
-const VBANDS = [{ gap: [8, 14] }, { gap: [6, 11] }, { gap: [5, 9] }, { gap: [4, 7] }];
+const VBANDS = [{ gap: [6, 10] }, { gap: [5, 9] }, { gap: [5, 9] }, { gap: [4, 7] }];
 const HEAVY_HOLD = 720;   // the heavy leaves after 12 seconds in its band
 
 Object.assign(Game, {
@@ -37,9 +37,9 @@ Object.assign(Game, {
       for (const q of pool) if ((r -= q.weight) < 0) { k = q; break; }
       list.push({ gap: randi(g0 * 60, g1 * 60), kind: k.kind });
     }
-    list[0].gap = Math.min(list[0].gap, 240);   // the first group comes soon after the formation is set
     const reds = b === 0 ? 1 : randi(1, 2);
-    for (let k = 0; k < reds; k++) list.splice(randi(1, 3 + k * 4), 0, { gap: randi(g0 * 60, g1 * 60), kind: 'redline' });
+    for (let k = 0; k < reds; k++) list.splice(k ? randi(3, 6) : randi(0, 1), 0, { gap: randi(g0 * 60, g1 * 60), kind: 'redline' });
+    list[0].gap = Math.min(list[0].gap, 240);   // the first group comes soon after the formation is set
     const slots = Array.from({ length: squads - 1 }, (_, i) => i).sort(() => Math.random() - 0.5);
     const heavies = stage < 3 ? [] : slots.slice(0, b >= 2 ? 2 : 1);
     return { list, i: 0, t: 0, heavies };
@@ -244,10 +244,10 @@ Object.assign(Game, {
     Sound.sfx('oneup');
   },
 
-  // Between squadrons: 6 to 8 seconds of traffic before the next squadron flies in. In some legs the heavy
+  // Between squadrons: 7 to 9 seconds of traffic before the next squadron flies in. In some legs the heavy
   // is called in first: Mira warns you, an arrow flashes at the top, and the next squadron waits for it.
   startIntermission() {
-    const T = this.traffic, I = { t: randi(360, 480) };
+    const T = this.traffic, I = { t: randi(420, 540) };
     if (T && T.heavies.includes(this.squad)) {
       const x = randi(100, W - 100);
       I.heavy = { t: 50, x };
