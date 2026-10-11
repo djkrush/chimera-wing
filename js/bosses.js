@@ -400,7 +400,7 @@ Object.assign(Game, {
     for (let i = 0; i < 6; i++) {
       this.booms.push({ x: B.x + rand(0, BASE_W), y: SIDE_GROUND - rand(0, BASE_H), n: 16, delay: i * 6 });
     }
-    for (const e of this.enemies) { e.dead = true; this.explode(e.x, e.y, 8); }
+    for (const e of this.enemies) { e.dead = true; this.explode(e.x, e.y, 8); this.tally.k++; }   // the blast takes them: shot down
     this.enemies = [];
     this.eBul = [];
     this.boss = null;
@@ -412,6 +412,7 @@ Object.assign(Game, {
     this.bossWin = true;
     this.clearDelay = 300;
     this.setState('clear');
+    this.tallyLeg();   // game.js: shot-down %
     Sound.playSong(Sound.SONGS.victory);
   },
 

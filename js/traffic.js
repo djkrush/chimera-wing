@@ -73,6 +73,7 @@ Object.assign(Game, {
     const e = { type, hp, maxHp: hp, x, y, vx: 0, vy: 0, ang: Math.PI, state: 'traffic', transit: true, beh, st: 0,
       slot: null, wave: -1, acetyl, holding: -1, flash: 0, fireYs: [], fireTs: [], t: randi(0, 60), dead: false, ...extra };
     e.ammo = this.ammoFor(e);
+    this.tally.n++;
     this.enemies.push(e);
     return e;
   },

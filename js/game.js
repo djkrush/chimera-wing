@@ -188,6 +188,7 @@ const Game = {
   capital: null, legBoss: false, scrollLock: false,        // capital ship (capital.js); leg ends in a boss; base arrived
   wingT: 0, tetT: 0, lastBossName: '',
   warns: [], shake: 0, opts: { shake: true },               // edge warnings, screen shake, options
+  tally: { n: 0, k: 0 }, shotDown: null,                    // shot-down % (tallyLeg)
 
   init() {
     this.hi = loadHi();
@@ -235,6 +236,7 @@ const Game = {
     this.stageType = type;
     this.enemies = []; this.eBul = []; this.pBul = [];
     this.laser = null; this.crushT = 0; this.wingT = 0; this.tetT = 0; this.warns = []; this.shake = 0;
+    this.tally = { n: 0, k: 0 }; this.shotDown = null;   // planes spawned and destroyed this leg (shot-down %)
     if (this.isSide) this.initSide();
     this.waves = type === 'normal' ? buildNormalWaves() : type === 'challenge' ? buildChallengeWaves(this.stage) : [];
     this.waveI = 0;
@@ -579,6 +581,7 @@ const Game = {
       this.nextAdapt = this.computeAdapt();
       this.clearDelay = 90;
       this.setState('clear');
+      this.tallyLeg();
       return;
     }
     if (this.waveI < this.waves.length || this.enemies.some(e => !e.transit)) return;   // traffic doesn't hold a leg up
@@ -603,6 +606,7 @@ const Game = {
     } else {
       this.clearDelay = 90;
       this.setState('clear');
+      this.tallyLeg();
     }
   },
 
@@ -618,6 +622,21 @@ const Game = {
     this.formKills = [0, 0, 0];
     this.popup(CX, 100, 'SQUADRON ' + (this.squad + 1) + ' OF ' + this.squads, C.gold);
     this.say(this.squad === this.squads - 1 ? 'LAST SQUADRON INBOUND. FINISH THEM.' : 'ANOTHER SQUADRON INBOUND!', 'mira', true);
+  },
+
+  // Shot-down % for a cleared leg (not a challenge stage, which has its own count, or a capital flyover):
+  // pct x 100 points and credits by tier, doubled for PERFECT. Traffic that flew off counts as missed;
+  // planes still queued off screen when the leg ends don't count.
+  tallyLeg() {
+    if (this.stageType === 'capital' || this.stageType === 'challenge' || !this.tally) return;
+    const queued = this.enemies.filter(e => !e.dead && e.transit && !e.seen).length, n = Math.max(1, this.tally.n - queued);
+    const pct = Math.min(100, Math.floor(this.tally.k / n * 100)), perfect = pct >= 100, mul = perfect ? 2 : 1;
+    const pts = pct * 100 * mul, cr = round10(pct / 100 * (150 + 50 * this.systemDef().tier)) * mul;
+    this.addScore(pts);
+    if (this.mission) { this.mission.bonusCr += cr; (this.mission.shotDown = this.mission.shotDown || []).push(pct); }
+    this.shotDown = { pct, perfect, pts, cr };
+    this.clearDelay = Math.max(this.clearDelay, 160);   // time to read it
+    if (perfect) Sound.sfx('oneup');
   },
 
   gameOver() {
@@ -684,6 +703,7 @@ const Game = {
       holding: -1, flash: 0, fireYs: [], t: randi(0, 60), dead: false, enterFireAt: 0,
     };
     e.ammo = this.ammoFor(e);
+    this.tally.n++;
     if (Math.random() < (chall ? 0.3 : Math.min(0.25 + this.stage * 0.04, 0.6))) {   // every stage shoots back, a bonus stage lightly
       e.enterFireAt = randi(40, Math.max(41, Math.min(160, path.length - 40)));
     }
@@ -698,6 +718,7 @@ const Game = {
       slot: null, wave: -1, acetyl: false, holding: -1, flash: 0, fireYs: [110], t: 0, dead: false, wob: 0,
       ammo: ENEMY[type].ammo,
     });
+    this.tally.n++;
   },
 
   // A new plane's fire budget.
@@ -756,12 +777,20 @@ const Game = {
         : e.state === 'form' || e.state === 'beam' ? Math.PI
           : moving ? Math.atan2(e.vy, e.vx) + Math.PI / 2 : e.ang;
       e.ang += clamp(angDiff(e.ang, target), -0.25, 0.25);
+      this.nearMiss(e);
       if (e.state === 'dive' && e.fireYs.length && oy < e.fireYs[0] && e.y >= e.fireYs[0]) {
         e.fireYs.shift();
         if (e.y < this.player.y - 24) this.enemyFire(e);   // no point-blank shots from beside the ship
       }
     }
     this.enemies = this.enemies.filter(e => !e.dead);
+  },
+
+  // Near miss (SUPERCRUISE): a whoosh the first time a diver, rear attacker or traffic plane passes close.
+  nearMiss(e) {
+    const p = this.player;
+    if (e.whooshed || !p.alive || !(e.state === 'dive' || e.transit || e.beh === 'rear') || e.type === 'heavy') return;
+    if (Math.abs(e.x - p.x) < 16 && Math.abs(e.y - p.y) < 16) { e.whooshed = true; Sound.sfx('whoosh'); }
   },
 
   startDive(e, turn) {
@@ -948,6 +977,7 @@ const Game = {
     if (e.holding >= 0) { this.restoreForm(e.holding); pts += 1000; }
     if (e.cargo) this.cargoKill(e);   // supply raid: the cargo pays (side.js)
     this.addScore(pts);
+    this.tally.k++;
     if (diving || pts >= 300) this.popup(e.x, e.y - 4, String(pts), e.acetyl ? C.gold : C.white);
     this.explode(e.x, e.y, e.type === 'methyl' ? 18 : 12);
     Sound.sfx('explode');
@@ -1337,10 +1367,19 @@ const Game = {
           NES.text(ctx, 'DESTROYED!', 128, 96, C.gold, { align: 'center', shadow: C.darkred });
           NES.text(ctx, 'BONUS 20000', 128, 110, C.white, { align: 'center' });
         }
+        if (this.shotDown && this.stateT > (this.bossWin ? 60 : 20)) this.drawShotDown(ctx, this.bossWin ? 128 : 96);
         break;
       case 'result': this.drawResult(ctx); break;
       case 'gameover': this.drawGameOver(ctx); break;
     }
+  },
+
+  // The clear banner's shot-down line: percent, then the bonus (PERFECT doubles it).
+  drawShotDown(ctx, y) {
+    const S = this.shotDown;
+    NES.text(ctx, 'SHOT DOWN ' + S.pct + '%', 128, y, S.perfect ? C.gold : C.aqua, { align: 'center', shadow: C.navy });
+    if (S.perfect && (this.t >> 3) & 1) NES.text(ctx, 'PERFECT!', 128, y + 23, C.gold, { align: 'center', scale: 2, shadow: C.darkred });
+    if (this.stateT > (this.bossWin ? 80 : 40)) NES.text(ctx, 'BONUS ' + S.pts + '  +' + S.cr + ' CR', 128, y + 11, C.white, { align: 'center', shadow: C.navy });
   },
 
   drawGameMenu(ctx) {

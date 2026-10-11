@@ -326,6 +326,7 @@ const Sound = (() => {
     restore: () => [523, 659, 784, 1047].forEach((f, i) => v('bell', f, 0.3, { delay: i * 0.06, vol: 0.35, echo: 0.5 })),
     oneup: () => [784, 988, 1175, 1568, 1175, 1568].forEach((f, i) => v('bell', f, 0.2, { delay: i * 0.07, vol: 0.3, echo: 0.4 })),
     dive: () => v('sine', 300, 0.35, { slide: 900, vol: 0.25 }),
+    whoosh: () => { v('noise', 600, 0.12, { slide: 2400, vol: 0.2, swell: true }); v('noise', 2400, 0.2, { delay: 0.12, slide: 500, vol: 0.16 }); },   // near miss
     select: () => { v('bell', 988, 0.15, { vol: 0.3 }); v('sq25', 988, 0.05, { vol: 0.12 }); },
     move: () => v('sq12', 660, 0.035, { vol: 0.22 }),
     blip: () => v('sq12', 1200, 0.025, { vol: 0.1 }),

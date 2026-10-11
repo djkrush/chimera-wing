@@ -134,6 +134,7 @@ Object.assign(Game, {
     };
     if (type === 'sam' || type === 'tank') e.face = 0;
     if (e.ammo === undefined) e.ammo = this.ammoFor(e);
+    this.tally.n++;
     this.enemies.push(e);
     return e;
   },

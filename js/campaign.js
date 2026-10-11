@@ -273,6 +273,7 @@ Object.assign(Game, {
     const combat = round10(((this.score - M.score0) / 40 + M.bonusCr) * payMul);
     const xp = Math.round((120 + 25 * S.tier) * K.pay * mult * xpMul);
     const lines = [['MISSION PAY', pay + ' CR'], ['COMBAT PAY', combat + ' CR']];
+    if (M.shotDown && M.shotDown.length) lines.push(['SHOT DOWN', Math.round(M.shotDown.reduce((a, b) => a + b) / M.shotDown.length) + '%']);   // the mission's average
     let money = pay + combat, gain = xp;
     if (M.mi < 0) { const cargo = round10(M.cargoCr * payMul); lines.push(['CARGO', cargo + ' CR']); money += cargo; }
     lines.push(['EXPERIENCE', xp + ' XP']);
