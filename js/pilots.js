@@ -47,7 +47,8 @@ Object.assign(Game, {
     const c = this.camp, extra = c ? (c.up[key] || 0) + (c.train[key] || 0) : 0;
     return clamp(this.pilotDef()[key] + this.hullDef()[key] + extra, 1, STAT_CAP);
   },
-  upLevel(key) { return this.camp ? this.camp.up[key] || 0 : 0; },
+  // Levels bought, Mk II and Mk III included (starbase.js), so every effect picks them up.
+  upLevel(key) { const u = this.camp ? this.camp.up : {}; return (u[key] || 0) + (u[key + '2'] || 0) + (u[key + '3'] || 0); },
   hasPassive(id) { return !!this.camp && this.camp.passives.includes(id); },
   // Shot damage for a form: the weapons stat, the hull's strength in that form and the form's gun upgrade.
   gunPower(form = this.player.form) {
@@ -82,6 +83,7 @@ Object.assign(Game, {
   // Shields soak hits. Returns false when there were none left and the ship went down.
   takeHit() {
     const p = this.player;
+    if (this.barrier > 0) { this.barrierHit(); return true; }   // a barrier module soaks it first (arsenal.js)
     if (this.shields <= 0 && this.hasPassive('second') && !this.secondUsed) {   // SECOND WIND: once per leg
       this.secondUsed = true;
       this.shields = 1;

@@ -22,7 +22,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 | # | Milestone | What it adds | Why first |
 |---|---|---|---|
 | M1 | **Loadout** (shipped, see the README) | Guns as parts, new guns sold at markets, guns that level up with use, a hangar that fits guns, save v3 | The core of both problems: markets run out of stock, and progress stops once stats cap |
-| M2 | **Arsenal and economy** | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, price retune, money missions | Gives credits a use in every galaxy (see Economy) |
+| M2 | **Arsenal and economy** (shipped, see the README) | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, a price table, supply raids, save v4 | Gives credits a use in every galaxy (see Economy) |
 | M3 | **Vertical stages** | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls** | Hull roles and signature moves, four late hulls, pilot perks with a mechanic, unique hull art | New ships to chase in the Magellanic Cloud and Andromeda |
 | M5 | **Bosses and rewards** | Part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
@@ -49,9 +49,22 @@ What there is to spend it on:
   upgrades 14.4k, coolers 7.2k, armor 3k, scanner 2.1k, trade license 9k).
 - **Stat upgrades:** few, because stats cap at 16 and 29 level-ups already train stats.
 
-**Total: about 130,000 of things to buy against 460,000+ of income.** Money stops mattering around the
-middle of the Magellanic Cloud: that galaxy pays 150k and adds 30k of hulls. The Phoenix at 30k is cheap
-by the time it's on sale, and Andromeda adds nothing new.
+**Total before M2: about 130,000 of things to buy against 460,000+ of income.** Money stopped mattering
+around the middle of the Magellanic Cloud: that galaxy pays 150k and adds 30k of hulls. The Phoenix at
+30k is cheap by the time it's on sale, and Andromeda added nothing new.
+
+**What M1 and M2 added** (prices in `js/weapons.js`, `js/arsenal.js` and `PRICE` in `js/starbase.js`):
+
+| Galaxy | Pays | New permanent sinks | Running ordnance |
+|---|---|---|---|
+| Milky Way | 65k | Guns 1.2k to 3k (8 guns, about 18k), barrier I 2.5k, side fighters 4k | Missile pod I, bomb rack I, cluster pod, shield cell: 100 to 400 a use |
+| Magellanic Cloud | 150k | Swivel, charge, rail guns (18k), Mk II tiers (18k), barrier II 9k, option trail 6k, orbit option 12k: about 63k | Pod II and rack II: 250 to 300 a use |
+| Andromeda | 250k | Mk III tiers (36k), barrier III 22k: about 58k | Pod III and rack III: 500 to 600 a use |
+
+That brings the permanent total to about 275,000 against 460,000+, with ordnance as the open-ended sink
+(a mission that fires its full carry of six costs 600 to 3,600). Still short of the Andromeda target:
+M4's late hulls are meant to close it. Supply raids (mission pay at 0.6 plus about 12 cargo tanks
+worth 480 to 2,500 in all, by tier) are the safety valve; watch that they don't out-earn new missions.
 
 **Target:** new things to buy should cost about 70 to 80% of what a galaxy pays, so a player who clears
 most missions can afford most of it, and a player who skips missions has to choose.
@@ -79,21 +92,17 @@ Rules for tuning:
 Sized for implementation. Everything here must still work with a D-pad, A, B, Select and Start, and with
 touch; screen text is uppercase and wraps at 25 characters.
 
-### M2: ordnance
+### M2 (shipped)
 
-- **Data:** an `ORDNANCE` table: `{ id, name, family, tier, uses, price, hulls }`. Families have tiers,
-  like Carrier Air Wing's homing missiles (Sparrow, Sidewinder, AMRAAM, Phoenix): for example missile pod
-  I to III, bomb rack I to III, cluster pod, shield cell. `hulls` lists the hulls that can carry it, so
-  hull roles matter.
-- **Buying:** a LOADOUT row in the market; stock is kept in `camp.ord[id]`.
-- **Using:** no new button. The hangar's SPECIAL row lists learned specials *and* stocked ordnance, and
-  the special button fires whichever is fitted. Ordnance uses its own stock instead of `specialAmmo()`.
-- **After the mission:** unused ordnance comes back to stock. Ordnance fired is gone. On a failed mission
-  it's all lost, as in U.N. Squadron, so buying is a bet.
+Ordnance, modules, Mk II / Mk III, the `PRICE` table, supply raids and save v4 are in the README
+(Ordnance, Modules, the upgrade table and SUPPLY RAID) and CLAUDE.md. Two choices to revisit after
+real play:
 
-### Save version 3 (shipped with M1)
-
-- `camp.v` is 3 and `newCampaign()` already adds an empty `ord` for ordnance stock; M2 only has to use it.
+- **What a failed mission costs.** Only the ordnance you carried is lost, not your whole stock, so
+  the bet is capped at one carry (six uses). U.N. Squadron loses everything bought; try that if
+  ordnance feels too safe.
+- **One module slot.** A second slot (or pilot perks like DRAC's extra ordnance, M4) would make the
+  escorts and barriers compete less.
 
 ## Idea catalog
 
@@ -150,9 +159,12 @@ Guns as parts, gun levels, the charge shot, the rear rail gun and the swivel vul
   power-up only from the last of six cubes. Optional on top of gun XP: pickups that raise the gun for the
   current leg only, capped per hull.
 
-### Markets and ordnance (M2)
+### Markets and ordnance (M2, shipped; what's left)
 
-- **Ordnance bought per mission (U.N. Squadron, Carrier Air Wing).** Spec above.
+Shipped in M2: ordnance (U.N. Squadron, Carrier Air Wing), barrier modules in three grades (Darius
+Twin), side fighters (1942), the option trail and orbit option (Gradius), Mk II / Mk III and supply
+raids (U.N. Squadron's money missions). The notes below keep the ideas M2 didn't use.
+
 - **Defense modules (Carrier Air Wing, Gradius III, TF4, Darius Twin).** Carrier Air Wing sells a shield
   for 3 or 5 hits. Gradius III's barriers protect differently: a front shield (about 14 hits from ahead),
   a rotating shield (front and back), a force field (3 hits from any side), or Reduce (shrinks the ship).

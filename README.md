@@ -40,6 +40,10 @@ B zooms back out. You can also click or tap galaxies, systems and planets.
   - **CONTROL GROUP**: a bonus stage. The planes don't shoot; hit all 64.
   - **STRONGHOLD**: two legs and a boss. Either a vertical approach and a side-scrolling assault on a
     grounded **boss warship**, or a side-scrolling approach and a vertical **capital-ship flyover**.
+  - **SUPPLY RAID**: a contract on every *cleared* planet, for players short of credits. A 30-second
+    side-scrolling run at Voss's convoys hauling SAM (S-adenosylmethionine, the methyl donor her DNMT
+    enzymes use). Every unarmed cargo tank you destroy pays (40 CR, plus 15 per system tier). It pays
+    in full every time and never counts toward clearing anything.
 - You **take off from the carrier** before every leg and **land on it** after.
 - **Clear half the planets in a system to secure it.** That opens the systems linked to it. Secure
   every system in a galaxy to open the next galaxy. Clear every planet in a system to liberate it.
@@ -56,8 +60,8 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 ### Money, experience and upgrades
 
 - Every mission pays **credits** (mission pay plus combat pay from your score) and **XP**.
-  Replaying a cleared mission pays half. Clearing a planet, securing a system and liberating a system
-  each pay a bonus.
+  Replaying a cleared mission pays half (supply raids pay in full). Clearing a planet, securing a system
+  and liberating a system each pay a bonus.
 - **Every level-up** (up to level 30) lets you **train one stat** (+1 WEAPONS, SHIELDS or SPECIAL), then
   learn a **special attack** (even levels) or a **passive skill** (odd levels), picked from three offers.
   A new pilot also picks a starting passive: DRONE ESCORT, REINFORCED HULL or GROUND MISSILES.
@@ -72,7 +76,12 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 | ARMOR WEAVE | Battloid armor reboots 25% faster (2 levels) |
 | TET SCANNER | Gold planes drop more TET capsules (2 levels) |
 | TRADE LICENSE | +10% pay from every mission (3 levels) |
+| ... MK II | One more level of engine, form guns, coolers or trade license at 3× the base price. Magellanic Cloud on; needs Mk I maxed |
+| ... MK III | One more level again at 6× the base price. Andromeda only; needs Mk II |
 | Guns | A gun part to fit in the hangar (see Guns below) |
+| Modules | A barrier or escort to fit in the hangar (see Modules below) |
+
+- **Every market sells ordnance** (see Ordnance below) from its ORDNANCE page.
 
 - Some planets have a **shipyard** that sells a hull. Each hull comes with a default gun for each form
   (you keep those guns), its own strengths, and a mount per form (L = light, H = heavy):
@@ -115,6 +124,33 @@ levelled.
 Milky Way markets sell the first eight; the swivel vulcan, charge shot and rail gun appear from the
 Magellanic Cloud on.
 
+### Ordnance
+
+Ordnance is bought by the rack at any market's ORDNANCE page and fired with the special button. In the
+hangar it sits in the SPECIAL row after your learned specials (`X<loaded>/<in stock>`). At launch the
+ship loads up to the ordnance's **carry** limit from stock; it isn't rearmed between legs. Whatever you
+don't fire comes back after a completed mission (`ORDNANCE BACK` in the debrief). **Fail or abort the
+mission and what you carried is lost**, as in U.N. Squadron; the rest of your stock is safe.
+
+| Ordnance | Per use | Rack | Carry | Price | Sold from | Hulls |
+|---|---|---|---|---|---|---|
+| MISSILE POD I / II / III | 3 / 5 / 7 homing missiles | 3 | 6 | 300 / 750 / 1,500 | Milky Way / Magellanic / Andromeda | All |
+| BOMB RACK I / II / III | 1 / 2 / 3 heavy bombs (they fall in side stages) | 3 | 6 | 360 / 900 / 1,800 | Milky Way / Magellanic / Andromeda | Chimera, Griffin, Wyvern, Phoenix |
+| CLUSTER POD | 3 bombs that burst into 8 fragments | 3 | 6 | 600 | Milky Way | All |
+| SHIELD CELL | Repairs one shield (not used at full shields) | 2 | 3 | 800 | Milky Way | All |
+
+### Modules
+
+Modules are permanent parts sold at some markets: buy each once, then fit one in the hangar's MODULE
+row (your first one goes straight on). They're back at full strength at every takeoff.
+
+| Module | Price | Sold from | What it does |
+|---|---|---|---|
+| BARRIER I / II / III | 2,500 / 9,000 / 22,000 | Milky Way / Magellanic / Andromeda | A ring that soaks 1 / 2 / 3 hits before your shields. Blue, silver or gold by grade; it opens gaps as it wears and flickers on its last hit (Darius Twin) |
+| SIDE FIGHTERS | 4,000 | Milky Way | Two fighters fly beside you and fire with you. An enemy bullet downs each one (1942) |
+| OPTION TRAIL | 6,000 | Magellanic | An orb follows your path and copies every shot at half damage (Gradius) |
+| ORBIT OPTION | 12,000 | Magellanic | An orb circles the ship, blocks enemy bullets and grinds planes it touches (Gradius III) |
+
 ## Passive skills
 
 Passive skills are always on once learned.
@@ -142,7 +178,8 @@ No install or build step. Open `index.html` in Chrome, Edge or Firefox.
 - `index.html?stage=N` jumps straight into a planet's stronghold for testing: planet `ceil(N/2)` in map
   order, odd N = first leg, even N = the boss leg (e.g. 2 = Earth's base, 4 = the flyover at Mars,
   168 = the Citadel). Add `&hull=2` for a hull, `&passives=drone,rear` for skills and
-  `&fit=charge,swivel,rail` for the three forms' guns (test runs own every gun). Test runs don't save.
+  `&fit=charge,swivel,rail` for the three forms' guns, `&mod=barrier2` for a module and `&ord=missile2`
+  to carry ordnance (test runs own every gun and module, and 6 of each ordnance). Test runs don't save.
 - `index.html?touch` turns on the touch controls on a desktop browser.
 - `F` toggles fullscreen and `M` mutes the sound.
 
@@ -239,7 +276,7 @@ upgrades and level-up training add to them, up to 16):
 ## Special weapons
 
 You learn a special at every even level. After every briefing, the **hangar** screen fits your guns
-(one row per form) and, once you have learned one, the special you'll carry. Fire it with **C** (keyboard) or **B** (controller). Every takeoff rearms it
+(one row per form), the special you'll carry (or ordnance), and the module you've fitted. Fire it with **C** (keyboard) or **B** (controller). Every takeoff rearms it
 with as many uses as your **Special** stat.
 
 | Weapon        | Effect |
@@ -278,18 +315,19 @@ js/bosses.js      side-mission boss warships (turrets, hardpoints, cores, shield
 js/capital.js     vertical boss fights: capital-ship flyovers
 js/side.js        side-scrolling assaults: enemy script, behaviors
 js/scenery.js     per-planet scenery: Mode 7 surfaces, parallax layers, nebula
-js/specials.js    hangar screen (gun fit, special) + special weapons
+js/specials.js    hangar screen (gun fit, special or ordnance, module) + special weapons
 js/weapons.js     gun parts, mounts, gun levels, firing, bullet flight, drawing
+js/arsenal.js     ordnance and modules (barriers, escorts): data, firing, effects
 js/pilots.js      pilot select, ship hulls, stats, shields
 js/skills.js      passive skills, level-up choices (stat, special, passive)
 js/world.js       galaxies, star systems, planets (hand-written and generated), missions, markets
 js/campaign.js    missions, progress, rewards, levels, saves
 js/starmap.js     the three-level star map (galaxies, systems, planets) and carrier travel
-js/starbase.js    station menus: missions, market, status, skills
+js/starbase.js    station menus: missions, market (upgrades, Mk II/III, ordnance, modules), status, skills
 js/carrier.js     space carrier art, elevator/catapult takeoff and landing
 js/story.js       planet briefings, story beats, epilogue, Echo facts, Mira's hints
 js/tet.js         TET capsule pickups
-js/howto.js       HOW TO PLAY: the illustrated FAQ (story, controls, pilots, forms, guns, skills, missions, market)
+js/howto.js       HOW TO PLAY: the illustrated FAQ (story, controls, pilots, forms, guns, skills, missions, market, ordnance, modules)
 js/touch.js       touch controls for phones (joystick, buttons, tap to pick)
 js/main.js        boot + fixed 60 Hz loop
 ```

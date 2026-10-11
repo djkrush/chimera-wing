@@ -65,9 +65,10 @@ Object.assign(Game, {
 
   // ---- Campaign start, save and load --------------------------------------------------
   newCamp(pilot) {
-    return { v: 3, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
+    return { v: 4, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
       level: 1, learned: [], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0,
-      guns: [...HULLS[0].guns], fit: {}, gunXP: {}, ord: {} };   // guns owned, fit[hull] = [gun0, gun1, gun2], XP per gun, ordnance (M2)
+      guns: [...HULLS[0].guns], fit: {}, gunXP: {}, // guns owned, fit[hull] = [gun0, gun1, gun2], XP per gun
+      ord: {}, ordLast: null, mods: [], mod: null };  // ordnance stock, last one fitted, modules owned and fitted (arsenal.js)
   },
 
   newCampaign(pilot) {
@@ -103,7 +104,8 @@ Object.assign(Game, {
     try { c = JSON.parse(localStorage.getItem('chimera.save')); } catch (e) { c = null; }
     if (c && c.v === 1) c = this.migrateSave(c);   // old saves step up one version at a time
     if (c && c.v === 2) c = this.migrateV2(c);
-    if (!c || c.v !== 3 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
+    if (c && c.v === 3) c = this.migrateV3(c);
+    if (!c || c.v !== 4 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
       Sound.sfx('denied');
       this.toast('SAVE DATA UNREADABLE');
       return;
@@ -141,9 +143,15 @@ Object.assign(Game, {
     return c;
   },
 
+  // Version 3 saves (no modules yet): an empty arsenal.
+  migrateV3(c) {
+    Object.assign(c, { ord: c.ord || {}, ordLast: null, mods: [], mod: null, v: 4 });
+    return c;
+  },
+
   // Dev shortcut (?stage=N): planet ceil(N/2) in map order (PLANETS), its stronghold; odd N = first
-  // leg, even N = the boss leg. ?passives=drone,rear, ?hull=N and ?fit=charge,swivel,rail set up the
-  // test ship (a test campaign owns every gun).
+  // leg, even N = the boss leg. ?passives=drone,rear, ?hull=N, ?fit=charge,swivel,rail, ?mod=barrier2 and
+  // ?ord=missile2 set up the test ship (a test campaign owns every gun and module, and 6 of each ordnance).
   testLeg(n, q) {
     const k = clamp(Math.ceil(n / 2), 1, PLANETS.length) - 1, P = PLANETS[k];
     this.pilot = 0;
@@ -156,9 +164,13 @@ Object.assign(Game, {
     const fit = (q.get('fit') || '').split(',');
     if (fit.some(g => GUNS[g])) this.camp.fit[this.camp.hull] = [0, 1, 2].map(f => (GUNS[fit[f]] && this.canMount(this.camp.hull, f, fit[f]) ? fit[f] : HULLS[this.camp.hull].guns[f]));
     for (let i = 0; i < k; i++) PLANETS[i].missions.forEach((m, j) => { this.camp.cleared[PLANETS[i].id + ':' + j] = true; });
+    this.camp.mods = MODULES.map(m => m.id);
+    this.camp.mod = MODULE_BY_ID[q.get('mod')] ? q.get('mod') : null;
+    for (const o of ORDNANCE) this.camp.ord[o.id] = 6;
     this.resetRun(0);
     this.mission = this.makeMission(P, P.missions.length - 1);
-    this.special = { idx: 0, ammo: 0, cd: 0 };
+    const ord = ORD_BY_ID[q.get('ord')] ? q.get('ord') : null;
+    this.special = ord ? { ord, ammo: ORD_BY_ID[ord].carry, cd: 0 } : { idx: 0, ammo: 0, cd: 0 };
     this.startLeg(n % 2 ? 0 : this.mission.legs.length - 1);
   },
 
@@ -169,7 +181,7 @@ Object.assign(Game, {
     this.carrier = null; this.boss = null;
     this.enemies = []; this.eBul = []; this.pBul = []; this.pickups = [];
     this.radio = null; this.radioQ = [];
-    this.stageType = 'normal'; this.special = null; this.wingT = 0; this.tetT = 0; this.laser = null;
+    this.stageType = 'normal'; this.special = null; this.wingT = 0; this.tetT = 0; this.laser = null; this.convoy = false;
     this.clearSpecialFx();
     const p = this.player, c = this.camp;
     p.alive = true; p.hidden = true; p.silenced = [false, false, false]; p.silenceT = [0, 0, 0];
@@ -187,14 +199,15 @@ Object.assign(Game, {
   },
 
   // ---- Missions ---------------------------------------------------------------------------
+  // mi = -1 is the planet's SUPPLY RAID contract: outside P.missions, so it never counts as cleared.
   makeMission(P, mi) {
-    const kind = P.missions[mi];
+    const kind = mi < 0 ? 'convoy' : P.missions[mi];
     let legs = MISSION_KINDS[kind].legs.map(type => ({ type }));
     if (kind === 'strike') {
       legs = P.order === 'sv' ? [{ type: 'side' }, { type: 'capital', boss: true }]
         : [{ type: P.approach || 'normal' }, { type: 'side', boss: true }];
     }
-    return { sys: P.sys, planet: P, mi, kind, legs, leg: 0, score0: this.score, bonusCr: 0, replay: this.missionDone(P, mi) };
+    return { sys: P.sys, planet: P, mi, kind, legs, leg: 0, score0: this.score, bonusCr: 0, cargoCr: 0, replay: mi >= 0 && this.missionDone(P, mi) };
   },
 
   startMission(mi) {
@@ -227,8 +240,9 @@ Object.assign(Game, {
     this.inBase = false;
     this.legBoss = !!L.boss;
     this.raid = L.type === 'raid';
+    this.convoy = L.type === 'convoy';
     this.stage = this.difficulty(L.boss);
-    this.setupStage(this.raid ? 'side' : L.type);
+    this.setupStage(this.raid || this.convoy ? 'side' : L.type);
     if (Sound.current !== Sound.SONGS.mission) Sound.playSong(Sound.SONGS.mission);   // keep the groove across legs
     this.startTakeoff();
     if (i > 0) this.say('APPROACH CLEAR. REARMED AND REFUELED. NOW THE ASSAULT ON ' + M.planet.name + '.', 'mira');
@@ -258,12 +272,16 @@ Object.assign(Game, {
     const pay = round10((500 + 140 * S.tier) * K.pay * mult * payMul);
     const combat = round10(((this.score - M.score0) / 40 + M.bonusCr) * payMul);
     const xp = Math.round((120 + 25 * S.tier) * K.pay * mult * xpMul);
-    const lines = [['MISSION PAY', pay + ' CR'], ['COMBAT PAY', combat + ' CR'], ['EXPERIENCE', xp + ' XP']];
+    const lines = [['MISSION PAY', pay + ' CR'], ['COMBAT PAY', combat + ' CR']];
     let money = pay + combat, gain = xp;
+    if (M.mi < 0) { const cargo = round10(M.cargoCr * payMul); lines.push(['CARGO', cargo + ' CR']); money += cargo; }
+    lines.push(['EXPERIENCE', xp + ' XP']);
+    const back = this.returnOrdnance();   // arsenal.js: what you didn't fire goes back to stock
+    if (back) lines.push(['ORDNANCE BACK', 'X' + back]);
     const openBefore = SYSTEMS.filter(q => this.systemOpen(q)).map(q => q.id);
     const galBefore = GALAXIES.filter(g => this.galaxyOpen(g)).map(g => g.id);
     const was = { planet: this.planetCleared(P), secured: this.systemSecured(S), cleared: this.systemCleared(S) };
-    c.cleared[P.id + ':' + M.mi] = true;
+    if (M.mi >= 0) c.cleared[P.id + ':' + M.mi] = true;
     const bonus = (label, m, x) => {
       m = round10(m * (1 + c.loop * 0.5) * payMul); x = Math.round(x * xpMul);
       money += m; gain += x;

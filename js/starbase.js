@@ -19,7 +19,17 @@ const UPGRADES = {
   scanner: { label: 'TET SCANNER', short: 'TET', desc: 'GOLD PLANES DROP MORE TET CAPSULES.', max: 2, base: 700 },
   broker: { label: 'TRADE LICENSE', short: 'PAY', desc: '+10% PAY FROM EVERY MISSION.', max: 3, base: 1500 },
 };
-const upgradePrice = (key, n) => UPGRADES[key].base * (n + 1);
+// Mk II and Mk III (MK_KEYS in world.js): one more level each, sold from the Magellanic Cloud and
+// Andromeda on. Each needs the tier below maxed; upLevel() (pilots.js) counts them with Mk I.
+for (const k of MK_KEYS) {
+  [2, 3].forEach(mk => {
+    const u = UPGRADES[k];
+    UPGRADES[k + mk] = { label: u.label + ' MK ' + (mk === 2 ? 'II' : 'III'), short: u.short + mk, desc: u.desc, max: 1, base: u.base, of: k, mk };
+  });
+}
+// Every price formula in one place, for tuning: an upgrade costs base x its tier's factor x (levels bought + 1).
+const PRICE = { mk: [1, 3, 6] };
+const upgradePrice = (key, n) => UPGRADES[key].base * PRICE.mk[(UPGRADES[key].mk || 1) - 1] * (n + 1);
 const MENU_ROWS = 7;   // visible rows in a starbase list; longer lists scroll
 
 Object.assign(Game, {
@@ -50,17 +60,28 @@ Object.assign(Game, {
         const locked = () => { Sound.sfx('denied'); this.toast('FLY THE OTHER MISSIONS FIRST'); };
         return { label: K.name, right: done ? 'CLEAR' : open ? 'NEW' : 'LOCKED', col: done ? C.lime : open ? C.gold : C.gray,
           act: () => (open ? this.startMission(i) : locked()), info: info + (done ? ' HALF PAY.' : '') };
-      }), back];
+      }), ...(this.planetCleared(P) ? [{ label: MISSION_KINDS.convoy.name, right: 'CONTRACT', col: C.aqua,
+        act: () => this.startMission(-1), info: MISSION_KINDS.convoy.desc + ' FULL PAY EVERY TIME.' }] : []), back];
+    }
+    if (U.page === 'ord') {   // ordnance: every kind this galaxy sells, bought by the rack
+      const gi = this.galaxyDef().index;
+      return [...ORDNANCE.filter(o => o.gal <= gi).map(o => {
+        const ok = this.ordAllowed(o.id);
+        return { label: o.name, right: o.price + ' CR', col: ok && c.money >= o.price ? C.white : C.gray, act: () => this.buyOrdnance(o.id),
+          info: 'OWN ' + this.ordStock(o.id) + ', CARRY ' + o.carry + '. ' + o.uses + ' PER RACK. ' + (ok ? o.desc : 'NOT FOR THIS HULL.') };
+      }), { label: 'BACK', act: () => this.basePage('shop') }];
     }
     if (U.page === 'shop') {
-      const rows = P.market.map(key => {
-        if (key.startsWith('gun:')) return this.gunRow(key.slice(4));
-        const u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n);
-        const max = u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max;
-        const now = u.stat ? ' NOW ' + this.statOf(key) + '.' : ' OWNED ' + n + '/' + u.max + '.';
-        return { label: u.label, right: max ? 'MAX' : price + ' CR', col: max ? C.gray : c.money >= price ? C.white : C.gray,
-          info: u.desc + now, act: () => this.buyUpgrade(key) };
-      });
+      const rows = [{ label: 'ORDNANCE', right: '>', col: C.orange, act: () => this.basePage('ord'), info: 'MISSILES, BOMBS AND SHIELD CELLS, BY THE RACK.' },
+        ...P.market.map(key => {
+          if (key.startsWith('gun:')) return this.gunRow(key.slice(4));
+          if (key.startsWith('mod:')) return this.moduleRow(key.slice(4));
+          const u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
+          const max = u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max;
+          const now = u.stat ? ' NOW ' + this.statOf(key) + '.' : ' OWNED ' + n + '/' + u.max + '.';
+          return { label: u.label, right: max ? 'MAX' : need ? 'NEEDS ' + need : price + ' CR', col: max || need ? C.gray : c.money >= price ? C.white : C.gray,
+            info: u.desc + now, act: () => this.buyUpgrade(key) };
+        })];
       const hulls = [...new Set([...P.hulls, ...c.hulls])];   // this shipyard's hulls, plus the ones you own
       hulls.forEach(i => {
         const h = HULLS[i], owned = c.hulls.includes(i);
@@ -88,14 +109,27 @@ Object.assign(Game, {
       ' GUNS: ' + h.guns.map(g => GUNS[g].short).join('/');
   },
 
-  // A gun part for sale: its price, or OWNED once bought.
+  // A part for sale (gun or module): its price, or OWNED once bought.
+  partRow(name, price, owned, info, act) {
+    return { label: name, right: owned ? 'OWNED' : price + ' CR', col: owned ? C.lime : this.camp.money >= price ? C.aqua : C.gray, info, act };
+  },
   gunRow(id) {
-    const c = this.camp, G = GUNS[id], owned = c.guns.includes(id);
-    return { label: G.name, right: owned ? 'OWNED' : G.price + ' CR', col: owned ? C.lime : c.money >= G.price ? C.aqua : C.gray,
-      info: G.desc.join(' ') + (G.mount === 'heavy' ? ' HEAVY MOUNT.' : ' LIGHT MOUNT.'), act: () => this.buyGun(id) };
+    const G = GUNS[id];
+    return this.partRow(G.name, G.price, this.camp.guns.includes(id), G.desc.join(' ') + (G.mount === 'heavy' ? ' HEAVY MOUNT.' : ' LIGHT MOUNT.'), () => this.buyGun(id));
+  },
+  moduleRow(id) {
+    const M = MODULE_BY_ID[id];
+    return this.partRow(M.name, M.price, this.camp.mods.includes(id), M.desc + ' FIT ONE IN THE HANGAR.', () => this.buyModule(id));
+  },
+  // A Mk II or Mk III upgrade whose tier below isn't maxed yet: the tier it needs.
+  mkNeeds(key) {
+    const u = UPGRADES[key], up = this.camp.up;
+    if (!u.mk) return null;
+    const below = u.mk === 2 ? u.of : u.of + '2';
+    return (up[below] || 0) >= UPGRADES[below].max ? null : u.mk === 2 ? 'MK I' : 'MK II';
   },
 
-  marketShort(P) { return [...new Set(P.market.map(k => (k.startsWith('gun:') ? 'GUNS' : UPGRADES[k].short)))].join(' '); },
+  marketShort(P) { return [...new Set(P.market.map(k => (k.startsWith('gun:') ? 'GUNS' : k.startsWith('mod:') ? 'MODS' : UPGRADES[k].short)))].join(' '); },
 
   basePage(page) {
     this.baseUI = { page, sel: 0 };
@@ -108,7 +142,7 @@ Object.assign(Game, {
     if (Input.just('up')) { U.sel = (U.sel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { U.sel = (U.sel + 1) % n; Sound.sfx('move'); }
     U.sel = Math.min(U.sel, n - 1);
-    if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage('main'); return; }
+    if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage(U.page === 'ord' ? 'shop' : 'main'); return; }
     if (this.stateT > 10 && Input.just('fire')) this.baseAct();
   },
 
@@ -129,8 +163,9 @@ Object.assign(Game, {
   },
 
   buyUpgrade(key) {
-    const c = this.camp, u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n);
+    const c = this.camp, u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
     if (u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max) { Sound.sfx('denied'); return; }
+    if (need) { Sound.sfx('denied'); this.toast('MAX ' + need + ' FIRST'); return; }
     if (c.money < price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
     c.money -= price;
     c.up[key] = n + 1;
@@ -146,6 +181,29 @@ Object.assign(Game, {
     c.guns.push(id);
     Sound.sfx('cash');
     this.toast(G.name + ' BOUGHT');
+    this.saveCampaign();
+  },
+
+  buyModule(id) {
+    const c = this.camp, M = MODULE_BY_ID[id];
+    if (c.mods.includes(id)) { Sound.sfx('denied'); this.toast('FIT IT IN THE HANGAR'); return; }
+    if (c.money < M.price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
+    c.money -= M.price;
+    c.mods.push(id);
+    if (!this.fittedModule()) c.mod = id;   // the first module goes straight on
+    Sound.sfx('cash');
+    this.toast(M.name + ' BOUGHT');
+    this.saveCampaign();
+  },
+
+  // A rack of ordnance into stock.
+  buyOrdnance(id) {
+    const c = this.camp, o = ORD_BY_ID[id];
+    if (c.money < o.price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
+    c.money -= o.price;
+    c.ord[id] = this.ordStock(id) + o.uses;
+    Sound.sfx('cash');
+    this.toast(o.name + ' X' + o.uses);
     this.saveCampaign();
   },
 
@@ -331,7 +389,7 @@ Object.assign(Game, {
     NES.text(ctx, PILOTS[c.pilot].name, 246, 117, PILOTS[c.pilot].col, { align: 'right' });
     ctx.fillStyle = SNES.mix(S.col, C.black, 0.5); ctx.fillRect(7, 126, 242, 1);
     if (U.page === 'status') { this.drawStatus(ctx); return; }
-    const title = { main: S.base, missions: 'MISSIONS', shop: 'MARKET', skills: 'SKILLS' }[U.page];
+    const title = { main: S.base, missions: 'MISSIONS', shop: 'MARKET', ord: 'ORDNANCE', skills: 'SKILLS' }[U.page];
     NES.text(ctx, title, 128, 130, C.gold, { align: 'center' });
     const top = this.listTop(items.length, U.sel, MENU_ROWS);
     items.slice(top, top + MENU_ROWS).forEach((it, j) => {

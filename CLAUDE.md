@@ -10,8 +10,9 @@ change how the game plays. `FUTURE.md` lists planned improvements; add ideas the
 - `index.html?stage=N` skips the title screen and drops into a planet's stronghold (`testLeg` in
   `campaign.js`): planet `ceil(N/2)` in `PLANETS` order, odd N = first leg, even N = the boss leg. E.g.
   2 = Earth's base, 4 = the Mars capital-ship flyover, 168 = the finale. `&hull=N`,
-  `&passives=drone,rear` and `&fit=charge,swivel,rail` (one gun per form) set up the ship. Test
-  campaigns (`camp.test`) never save, all specials are learned, every gun is owned, and every mission
+  `&passives=drone,rear`, `&fit=charge,swivel,rail` (one gun per form), `&mod=barrier2` (a module) and
+  `&ord=missile2` (carry that ordnance) set up the ship. Test campaigns (`camp.test`) never save, all
+  specials are learned, every gun and module is owned, 6 of each ordnance is stocked, and every mission
   on earlier planets counts as cleared.
 - `index.html?touch` turns on the touch controls on a desktop; clicks act as taps.
 - Serve the folder over HTTP (e.g. `python -m http.server`) for browser automation: extensions can't
@@ -31,7 +32,7 @@ Scripts are plain globals loaded by `<script>` tags in `index.html`. **Load orde
 
 ```
 nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → input.js → game.js → bosses.js → capital.js → side.js
-       → scenery.js → specials.js → weapons.js → pilots.js → skills.js → world.js → campaign.js → starmap.js
+       → scenery.js → specials.js → weapons.js → arsenal.js → pilots.js → skills.js → world.js → campaign.js → starmap.js
        → starbase.js → carrier.js → story.js → tet.js → howto.js → touch.js → main.js
 ```
 
@@ -47,7 +48,7 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 | `Touch` | `js/touch.js` | Touch controls (DOM overlay): floating joystick in flight, A/B/X/START buttons, taps elsewhere go to `Game.tap(x, y)`. On for Android/Samsung UAs, `?touch`, or the first touch. `Touch.on` switches `main.js` to fill-the-screen scaling. |
 | world data | `js/world.js` | `GALAXIES` → systems → planets, flattened into `SYSTEMS`, `PLANETS` and the `*_BY_ID` maps. Also `MISSION_KINDS`, `MARKET_POOL`, `TERRAIN_PAL`, `seededRand`. Loads after `game.js` (uses `C`, `TAU`). |
 | `Game` | `js/game.js` | One big singleton object: state machine, Galaga stages, player, enemies, bullets, collision, HUD and rendering |
-| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/weapons.js`, `js/pilots.js`, `js/skills.js`, `js/campaign.js`, `js/starmap.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js`, `js/howto.js`, `js/touch.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
+| (mixins) | `js/bosses.js`, `js/capital.js`, `js/side.js`, `js/scenery.js`, `js/specials.js`, `js/weapons.js`, `js/arsenal.js`, `js/pilots.js`, `js/skills.js`, `js/campaign.js`, `js/starmap.js`, `js/starbase.js`, `js/carrier.js`, `js/story.js`, `js/tet.js`, `js/howto.js`, `js/touch.js` | Add methods to `Game` with `Object.assign(Game, {...})`. They must load after `game.js`. `Object.assign` copies a getter's *value*, so mixins use methods (e.g. `villain()`), not getters. |
 | boot | `js/main.js` | Scales the canvas to whole-number sizes, sets global hotkeys, runs a **fixed 60 Hz** accumulator loop (`Input.update(); Game.update();` per tick, `Game.draw(ctx)` per frame) |
 
 ### Game state machine
@@ -76,8 +77,11 @@ base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT M
   `galaxyDef()` resolve it (or the mission's planet during a mission). `arriveBase()` runs pending
   level-up choices first, then a galaxy's arrival briefing (`GALAXY_STORY`) on the first visit.
 - **Missions** (`makeMission(P, i)`): `{ planet, mi, kind, legs: [{ type, boss }], leg }`. Kinds are in
-  `MISSION_KINDS` (`world.js`); a leg type is `normal | challenge | side | raid | capital` (`raid` is a
-  side stage with `this.raid` set). Progress lives in `camp.cleared['planetId:missionIndex']`.
+  `MISSION_KINDS` (`world.js`); a leg type is `normal | challenge | side | raid | convoy | capital` (`raid`
+  and `convoy` are side stages with `this.raid` / `this.convoy` set). Progress lives in
+  `camp.cleared['planetId:missionIndex']`. `mi = -1` is the SUPPLY RAID contract a cleared planet offers
+  (kind `convoy`, outside `P.missions`): full pay every time, `M.cargoCr` from cargo tanks
+  (`cargoKill` in `side.js`), and it never writes to `cleared`.
 - **Unlocking:** a planet's stronghold opens when its other missions are done (`missionOpen`); a system
   is secured at half its planets cleared (`systemSecured`), which opens linked systems (`systemOpen`);
   a galaxy opens when every system of the previous one is secured (`galaxyOpen`).
@@ -171,11 +175,21 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - `ENEMY`: enemy types (hp, points `[normal, acetylated]`, hit radius). A new enemy type needs an entry
   here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
-- `SPECIALS` (in `specials.js`): special weapons, learned at even levels; the hangar's SPECIAL row lists
-  only `camp.learned` (the row is hidden until one is learned). The hangar (`hangarRow` 0 to 3,
-  `hangarChange(dir)`, `tapHangar`) opens before every sortie. Ammo = `specialAmmo()`, refilled at every takeoff. Lasting ones keep timers
+- `SPECIALS` (in `specials.js`): special weapons, learned at even levels. The hangar (`hangarRowIds()`:
+  0-2 guns, 3 SPECIAL, 4 MODULE; `hangarRow` indexes that list, `hangarChange(dir)`, `tapHangar`) opens
+  before every sortie. The SPECIAL row (`specialOptions()`) lists `camp.learned`, then stocked ordnance;
+  it and the MODULE row hide while empty. `this.special` is `{ idx, ammo, cd }` or `{ ord, ammo, cd }`.
+  A special's ammo = `specialAmmo()`, refilled at every takeoff; ordnance isn't. Lasting ones keep timers
   (`chronoT`, `empT`, `reflectT`, `podT`, `hyperT`, `grav`) reset by `clearSpecialFx()`;
   `specialCollide()` runs their effects on bullets and planes.
+- `ORDNANCE` and `MODULES` (in `arsenal.js`): ordnance is bought by the rack into `camp.ord[id]`, fired
+  through `useSpecial()` → `useOrdnance()`, loaded at launch up to its `carry` limit (`launchHangar`) and
+  given back by `returnOrdnance()` in `missionComplete` (a failed mission loses it). `hulls` limits who
+  carries it. Modules are owned in `camp.mods` and fitted as `camp.mod` (`fittedModule()`);
+  `setupModule()` (in `setupStage`) refills `barrier` and the side fighters, `takeHit()` spends the
+  barrier first, and `updateModule`/`moduleCollide`/`drawModule` run next to the passives. The option
+  trail copies shots in `shoot()` (`moduleCopy`); escort copies carry `copy: true` and don't count
+  toward a gun's on-screen cap.
 - `PASSIVES` (in `skills.js`): always-on skills, learned at odd levels (`hasPassive(id)`). In-flight
   ones run in `updatePassives()`; others hook in where they act (`takeHit`, `silenceForm`, `battMax`,
   `maxShields`, `specialAmmo`, rewards, `tet.js`). Per-leg flags reset in `resetPassives()`.
@@ -184,14 +198,19 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   hull's form multiplier and the form's gun upgrade; `speedMul()` = hull speed and engine upgrades.
   There are no lives: `Game.shields` soaks hits through `takeHit()`, one more hit at 0 fails the
   mission, and shields refill to `maxShields()` in `setupStage`.
-- `LEVELS` (in `campaign.js`), `UPGRADES` and `upgradePrice` (in `starbase.js`; `camp.up[key]` counts
-  purchases).
-- `Game.camp` is the whole saved campaign (`v: 3`: pilot, hull, owned hulls, `up`, `train`, money, xp,
+- `LEVELS` (in `campaign.js`), `UPGRADES`, `PRICE` and `upgradePrice` (in `starbase.js`; `camp.up[key]`
+  counts purchases). Mk II / Mk III entries (`engine2`, `engine3`, ... from `MK_KEYS` in `world.js`)
+  have `of` and `mk`, cost `PRICE.mk` times the base, need the tier below maxed (`mkNeeds`), and
+  `upLevel(key)` adds them to Mk I. `marketGal(key)` (`world.js`) says which galaxy first sells a
+  market entry (guns, modules, Mk tiers).
+- `Game.camp` is the whole saved campaign (`v: 4`: pilot, hull, owned hulls, `up`, `train`, money, xp,
   level, `learned` specials, `passives`, `pending` choices, `cleared` missions, `at` planet, `seen`
-  galaxies, loop, story beats, score, `guns` owned, `fit[hull]`, `gunXP[id]`, `ord` (ordnance, for M2),
-  and `opened` systems for converted saves). It is saved as JSON in `localStorage['chimera.save']` by
+  galaxies, loop, story beats, score, `guns` owned, `fit[hull]`, `gunXP[id]`, `ord` (ordnance stock),
+  `ordLast` (last ordnance fitted), `mods` and `mod` (modules owned and fitted), and `opened` systems
+  for converted saves). It is saved as JSON in `localStorage['chimera.save']` by
   `saveCampaign()` whenever the carrier docks, you buy something or you launch from the hangar.
-  `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), then `migrateV2()` (v2 → v3).
+  `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), `migrateV2()` (v2 → v3), then
+  `migrateV3()` (v3 → v4).
 - TET capsules (`tet.js`): acetylated kills may drop one (`dropTet`); collecting it restores a silenced form.
 
 ## Conventions
@@ -237,7 +256,13 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   the level `L` (and `gunCap()` if it fires more per shot); give new bullet kinds flight in
   `steerBullet()` and art in `drawPlayerBullet()`. Markets pick it up from `MARKET_POOL` automatically.
 - **New market upgrade:** add it to `UPGRADES` (`starbase.js`) and `MARKET_POOL` (`world.js`), then read
-  `upLevel('key')` where it acts.
+  `upLevel('key')` where it acts. Add its key to `MK_KEYS` to give it Mk II and Mk III tiers.
+- **New ordnance:** add it to `ORDNANCE` (`arsenal.js`: `family`, `uses` per rack, `carry`, `price`,
+  `gal`, `hulls`, a `desc` of 26 characters or fewer) and handle a new `family` in `useOrdnance()` with an
+  icon in `SPR.ordIcons`. The ORDNANCE page and the hangar pick it up by themselves.
+- **New module:** add it to `MODULES` (`arsenal.js`) and give its `kind`/`id` effects in
+  `setupModule`, `updateModule`, `moduleCollide` and `drawModule`. Markets draw `mod:<id>` from
+  `MARKET_POOL` by its `gal`.
 - **New side-mission pattern:** add a `case` to `spawnSidePattern`, add it to the `kinds` list in `initSide`,
   and add a `beh` case in `updateSideEnemy` if it needs new movement.
 - **New story beat:** edit `PLANET_STORY` (per planet), `STORY_BEATS` (Voss's arc) or

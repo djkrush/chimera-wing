@@ -236,8 +236,9 @@ const Game = {
     p.silenceT = [0, 0, 0];
     p.shieldT = 0; p.alive = true; p.hidden = false; p.morphT = 0; p.invuln = 0;
     this.shields = this.maxShields();   // repaired on the carrier before every takeoff
-    if (this.special) this.special.ammo = this.specialAmmo();   // and rearmed
+    if (this.special && !this.special.ord) this.special.ammo = this.specialAmmo();   // and rearmed (ordnance isn't: it carries over)
     this.clearSpecialFx();
+    this.setupModule();   // arsenal.js: barrier refilled, side fighters back
     this.resetPassives();
     this.placePlayer();
     this.pickups = []; this.radioQ = []; this.radio = null;
@@ -498,6 +499,7 @@ const Game = {
     }
     this.updatePlayer(true);
     this.updatePassives();   // skills.js
+    this.updateModule();     // arsenal.js
     if (!slow) {
       this.updateEnemies();
       if (this.boss) this.updateBoss();
@@ -514,6 +516,7 @@ const Game = {
   updateClear() {
     this.stateT++;
     this.updatePlayer(true);
+    this.updateModule();
     this.updateBullets();
     this.updateSpecial();
     this.updatePickups();
@@ -819,7 +822,7 @@ const Game = {
 
   enemyFire(e) {
     const p = this.player;
-    if (this.stageType === 'challenge' || !p.alive || this.empT > 0) return;
+    if (this.stageType === 'challenge' || !p.alive || this.empT > 0 || e.cargo) return;   // convoy cargo tanks are unarmed
     if (this.eBul.length > 10 + this.stage) return;
     const sp = Math.min(2 + this.stage * 0.08, 3.4);
     let a = Math.atan2(p.y - e.y, p.x - e.x);
@@ -863,6 +866,7 @@ const Game = {
     let pts = this.stageType === 'challenge' ? 100 : ENEMY[e.type].pts[diving ? 1 : 0];
     if (e.acetyl) { pts *= 2; this.dropTet(e); }
     if (e.holding >= 0) { this.restoreForm(e.holding); pts += 1000; }
+    if (e.cargo) this.cargoKill(e);   // supply raid: the cargo pays (side.js)
     this.addScore(pts);
     if (diving || pts >= 300) this.popup(e.x, e.y - 4, String(pts), e.acetyl ? C.gold : C.white);
     this.explode(e.x, e.y, e.type === 'methyl' ? 18 : 12);
@@ -974,8 +978,9 @@ const Game = {
     this.pBul.push(b);
     if (this.wingT > 0 && extra.form >= 0) {   // WINGMAN special: the drone copies every shot
       const [wx, wy] = this.wingOffset();
-      this.pBul.push({ ...b, x: b.x + wx, y: b.y + wy, hit: b.hit && [] });
+      this.pBul.push({ ...b, x: b.x + wx, y: b.y + wy, hit: b.hit && [], copy: true });
     }
+    if (extra.form >= 0 && !extra.copy) this.moduleCopy(b);   // arsenal.js: option trail
     return b;
   },
 
@@ -1097,6 +1102,7 @@ const Game = {
       }
     }
     this.specialCollide();   // specials.js: reflect field, force pod, gravity bomb
+    this.moduleCollide();    // arsenal.js: side fighters, orbit option
     if (p.alive && p.shieldT > 0) {
       // Gene Shield: destroys bullets and rams enemies instead of taking hits.
       for (const b of this.eBul) {
@@ -1199,6 +1205,7 @@ const Game = {
     this.drawChargeFx(ctx);
     if (p.alive && this.wingT > 0 && (this.wingT > 90 || (this.t >> 2) & 1)) this.drawWingman(ctx);
     this.drawPassives(ctx);   // skills.js: escort drone
+    this.drawModule(ctx);     // arsenal.js: barrier ring, escorts
     this.drawSpecialFx(ctx, 'over');
     this.drawParticles(ctx);
     this.drawHUD(ctx);
@@ -1268,6 +1275,7 @@ const Game = {
     if (e.holding >= 0) NES.draw(ctx, SPR.hulls[this.camp ? this.camp.hull : 0].side.silenced[e.holding], e.x + 34, e.y);
     if (e.type !== 'sam' && e.type !== 'tank' && e.vx > 0.3 && e.phase !== 'out') NES.drawFlip(ctx, img, e.x, e.y);
     else NES.draw(ctx, img, e.x, e.y);
+    if (e.cargo) this.drawCargo(ctx, e);   // side.js: the SAM tank it tows
   },
 
   // Cone-shaped methylation beam: points down in vertical stages, left in side missions.
@@ -1334,9 +1342,9 @@ const Game = {
     if (showAdapt) {
       if ((this.t >> 4) & 1) NES.text(ctx, 'ADPT:' + FORMS[this.adapt].short, CX, 1, C.pink, { align: 'center' });
     } else if (sp) {
-      const def = SPECIALS[sp.idx];
-      NES.draw(ctx, SPR.specialIcons[sp.idx], CX - 32, 4);
-      NES.text(ctx, def.short + ' ' + String(sp.ammo).padStart(2, '0'), CX - 24, 1, sp.ammo ? C.gold : C.gray);
+      const o = sp.ord && ORD_BY_ID[sp.ord];
+      NES.draw(ctx, o ? SPR.ordIcons[o.family] : SPR.specialIcons[sp.idx], CX - 32, 4);
+      NES.text(ctx, (o ? o.short : SPECIALS[sp.idx].short) + ' ' + String(sp.ammo).padStart(2, '0'), CX - 24, 1, sp.ammo ? C.gold : C.gray);
     }
 
     // shield pips; with none left the next hit is fatal

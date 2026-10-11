@@ -107,7 +107,7 @@ Object.assign(Game, {
     const p = this.player, f = p.form, gun = this.fittedGun(f), G = GUNS[gun], L = this.gunLevel(gun), hyper = this.hyperT > 0;
     const k = this.gunPower() * (hyper ? 1.5 : 1);
     let cd = gun === 'rail' && L >= 2 ? 16 : G.cd;
-    if (this.pBul.filter(b => b.form === f).length >= this.gunCap(gun, L) * (hyper ? 2 : 1)) return;
+    if (this.pBul.filter(b => b.form === f && !b.copy).length >= this.gunCap(gun, L) * (hyper ? 2 : 1)) return;   // escorts' copies don't count
     switch (gun) {
       case 'twin': {
         const vy = L >= 2 ? -7.5 : -6, ox = L >= 4 ? 5 : 3, pierce = () => (L >= 5 ? { pierce: 2, hit: [] } : {});
@@ -198,6 +198,7 @@ Object.assign(Game, {
       this.rearT = this.t;
       this.shoot(0, 8, 0, 6, { kind: 'shot', dmg: 0.6 * k, form: -1 });
     }
+    this.moduleFire(k, f);                                                  // arsenal.js: side fighters
     if (this.podT > 0 && this.t - (this.podShotT || -99) >= 10) {          // FORCE POD fires with you
       this.podShotT = this.t;
       const [ox, oy] = this.podOffset(), [vx, vy] = this.orient(0, -6);
@@ -364,7 +365,7 @@ Object.assign(Game, {
         }
         break;
       }
-      case 'bomb': NES.disc(ctx, bx, by, 2, (this.t >> 2) & 1 ? C.lgray : C.gray); ctx.fillStyle = C.red; ctx.fillRect(bx, by - 1, 1, 1); break;
+      case 'bomb': NES.disc(ctx, bx, by, b.heavy ? 3 : 2, (this.t >> 2) & 1 ? C.lgray : C.gray); ctx.fillStyle = C.red; ctx.fillRect(bx, by - 1, 1, 1); break;
       case 'cluster': NES.disc(ctx, bx, by, 2, (this.t >> 2) & 1 ? C.orange : C.red); break;
       case 'frag': ctx.fillStyle = (this.t >> 1) & 1 ? C.yellow : C.orange; ctx.fillRect(bx - 1, by - 1, 2, 2); break;
       case 'gmissile': NES.drawRot(ctx, SPR.missile, b.x, b.y, Math.atan2(b.vy, b.vx) + Math.PI / 2); break;

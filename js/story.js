@@ -137,7 +137,11 @@ const MISSION_LINES = {
   raid: P => 'GROUND RAID. HER TANKS AND MISSILE SITES ARE DUG IN ON ' + P.name + '. FLY LOW AND HIT THEM HARD.',
   bonus: P => 'HER PILOTS OVER ' + P.name + " ARE A CONTROL GROUP. THEY WON'T FIRE. HIT EVERY ONE FOR A BONUS.",
   strike: (P, boss) => 'HER STRONGHOLD ON ' + P.name + ' IS THE ' + boss + '. TAKE IT DOWN AND THE PLANET IS OURS.',
+  convoy: P => 'SUPPLY RAID. HER CONVOYS HAUL SAM PAST ' + P.name + '. EVERY CARGO TANK YOU BURN PAYS.',
 };
+// The supply raid's own science note and villain reply (the SAM its convoys carry).
+const CONVOY_NOTE = ['THE METHYL DONOR', 'SAM, S-ADENOSYLMETHIONINE, CARRIES THE METHYL GROUP THAT DNMTS PUT ON DNA.'];
+const CONVOY_TAUNT = 'TAKE MY SAM. EVERY CELL MAKES MORE FROM METHIONINE AND ATP.';
 
 // Science notes for field briefings: [title, fact].
 const FIELD_NOTES = [
@@ -224,7 +228,9 @@ Object.assign(Game, {
   planetBriefing(S, P, kind) {
     const c = this.camp, k = PLANETS.indexOf(P) * 3 + P.missions.indexOf(kind);
     let B = kind === 'strike' && PLANET_STORY[P.id];
-    if (c.loop > 0) {
+    if (kind === 'convoy') {
+      B = { title: CONVOY_NOTE[0], pages: [['mira', MISSION_LINES.convoy(P)], ['mira', CONVOY_NOTE[1]], [this.villain(), CONVOY_TAUNT]] };
+    } else if (c.loop > 0) {
       const n = k + (c.loop - 1) * 3, [topic, fact] = LOOP_TOPICS[n % LOOP_TOPICS.length];
       B = { title: topic, pages: [['mira', MISSION_LINES[kind](P, this.missionBossName(P))], ['mira', fact],
         ['echo', ECHO_LINES[n % ECHO_LINES.length]]] };

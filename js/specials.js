@@ -42,14 +42,31 @@ Object.assign(Game, {
     this.chronoT = 0; this.empT = 0; this.reflectT = 0; this.podT = 0; this.hyperT = 0; this.grav = null;
   },
 
-  // The hangar opens before every sortie: one row per form to fit a gun, and the special row.
+  // The hangar opens before every sortie: one row per form to fit a gun, the special row (specials and
+  // ordnance) and the module row (arsenal.js).
   openHangar() {
     this.setState('hangar');
     this.hangarRow = 0;
-    this.hangarSel = Math.max(0, this.camp.learned.indexOf(this.lastSpecial));
+    const o = this.specialOptions(), last = this.camp.ordLast;
+    this.hangarSel = Math.max(0, o.findIndex(q => (last ? q.ord === last : q.idx === this.lastSpecial)));
   },
 
-  hangarRows() { return this.camp.learned.length ? 4 : 3; },   // no special row until one is learned
+  // What the SPECIAL row offers: learned specials, then stocked ordnance this hull can carry.
+  specialOptions() {
+    const c = this.camp;
+    return [...c.learned.map(idx => ({ idx })), ...ORDNANCE.filter(o => this.ordStock(o.id) > 0 && this.ordAllowed(o.id)).map(o => ({ ord: o.id }))];
+  },
+  // What the MODULE row offers: nothing, or a module you own.
+  moduleOptions() { return [null, ...MODULES.filter(m => (this.camp.mods || []).includes(m.id)).map(m => m.id)]; },
+
+  // Rows shown: 0-2 = the forms' guns, 3 = SPECIAL (once there's something for it), 4 = MODULE (once you own one).
+  hangarRowIds() {
+    const r = [0, 1, 2];
+    if (this.specialOptions().length) r.push(3);
+    if (this.moduleOptions().length > 1) r.push(4);
+    return r;
+  },
+  hangarRows() { return this.hangarRowIds().length; },
 
   updateHangar() {
     this.stateT++;
@@ -66,11 +83,14 @@ Object.assign(Game, {
 
   // Step the picked row's gun (or the special) by dir.
   hangarChange(dir) {
-    const c = this.camp, r = this.hangarRow;
+    const c = this.camp, r = this.hangarRowIds()[this.hangarRow];
     if (r === 3) {
-      const n = c.learned.length;
+      const n = this.specialOptions().length;
       if (n < 2) { Sound.sfx('denied'); return; }
       this.hangarSel = (this.hangarSel + dir + n) % n;
+    } else if (r === 4) {
+      const list = this.moduleOptions(), i = list.indexOf(this.fittedModule() ? c.mod : null);
+      c.mod = list[(i + dir + list.length) % list.length];
     } else {
       const list = this.hangarGuns(r);
       if (list.length < 2) { Sound.sfx('denied'); return; }
@@ -81,13 +101,20 @@ Object.assign(Game, {
     Sound.sfx('move');
   },
 
+  // Ordnance is loaded here: up to its carry limit comes out of stock, and it isn't rearmed between legs.
   launchHangar() {
-    const L = this.camp.learned;
-    if (L.length) {
-      const sel = L[this.hangarSel];
-      this.lastSpecial = sel;
-      this.special = { idx: sel, ammo: this.specialAmmo(), cd: 0 };
-    } else this.special = null;
+    const c = this.camp, sel = this.specialOptions()[this.hangarSel];
+    if (!sel) this.special = null;
+    else if (sel.ord) {
+      const n = Math.min(this.ordStock(sel.ord), ORD_BY_ID[sel.ord].carry);
+      c.ord[sel.ord] -= n;
+      c.ordLast = sel.ord;
+      this.special = { ord: sel.ord, ammo: n, cd: 0 };
+    } else {
+      this.lastSpecial = sel.idx;
+      c.ordLast = null;
+      this.special = { idx: sel.idx, ammo: this.specialAmmo(), cd: 0 };
+    }
     Sound.sfx('select');
     this.saveCampaign();
     this.startSortie();
@@ -103,6 +130,7 @@ Object.assign(Game, {
       return;
     }
     sp.ammo--;
+    if (sp.ord) { if (!this.useOrdnance(sp)) sp.ammo++; return; }   // arsenal.js
     this.shots++;
     switch (SPECIALS[sp.idx].id) {
       case 'laser':
@@ -367,50 +395,67 @@ Object.assign(Game, {
   },
 
   drawHangar(ctx) {
-    const center = { align: 'center' }, c = this.camp, H = this.hullDef(), L = c.learned, row = this.hangarRow, blink = (this.t >> 3) & 1;
+    const center = { align: 'center' }, H = this.hullDef(), ids = this.hangarRowIds(), row = ids[this.hangarRow], blink = (this.t >> 3) & 1;
+    const opts = this.specialOptions(), pick = opts[this.hangarSel] || opts[0], mods = this.moduleOptions(), M = this.fittedModule();
     NES.box(ctx, 8, 20, 240, 206, C.black, C.gold);
     NES.text(ctx, 'HANGAR: MISSION LOADOUT', 128, 26, C.gold, center);
     NES.text(ctx, H.name, 128, 36, C.lgray, center);
-    for (let r = 0; r < 4; r++) {
-      const y = 50 + r * 24, sel = r === row, dim = r === 3 && !L.length;
-      if (sel) NES.hilite(ctx, 14, y - 3, 228, 22);
+    ids.forEach((r, k) => {
+      const y = 48 + k * 22, sel = r === row;
+      if (sel) NES.hilite(ctx, 14, y - 3, 228, 20);
       if (sel && blink) NES.text(ctx, '>', 13, y, C.gold);
-      const arrows = sel && (r < 3 ? this.hangarGuns(r).length : L.length) > 1;
+      const arrows = sel && (r < 3 ? this.hangarGuns(r).length : r === 3 ? opts.length : mods.length) > 1;
       if (arrows) { NES.text(ctx, '<', 90, y, C.gold); NES.text(ctx, '>', 232, y, C.gold); }
       if (r < 3) {   // line 1: form and gun; line 2: mount class, XP bar and level
         const g = this.fittedGun(r), G = GUNS[g], lv = this.gunLevel(g), x = this.gunXP(g), lo = GUN_LEVELS[lv - 1], hi = GUN_LEVELS[lv];
         NES.text(ctx, FORMS[r].name, 22, y, H.form[r] > 1 ? C.lime : H.form[r] < 1 ? C.orange : C.white);
         NES.text(ctx, G.name, 100, y, sel ? C.white : C.lgray);
-        NES.text(ctx, H.mounts[r] === 'heavy' ? 'HEAVY' : 'LIGHT', 22, y + 10, C.gray);
-        this.drawBar(ctx, 100, y + 11, 104, 4, hi ? (x - lo) / (hi - lo) : 1, lv >= 5 ? C.gold : C.aqua, '#082028');
-        NES.text(ctx, hi ? 'LV' + lv : 'MAX', 240, y + 10, lv >= 5 ? C.gold : C.aqua, { align: 'right' });
+        NES.text(ctx, H.mounts[r] === 'heavy' ? 'HEAVY' : 'LIGHT', 22, y + 9, C.gray);
+        this.drawBar(ctx, 100, y + 10, 104, 4, hi ? (x - lo) / (hi - lo) : 1, lv >= 5 ? C.gold : C.aqua, '#082028');
+        NES.text(ctx, hi ? 'LV' + lv : 'MAX', 240, y + 9, lv >= 5 ? C.gold : C.aqua, { align: 'right' });
+      } else if (r === 3) {   // a special (uses per leg) or ordnance (loaded now / in stock)
+        NES.text(ctx, 'SPECIAL', 22, y, C.white);
+        NES.text(ctx, (opts.indexOf(pick) + 1) + '/' + opts.length, 22, y + 9, C.gray);
+        if (pick.ord) {
+          const o = ORD_BY_ID[pick.ord], st = this.ordStock(o.id);
+          NES.text(ctx, o.name, 100, y, sel ? C.white : C.lgray);
+          NES.draw(ctx, SPR.ordIcons[o.family], 104, y + 12);
+          NES.text(ctx, 'X' + Math.min(st, o.carry) + '/' + st, 240, y + 9, C.orange, { align: 'right' });
+        } else {
+          const S = SPECIALS[pick.idx];
+          NES.text(ctx, S.name, 100, y, sel ? C.white : C.lgray);
+          NES.draw(ctx, SPR.specialIcons[pick.idx], 104, y + 12);
+          NES.text(ctx, 'X' + this.specialAmmo(), 240, y + 9, S.color, { align: 'right' });
+        }
       } else {
-        NES.text(ctx, 'SPECIAL', 22, y, dim ? C.gray : C.white);
-        if (dim) { NES.text(ctx, 'NONE YET', 100, y, C.gray); continue; }
-        const idx = L[this.hangarSel], S = SPECIALS[idx];
-        NES.text(ctx, S.name, 100, y, sel ? C.white : C.lgray);
-        NES.draw(ctx, SPR.specialIcons[idx], 104, y + 13);
-        NES.text(ctx, (this.hangarSel + 1) + '/' + L.length, 22, y + 10, C.gray);
-        NES.text(ctx, 'X' + this.specialAmmo(), 240, y + 10, S.color, { align: 'right' });
+        NES.text(ctx, 'MODULE', 22, y, C.white);
+        NES.text(ctx, M ? M.name : 'NONE', 100, y, sel ? C.white : C.lgray);
+        if (M) NES.text(ctx, M.kind === 'barrier' ? M.hits + (M.hits > 1 ? ' HITS' : ' HIT') : 'ESCORT', 240, y + 9, C.sky, { align: 'right' });
       }
-    }
+    });
+    let lines, extra, col = C.lgray;
     if (row < 3) {
       const g = this.fittedGun(row), G = GUNS[g], lv = this.gunLevel(g);
-      G.desc.forEach((l, i) => NES.text(ctx, l, 128, 148 + i * 10, C.aqua, center));
-      NES.text(ctx, lv >= 5 ? 'MAX LEVEL' : 'NEXT LV' + (lv + 1) + ': ' + G.lv[lv - 1], 128, 170, lv >= 5 ? C.gold : C.lime, center);
+      lines = G.desc; extra = lv >= 5 ? 'MAX LEVEL' : 'NEXT LV' + (lv + 1) + ': ' + G.lv[lv - 1];
+      col = lv >= 5 ? C.gold : C.lime;
+    } else if (row === 3 && pick.ord) {
+      lines = NES.wrap(ORD_BY_ID[pick.ord].desc, 26).slice(0, 2); extra = 'UNUSED ONES COME BACK';
+    } else if (row === 3) {
+      lines = SPECIALS[pick.idx].desc; extra = 'FIRE IT WITH: C KEY / PAD B';
     } else {
-      SPECIALS[L[this.hangarSel]].desc.forEach((l, i) => NES.text(ctx, l, 128, 148 + i * 10, C.aqua, center));
-      NES.text(ctx, 'FIRE IT WITH: C KEY / PAD B', 128, 170, C.lgray, center);
+      lines = M ? NES.wrap(M.desc, 26).slice(0, 2) : ['NO MODULE FITTED.']; extra = 'BUY MODULES AT MARKETS';
     }
-    NES.text(ctx, 'D-PAD: PICK AND CHANGE', 128, 186, C.gray, center);
-    if ((this.t >> 4) & 1) NES.text(ctx, 'SPACE / A: LAUNCH', 128, 206, C.white, center);
+    lines.forEach((l, i) => NES.text(ctx, l, 128, 162 + i * 9, C.aqua, center));
+    NES.text(ctx, extra, 128, 182, col, center);
+    NES.text(ctx, 'D-PAD: PICK AND CHANGE', 128, 196, C.gray, center);
+    if ((this.t >> 4) & 1) NES.text(ctx, 'SPACE / A: LAUNCH', 128, 210, C.white, center);
   },
 
   // Tap a row to pick it; tap the picked row's left or right half to change it; tap LAUNCH to go.
   tapHangar(x, y) {
-    if (y >= 198 && y < 222) { this.launchHangar(); return; }
-    const r = Math.floor((y - 47) / 24);
-    if (y < 47 || r < 0 || r >= this.hangarRows()) return;
+    if (y >= 204 && y < 222) { this.launchHangar(); return; }
+    const r = Math.floor((y - 45) / 22);
+    if (y < 45 || r < 0 || r >= this.hangarRows()) return;
     if (r !== this.hangarRow) { this.hangarRow = r; Sound.sfx('move'); } else this.hangarChange(x < 128 ? -1 : 1);
   },
 

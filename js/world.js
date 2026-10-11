@@ -43,12 +43,19 @@ const MISSION_KINDS = {
   raid: { name: 'GROUND RAID', legs: ['raid'], pay: 0.9, desc: 'SIDE-SCROLLING. TANKS AND MISSILE SITES.' },
   bonus: { name: 'CONTROL GROUP', legs: ['challenge'], pay: 0.7, desc: 'BONUS STAGE. THEY WILL NOT FIRE.' },
   strike: { name: 'STRONGHOLD', legs: ['boss'], pay: 1.5, desc: 'TWO LEGS AND A BOSS. CLEARS THE PLANET.' },
+  // The SUPPLY RAID contract on every cleared planet: never in P.missions (the draw below has its own pool).
+  convoy: { name: 'SUPPLY RAID', legs: ['convoy'], pay: 0.6, desc: 'SIDE-SCROLLING. HIT HER SAM CONVOY. PAYS.' },
 };
 
 // Shop stock every market can draw from (prices and effects in starbase.js). gun:<id> sells a gun
-// part (weapons.js); a market only draws guns sold in its galaxy (GUNS[id].gal).
+// part (weapons.js), mod:<id> a module (arsenal.js), <key>2 and <key>3 the Mk II and Mk III tiers of an
+// upgrade. A market only draws what its galaxy sells (marketGal).
+const MK_KEYS = ['engine', 'ftr', 'grd', 'btl', 'cooler', 'broker'];
 const MARKET_POOL = ['weapons', 'shields', 'special', 'engine', 'ftr', 'grd', 'btl', 'cooler', 'armor', 'scanner', 'broker',
-  ...GUN_IDS.map(id => 'gun:' + id)];
+  ...GUN_IDS.map(id => 'gun:' + id), ...MODULES.map(m => 'mod:' + m.id), ...MK_KEYS.flatMap(k => [k + '2', k + '3'])];
+// First galaxy (index) whose markets sell a MARKET_POOL entry: Mk II from the Magellanic Cloud, Mk III from Andromeda.
+const marketGal = k => (k.startsWith('gun:') ? GUNS[k.slice(4)].gal : k.startsWith('mod:') ? MODULE_BY_ID[k.slice(4)].gal
+  : /[23]$/.test(k) ? +k.slice(-1) - 1 : 0);
 
 // Galaxies hold systems; systems keep the old sector fields (see CLAUDE.md): boss/capital ids, enemy
 // swaps, extra side patterns, acetylation bonus and the securing bonus. x/y place a galaxy on the
@@ -172,7 +179,7 @@ GALAXIES.forEach((G, gi) => {
         P.missions = [...list, 'strike'];
       }
       if (!P.market) {
-        const pool = MARKET_POOL.filter(k => !k.startsWith('gun:') || GUNS[k.slice(4)].gal <= gi), n = 3 + Math.floor(r() * 2);
+        const pool = MARKET_POOL.filter(k => marketGal(k) <= gi), n = 3 + Math.floor(r() * 2);
         P.market = [];
         while (P.market.length < n) P.market.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
       }

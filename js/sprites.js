@@ -652,9 +652,17 @@ const SPR = (() => {
     B(['..Y..', '.YWY.', 'YWWWY', '.YWY.', '..Y..'], { Y: C.gold, W: C.white }),
   ];
 
+  // ---- Ordnance icons, by family (arsenal.js) ----------------------------------
+  const ordIcons = {
+    missile: B(['..W..', '.WRW.', '.WWW.', 'GWWWG', '..O..'], { W: C.white, R: C.red, G: C.gray, O: C.orange }),
+    bomb: B(['.GGG.', 'GLLLG', 'GLWLG', 'GLLLG', '.GRG.'], { G: C.gray, L: C.lgray, W: C.white, R: C.red }),
+    cluster: B(['R...R', '.OYO.', '.YWY.', '.OYO.', 'R...R'], { R: C.red, O: C.orange, Y: C.yellow, W: C.white }),
+    cell: B(['.WWW.', 'WSSSW', 'WSWSW', 'WSSSW', '.WWW.'], { W: C.white, S: C.sky }),
+  };
+
   return {
     hulls,
-    enemy, ebullet, missile, life, wing, wingSide, escort, escortSide, shuttle, shieldPip, shieldPipOff, tet, specialIcons,
+    enemy, ebullet, missile, life, wing, wingSide, escort, escortSide, shuttle, shieldPip, shieldPipOff, tet, specialIcons, ordIcons,
     // portraits come from the portrait painter (faces.js), baked on first use
     get portrait() { return FACES.voss; }, get mira() { return FACES.mira; }, get pilots() { return FACES.pilots; },
   };

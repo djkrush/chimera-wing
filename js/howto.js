@@ -168,7 +168,7 @@ Object.assign(Game, {
 
     topic('MISSIONS');
     list('WHAT KINDS OF MISSION ARE THERE?', Object.values(MISSION_KINDS).map(K => [K.name, K.desc, C.gold]),
-      (ctx, x, y, hi) => this.howArtStage(ctx, x, y, ['v', 's', 'raid', 'bonus', (this.t >> 7) & 1 ? 'v' : 's'][hi]));
+      (ctx, x, y, hi) => this.howArtStage(ctx, x, y, ['v', 's', 'raid', 'bonus', (this.t >> 7) & 1 ? 'v' : 's', 'raid'][hi]));
     page('WHAT IS A STRONGHOLD?', [
       'EACH PLANET\'S LAST MISSION. IT OPENS ONCE THE OTHERS ARE FLOWN, AND ENDS IN A BOSS:',
       'A GROUNDED WARSHIP (DESTROY EVERY TURRET, LAUNCHER, HANGAR, RADAR AND CORE) OR A CAPITAL SHIP THAT FLIES UNDER YOU (HIT ITS TARGETS AS IT PASSES).'],
@@ -199,15 +199,41 @@ Object.assign(Game, {
 
     topic('THE MARKET');
     page('WHAT CAN I BUY?', [
-      'EVERY PLANET HAS A STATION WITH A MARKET, AND EACH ONE STOCKS DIFFERENT THINGS: UPGRADES, GUNS AND SOMETIMES A HULL.',
-      'UPGRADE PRICES RISE WITH EACH ONE YOU BUY. NEWER GALAXIES SELL NEWER GUNS.'],
+      'EVERY PLANET HAS A STATION WITH A MARKET, AND EACH ONE STOCKS DIFFERENT THINGS: UPGRADES, GUNS, MODULES AND SOMETIMES A HULL. EVERY MARKET SELLS ORDNANCE.',
+      'UPGRADE PRICES RISE WITH EACH ONE YOU BUY. NEWER GALAXIES SELL NEWER GEAR.'],
     (ctx, x, y) => this.howArtStation(ctx, x, y));
-    list('WHICH UPGRADES ARE THERE?', Object.values(UPGRADES).map(u => [u.label, u.desc + (u.max ? ' ' + u.max + ' LEVELS.' : ''), C.white]),
+    list('WHICH UPGRADES ARE THERE?', Object.keys(UPGRADES).map(k => {
+      const u = UPGRADES[k];
+      return [u.label, u.mk ? (u.mk === 2 ? 'MAGELLANIC CLOUD ON. NEEDS MK I MAXED.' : 'ANDROMEDA. NEEDS MK II.') + ' ONE MORE LEVEL.'
+        : u.desc + (u.max ? ' ' + u.max + ' LEVELS.' : ''), C.white];
+    }), (ctx, x, y, hi, items) => {
+      const k = Object.keys(UPGRADES).find(q => UPGRADES[q].label === items[hi][0]), u = UPGRADES[k];
+      NES.box(ctx, x - 40, y - 30, 80, 44, '#203890', C.gold);
+      NES.text(ctx, u.short, x, y - 16, C.gold, { align: 'center', scale: 2 });
+      NES.text(ctx, upgradePrice(k, 0) + ' CR', x, y + 30, C.white, { align: 'center' });
+    });
+    page('WHAT IS ORDNANCE?', [
+      'MISSILES, BOMBS, CLUSTER PODS AND SHIELD CELLS, BOUGHT BY THE RACK. FIT ONE IN THE SPECIAL ROW INSTEAD OF A SPECIAL AND FIRE IT WITH B.',
+      'YOU TAKE UP TO ITS CARRY LIMIT ON A MISSION. WHAT YOU DO NOT FIRE COMES BACK. FAIL THE MISSION AND WHAT YOU CARRIED IS LOST.'],
+    (ctx, x, y) => {
+      const o = ORDNANCE[(this.t / 90 | 0) % ORDNANCE.length];
+      for (let i = 0; i < o.uses; i++) this.howBig(ctx, SPR.ordIcons[o.family], x + (i - (o.uses - 1) / 2) * 16, y - 30, 0);   // one rack
+      NES.text(ctx, o.name, x, y + 4, C.orange, { align: 'center' });
+      NES.text(ctx, o.price + ' CR', x, y + 16, C.white, { align: 'center' });
+    });
+    list('WHICH MODULES ARE THERE?', MODULES.map(M => [M.name, M.price + ' CR. ' + M.desc, M.kind === 'barrier' ? C.sky : C.orange]),
       (ctx, x, y, hi, items) => {
-        const u = Object.values(UPGRADES).find(q => q.label === items[hi][0]);
-        NES.box(ctx, x - 40, y - 30, 80, 44, '#203890', C.gold);
-        NES.text(ctx, u.short, x, y - 16, C.gold, { align: 'center', scale: 2 });
-        NES.text(ctx, u.base + ' CR', x, y + 30, C.white, { align: 'center' });
+        const M = MODULES.find(q => q.name === items[hi][0]);
+        this.drawShip(ctx, 0, x, y, 0, true, false, 0);
+        if (M.kind === 'barrier') {   // show the ring wearing through its hits
+          const [b, m] = [this.barrier, this.barrierMax];
+          this.barrierMax = M.hits; this.barrier = M.hits - ((this.t >> 6) % M.hits);
+          this.drawBarrier(ctx, x, y);
+          this.barrier = b; this.barrierMax = m;
+        } else if (M.id === 'fighters') { NES.draw(ctx, SPR.wing, x - 20, y + 4); NES.draw(ctx, SPR.wing, x + 20, y + 4); }
+        else if (M.id === 'trail') this.drawOption(ctx, x + Math.round(Math.sin(this.t * 0.05) * 12), y + 22);
+        else { const a = this.t * 0.09; this.drawOption(ctx, x + Math.cos(a) * 22, y + Math.sin(a) * 22); }
+        NES.text(ctx, M.name, x, y + 40, C.white, { align: 'center' });
       });
     list('WHICH HULLS ARE THERE?', HULLS.map(h => [h.name, (h.price ? h.price + ' CR. ' : 'YOUR FIRST SHIP. ') + h.desc, C.aqua]),
       (ctx, x, y, hi, items) => {
@@ -231,7 +257,8 @@ Object.assign(Game, {
     });
     page('HOW DO I EARN CREDITS?', [
       'EVERY MISSION PAYS MISSION PAY PLUS COMBAT PAY FROM YOUR SCORE. A REPLAY PAYS HALF.',
-      'CLEARING A PLANET, SECURING A SYSTEM AND LIBERATING ONE (EVERY PLANET CLEARED) EACH PAY A BONUS.'],
+      'CLEARING A PLANET, SECURING A SYSTEM AND LIBERATING ONE EACH PAY A BONUS.',
+      'SHORT OF CREDITS? A CLEARED PLANET OFFERS A SUPPLY RAID: EVERY CARGO TANK PAYS, AT FULL PAY EVERY TIME.'],
     (ctx, x, y) => {
       const n = Math.min(9999, (this.t * 37) % 12000 | 0);
       NES.text(ctx, n + ' CR', x, y - 8, C.gold, { align: 'center', scale: 2 });

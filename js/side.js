@@ -2,7 +2,8 @@
 // Side-scrolling stages, in the style of U.N. Squadron. The ship faces right and flies freely.
 // Enemy squads arrive on a timed script (with extra patterns per system). A stronghold's assault ends
 // at the system's boss base (bosses.js); other side legs just end when their script has played out.
-// A GROUND RAID (this.raid) swaps much of the air traffic for tank columns and missile sites.
+// A GROUND RAID (this.raid) swaps much of the air traffic for tank columns and missile sites. A SUPPLY
+// RAID (this.convoy) is a short run at Voss's SAM convoys: unarmed cargo tanks that pay when destroyed.
 
 Object.assign(Game, {
   initSide() {
@@ -11,10 +12,16 @@ Object.assign(Game, {
     const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam', ...this.systemSideKinds()];
     if (s >= 4) kinds.push('tankCol');
     if (this.raid) kinds.push('tankCol', 'tankCol', 'tankCol', 'sam', 'sam', 'sam');
-    const events = [{ t: 700, kind: 'methyl' }, { t: 1700, kind: 'methyl' }];
+    let events = [{ t: 700, kind: 'methyl' }, { t: 1700, kind: 'methyl' }];
     // ~45-55 seconds before the boss; a side approach (no boss) is a bit shorter
-    const dur = (this.legBoss ? 2400 : 1900) + Math.min(s, 12) * 60;
-    for (let t = 90; t < dur; t += randi(80, 140) - Math.min(s * 3, 40)) {
+    let dur = (this.legBoss ? 2400 : 1900) + Math.min(s, 12) * 60;
+    if (this.convoy) {   // about 30 seconds: four convoys (about 12 cargo tanks), air cover between them, one methylator
+      events = [{ t: 900, kind: 'methyl' }, ...[60, 480, 960, 1440].map(t => ({ t, kind: 'convoy' }))];
+      kinds.length = 0;
+      kinds.push('migLine', 'migSwoop', 'migLine', ...this.systemSideKinds());
+      dur = 1800;
+    }
+    for (let t = this.convoy ? 260 : 90; t < dur; t += this.convoy ? randi(200, 260) : randi(80, 140) - Math.min(s * 3, 40)) {
       let kind = pick(kinds);
       if (kind === 'migRear' && s < 4) kind = 'migSwoop';   // no ambushes from behind in the first mission
       events.push({ t, kind });
@@ -79,6 +86,12 @@ Object.assign(Game, {
       case 'tankCol': {   // a column of tanks rolling along the ground, guns raised
         const n = randi(2, 3 + (this.raid ? 1 : 0));
         for (let i = 0; i < n; i++) this.spawnSideEnemy('tank', 'tank', W + 14 + i * 34, SIDE_GROUND - 6);
+        break;
+      }
+      case 'convoy': {   // cargo tanks rolling along the ground under a pair of MiGs
+        const n = randi(2, 4);
+        for (let i = 0; i < n; i++) this.spawnSideEnemy('tank', 'tank', W + 14 + i * 34, SIDE_GROUND - 6, { cargo: true, fireAt: 0 });
+        for (let i = 0; i < 2; i++) this.spawnSideEnemy(this.mixType('fighter'), 'sine', W + 40 + i * 40, randi(50, 120), { amp: 16, ph: i });
         break;
       }
       case 'methyl':
@@ -197,6 +210,25 @@ Object.assign(Game, {
       e.x += e.vx;
       if (e.x > W + 30) e.dead = true;
     }
+  },
+
+  // A cargo tank destroyed on a supply raid: its SAM is worth credits, more in later systems.
+  cargoKill(e) {
+    const M = this.mission, cr = 40 + 15 * this.systemDef().tier;
+    if (!M) return;
+    M.cargoCr += cr;
+    this.popup(e.x, e.y - 14, '+' + cr + ' CR', C.gold);
+    Sound.sfx('cash');
+  },
+
+  // The trailer a convoy tank tows: a banded SAM canister on two wheels.
+  drawCargo(ctx, e) {
+    const x = Math.round(e.x) + 12, y = Math.round(e.y) - 4;
+    ctx.fillStyle = C.gray; ctx.fillRect(x - 3, y + 5, 3, 1);   // tow bar
+    NES.box(ctx, x, y, 12, 8, C.gold, C.brown);
+    ctx.fillStyle = C.yellow; ctx.fillRect(x + 2, y + 2, 8, 1);
+    ctx.fillStyle = C.maroon; ctx.fillRect(x + 5, y + 1, 2, 6);
+    NES.disc(ctx, x + 3, y + 9, 1, C.black); NES.disc(ctx, x + 9, y + 9, 1, C.black);
   },
 
   // SNES parallax landscape (scenery.js), plus the incoming-enemy warnings.
