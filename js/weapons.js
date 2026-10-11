@@ -18,7 +18,7 @@ const GUNS = {
     desc: ['FAST PAIRS OF BOLTS.', 'THE CHIMERA STANDARD.'], lv: ['FASTER BOLTS', 'THIRD STREAM', 'WIDER STREAMS', 'PIERCES ONE PLANE'] },
   vulcan: { name: 'VULCAN', short: 'VULCAN', form: 0, rung: 1, cd: 4, cap: 14,
     desc: ['A RAPID MACHINE GUN. WEAK', 'ROUNDS, AND MANY OF THEM.'], lv: ['TIGHTER SPREAD', 'MORE ROUNDS', 'TIGHTER STILL', 'MORE ROUNDS STILL'] },
-  ripple: { name: 'RIPPLE LASER', short: 'RIPPLE', form: 0, rung: 2, cd: 16, cap: 6,
+  ripple: { name: 'RIPPLE LASER', short: 'RIPPLE', form: 0, rung: 2, cd: 14, cap: 6,
     desc: ['A RING THAT WIDENS AS IT', 'FLIES. PIERCES.'], lv: ['RING GROWS FASTER', 'WIDER RING', 'FASTER STILL', 'WIDEST RING'] },
   gunpod: { name: 'GUN POD', short: 'GUN POD', form: 0, rung: 3, cd: 22, cap: 9,
     desc: ['HEAVY THREE-ROUND BURSTS', 'FROM A VF GUN POD.'], lv: ['HEAVIER ROUNDS', '4-ROUND BURSTS', 'HEAVIER STILL', '5-ROUND BURSTS'] },
@@ -46,7 +46,7 @@ const GUNS = {
     desc: ['ARCING SHOTS THAT SPLIT', 'INTO DIAGONAL LASERS.'], lv: ['LONGER LASERS', 'FASTER FIRE', 'LONGER STILL', 'TWO SHOTS'] },
   mortar: { name: 'MORTAR', short: 'MORTAR', form: 1, rung: 6, cd: 28, cap: 6,
     desc: ['LOBBED SHELLS THAT BURST', 'OVER GROUND TARGETS.'], lv: ['TWO SHELLS', 'BIGGER BLAST', 'THREE SHELLS', 'BIGGEST BLAST'] },
-  ring: { name: 'ORBIT RING', short: 'RING', form: 1, rung: 7, cd: 10, cap: 8,
+  ring: { name: 'ORBIT RING', short: 'RING', form: 1, rung: 7, cd: 8, cap: 8,
     desc: ['SHOTS CIRCLE THE SHIP', 'AND BLOCK BULLETS.'], lv: ['WIDER RING', 'MORE SHOTS', 'WIDER STILL', 'MORE SHOTS STILL'] },
   chain: { name: 'CHAIN ARC', short: 'CHAIN', form: 1, rung: 8, cd: 18, cap: 1,
     desc: ['LIGHTNING THAT JUMPS', 'BETWEEN NEARBY PLANES.'], lv: ['MORE JUMPS', 'MORE DAMAGE', 'MORE JUMPS STILL', 'MOST DAMAGE'] },
@@ -138,7 +138,7 @@ Object.assign(Game, {
 
   // THUNDER SWORD (Thunder Force IV): it charges while you hold your fire; pressing fire swings the blade
   // once it's full. Firing early shoots small bolts and keeps the charge empty.
-  swordNeed(L) { return L >= 4 ? 60 : L >= 2 ? 90 : 120; },
+  swordNeed(L) { return L >= 4 ? 55 : L >= 2 ? 80 : 100; },
   triggerSword(held, L) {
     const p = this.player, need = this.swordNeed(L);
     if (p.morphT > 0) { p.swordT = 0; return; }
@@ -259,7 +259,7 @@ Object.assign(Game, {
         const n = L >= 5 ? 4 : L >= 3 ? 3 : 2, turn = L >= 4 ? 0.2 : L >= 2 ? 0.16 : 0.12;
         for (let i = 0; i < n; i++) {
           const s = (i / (n - 1)) * 2 - 1, hd = -Math.PI / 2 + s * 0.9;
-          this.shoot(s * 6, -4, Math.cos(hd) * 1.2, Math.sin(hd) * 1.2, { hd, spd: 1.2, turn, kind: 'missile', dmg: 2 * k, form: f, life: 150, target: null });
+          this.shoot(s * 6, -4, Math.cos(hd) * 1.2, Math.sin(hd) * 1.2, { hd, spd: 1.2, turn, kind: 'missile', dmg: 2.8 * k, form: f, life: 150, target: null });
         }
         this.shots += n; Sound.sfx('missile');
         break;
@@ -272,7 +272,7 @@ Object.assign(Game, {
         const n = L >= 5 ? 3 : L >= 3 ? 2 : 1, blast = L >= 4 ? 34 : L >= 2 ? 28 : 22;
         for (let i = 0; i < n; i++) {
           const s = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
-          const b = this.shoot(s * 6, -6, s * 0.8, this.isSide ? -3 : -3.2, { kind: 'bomb', dmg: 2 * k, form: f, life: 70, blast });
+          const b = this.shoot(s * 6, -6, s * 0.8, this.isSide ? -3 : -3.2, { kind: 'bomb', dmg: 2.4 * k, form: f, life: 70, blast });
           if (this.isSide) { b.vy = 0.6 + s * 0.5; b.grav = true; b.life = 200; }
         }
         this.shots += n; Sound.sfx('missile');
@@ -280,18 +280,18 @@ Object.assign(Game, {
       }
       case 'vulcan': {
         const a = rand(-1, 1) * (L >= 4 ? 0.025 : L >= 2 ? 0.045 : 0.07);
-        this.shoot(randi(-2, 2), -6, Math.sin(a) * 7, -Math.cos(a) * 7, { kind: 'vulcan', dmg: 0.45 * k, form: f });
+        this.shoot(randi(-2, 2), -6, Math.sin(a) * 7, -Math.cos(a) * 7, { kind: 'vulcan', dmg: 0.7 * k, form: f });
         this.shots++; if (this.t % 2) Sound.sfx('shoot');
         break;
       }
       case 'wave': {  // shots twisting round each other, like a double helix
         const n = L >= 4 ? 3 : 2, sway = L >= 2 ? 3.2 : 2.2, vy = L >= 3 ? -6 : -4.5, big = L >= 5;
-        for (let i = 0; i < n; i++) this.shoot(0, -6, 0, vy, { kind: 'wave', dmg: 0.8 * k, form: f, ph: i / n * TAU, sway, big, rad: big ? 5 : 3 });
+        for (let i = 0; i < n; i++) this.shoot(0, -6, 0, vy, { kind: 'wave', dmg: k, form: f, ph: i / n * TAU, sway, big, rad: big ? 5 : 3 });
         this.shots += n; Sound.sfx('spread');
         break;
       }
       case 'ripple':  // a ring that widens as it flies
-        this.shoot(0, -8, 0, -4, { kind: 'ripple', dmg: 1.1 * k, form: f, rad: 3, pierce: 2, hit: [], life: 70,
+        this.shoot(0, -8, 0, -4, { kind: 'ripple', dmg: 2 * k, form: f, rad: 3, pierce: 2, hit: [], life: 70,
           grow: 0.3 + (L >= 2 ? 0.1 : 0) + (L >= 4 ? 0.1 : 0), maxR: 14 + (L >= 3 ? 4 : 0) + (L >= 5 ? 4 : 0) });
         this.shots++; Sound.sfx('spread');
         break;
@@ -308,7 +308,7 @@ Object.assign(Game, {
           this.shots += L >= 4 ? 2 : 1; Sound.sfx('shoot');
           break;
         }
-        this.shoot(0, -10, 0, -3, { kind: 'charge', step: s, dmg: [2.5, 4, 7][s - 1] * k, form: f,
+        this.shoot(0, -10, 0, -3, { kind: 'charge', step: s, dmg: [3, 6, 11][s - 1] * k, form: f,
           rad: [3, 5, 8][s - 1] + (L >= 3 ? 2 : 0), pierce: [3, 5, 9][s - 1], hit: [], burst: s === 3 && L >= 5 });
         this.shots++; Sound.sfx(s === 3 ? 'missile' : 'spread');
         cd = 18 + s * 6;
@@ -330,7 +330,7 @@ Object.assign(Game, {
         break;
       }
       case 'tail': {  // twin bolts ahead, a tail gun behind
-        for (const s of [-1, 1]) this.shoot(s * 3, -6, 0, -7.5, { kind: 'shot', dmg: 0.8 * k, form: f });
+        for (const s of [-1, 1]) this.shoot(s * 3, -6, 0, -7.5, { kind: 'shot', dmg: 1.1 * k, form: f });
         const tail = L >= 5 ? [-0.6, 0, 0.6] : L >= 3 ? [-0.35, 0.35] : [0];
         for (const a of tail) this.shoot(0, 8, Math.sin(a) * 6, Math.cos(a) * 6, { kind: 'shot', dmg: 0.6 * k, form: f });
         this.shots += 2 + tail.length; if (this.t % 2) Sound.sfx('shoot');
@@ -339,7 +339,7 @@ Object.assign(Game, {
       }
       case 'needle': {  // fast and thin, through planes
         const pierce = L >= 4 ? 4 : L >= 2 ? 3 : 2;
-        for (const ox of L >= 5 ? [-3, 3] : [0]) this.shoot(ox, -8, 0, -12, { kind: 'needle', dmg: 2.2 * k, form: f, pierce, hit: [] });
+        for (const ox of L >= 5 ? [-3, 3] : [0]) this.shoot(ox, -8, 0, -12, { kind: 'needle', dmg: 2.8 * k, form: f, pierce, hit: [] });
         this.shots += L >= 5 ? 2 : 1; Sound.sfx('shoot');
         cd = L >= 3 ? 7 : 10;
         break;
@@ -347,7 +347,7 @@ Object.assign(Game, {
       case 'rocket': {  // a rack of micro rockets that speed up and burst on impact
         const n = L >= 4 ? 5 : L >= 2 ? 4 : 3, blast = L >= 5 ? 20 : L >= 3 ? 16 : 12;
         for (let i = 0; i < n; i++) {
-          this.shoot((i - (n - 1) / 2) * 3, -6 - Math.abs(i - (n - 1) / 2) * 3, 0, -3, { kind: 'rocket', dmg: 1.6 * k, form: f, blast, life: 60 });
+          this.shoot((i - (n - 1) / 2) * 3, -6 - Math.abs(i - (n - 1) / 2) * 3, 0, -3, { kind: 'rocket', dmg: 1.9 * k, form: f, blast, life: 60 });
         }
         this.shots += n; Sound.sfx('missile');
         cd = 26;
@@ -364,7 +364,7 @@ Object.assign(Game, {
         break;
       }
       case 'freeway': {  // the shots lean toward where you steer (the ship's bank or climb)
-        const a = p.tilt * (L >= 2 ? 0.8 : 0.5), dmg = (L >= 4 ? 1.4 : 1.1) * k, lanes = L >= 5 ? [-1, 0, 1] : [-1, 1];
+        const a = p.tilt * (L >= 2 ? 0.8 : 0.5), dmg = (L >= 4 ? 1.7 : 1.4) * k, lanes = L >= 5 ? [-1, 0, 1] : [-1, 1];
         for (const s of lanes) {
           const q = a + s * 0.035;
           this.shoot(s * 2, -6, Math.sin(q) * 7.5, -Math.cos(q) * 7.5, { kind: 'freeway', dmg, form: f });
@@ -387,17 +387,17 @@ Object.assign(Game, {
         const n = L >= 5 ? 2 : 1, len = L >= 4 ? 36 : L >= 2 ? 28 : 20;
         for (let i = 0; i < n; i++) {
           const s = n === 1 ? 0 : i ? 1 : -1;
-          this.shoot(s * 3, -6, s * 0.25, -7, { kind: 'diag', dmg: 1.2 * k, form: f, life: 24, len });
+          this.shoot(s * 3, -6, s * 0.25, -7, { kind: 'diag', dmg: 2 * k, form: f, life: 24, len });
         }
         this.shots += n; Sound.sfx('spread');
-        cd = L >= 3 ? 18 : 24;
+        cd = L >= 3 ? 15 : 20;
         break;
       }
       case 'mortar': {  // lobbed over the planes in between, bursting where it lands (bulletEnd)
         const n = L >= 4 ? 3 : L >= 2 ? 2 : 1, blast = L >= 5 ? 32 : L >= 3 ? 26 : 20;
         const aim = this.findTarget(p.x, p.y), [fx, fy] = this.orient(0, -1);
         for (let i = 0; i < n; i++) {
-          const s = n === 1 ? 0 : (i / (n - 1)) * 2 - 1, b = this.shoot(s * 4, -4, 0, 0, { kind: 'mortar', dmg: 4.5 * k, form: f, blast, noHit: true });
+          const s = n === 1 ? 0 : (i / (n - 1)) * 2 - 1, b = this.shoot(s * 4, -4, 0, 0, { kind: 'mortar', dmg: 6 * k, form: f, blast, noHit: true });
           if (this.isSide) { b.vx = 2.4 + i * 0.5; b.vy = -3.4; b.grav = true; b.life = 200; continue; }
           const ahead = aim && (aim.x - p.x) * fx + (aim.y - p.y) * fy > 30, T = 34;
           const tx = (ahead ? aim.x : p.x) + s * 24, ty = ahead ? aim.y : p.y - 110;
@@ -410,7 +410,7 @@ Object.assign(Game, {
       case 'ring': {  // shots that circle the ship, blocking bullets, then fly off ahead
         const n = L >= 5 ? 3 : L >= 3 ? 2 : 1, r = L >= 4 ? 28 : L >= 2 ? 23 : 18;
         p.ringA = (p.ringA || 0) + 2.1;
-        for (let i = 0; i < n; i++) this.pBul.push({ x: p.x, y: p.y, vx: 0, vy: 0, kind: 'orbit', dmg: 1.4 * k, form: f, orbit: { a: p.ringA + i * TAU / n, r, t: 70 } });
+        for (let i = 0; i < n; i++) this.pBul.push({ x: p.x, y: p.y, vx: 0, vy: 0, kind: 'orbit', dmg: 4.5 * k, form: f, orbit: { a: p.ringA + i * TAU / n, r, t: 70 } });
         this.shots += n; Sound.sfx('spread');
         break;
       }
@@ -441,7 +441,7 @@ Object.assign(Game, {
         const burn = L >= 4 ? 120 : L >= 2 ? 90 : 60, big = L >= 5;
         p.gren = -(p.gren || 1);
         for (const s of L >= 3 ? [-1, 1] : [p.gren]) {
-          const b = this.shoot(s * 4, -6, s * 0.6, -7.8, { kind: 'grenade', dmg: 1.5 * k, form: f, blast: 14, burn, big, life: 26 });
+          const b = this.shoot(s * 4, -6, s * 0.6, -7.8, { kind: 'grenade', dmg: 2.2 * k, form: f, blast: 14, burn, big, life: 26 });
           if (this.isSide) { b.vx = 3; b.vy = s < 0 ? -3 : 0.8; b.grav = true; b.life = 200; }
         }
         this.shots += L >= 3 ? 2 : 1; Sound.sfx('missile');
@@ -460,7 +460,7 @@ Object.assign(Game, {
       }
       case 'sword': {  // see triggerSword: a full charge swings the blade, otherwise a small bolt
         if (p.swordT >= this.swordNeed(L)) {
-          this.shoot(0, -10, 0, -7, { kind: 'sword', dmg: 16 * k, form: f, len: L >= 5 ? 90 : L >= 3 ? 64 : 44, noHit: true, noCopy: true, cut: [], life: 60 });
+          this.shoot(0, -10, 0, -7, { kind: 'sword', dmg: 36 * k, form: f, len: L >= 5 ? 90 : L >= 3 ? 64 : 44, noHit: true, noCopy: true, cut: [], life: 60 });
           this.shots++; this.punch(1.5); Sound.sfx('missile');
           cd = 24;
         } else {
@@ -472,7 +472,7 @@ Object.assign(Game, {
         break;
       }
       case 'canister': {  // a shotgun blast of pellets that don't fly far
-        const n = L >= 4 ? 13 : L >= 2 ? 10 : 8, life = L >= 5 ? 22 : L >= 3 ? 18 : 14;
+        const n = L >= 4 ? 13 : L >= 2 ? 10 : 8, life = L >= 5 ? 24 : L >= 3 ? 20 : 16;
         for (let i = 0; i < n; i++) {
           const a = rand(-0.45, 0.45), sp = rand(5.5, 7.5);
           this.shoot(0, -8, Math.sin(a) * sp, -Math.cos(a) * sp, { kind: 'pellet', dmg: k, form: f, life });
@@ -634,7 +634,7 @@ Object.assign(Game, {
       Sound.sfx('explode');
       this.blastAt(b.x, b.y, b.blast, b.dmg * (full ? 1 : 0.6), b.form);
       if (b.kind === 'grenade') this.pBul.push({ x: b.x, y: b.y, vx: 0, vy: this.isSide ? 0 : 1, kind: 'burn', form: b.form, life: b.burn, noHit: true,
-        zone: { r: b.big ? 14 : 10, every: 10, dmg: 0.5 * b.dmg / 1.5 } });
+        zone: { r: b.big ? 14 : 10, every: 10, dmg: 0.3 * b.dmg } });
     } else if (b.kind === 'flak') {   // the shell becomes a cloud that hangs, hurting planes and catching missiles and shells
       const [vx, vy] = this.orient(0, 0.3);
       this.pBul.push({ x: b.x, y: b.y, vx, vy, kind: 'cloud', form: b.form, life: b.hang, max: b.hang, noHit: true,
@@ -642,7 +642,7 @@ Object.assign(Game, {
       Sound.sfx('explode');
     } else if (b.kind === 'diag') {   // four diagonal lasers, each through three planes
       for (const [dx, dy] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) this.pBul.push({ x: b.x, y: b.y, vx: dx * 5, vy: dy * 5, kind: 'dlaser',
-        dmg: 0.75 * b.dmg, form: b.form, pierce: 3, hit: [], life: b.len });
+        dmg: 0.6 * b.dmg, form: b.form, pierce: 3, hit: [], life: b.len });
     }
   },
 

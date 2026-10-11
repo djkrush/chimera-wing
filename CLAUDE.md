@@ -42,7 +42,7 @@ nes.js → snes.js → shipyard.js → faces.js → sprites.js → audio.js → 
 | `SNES` | `js/snes.js` | 15-bit color and 5-shade `ramp`s, `bake` (shaded ASCII sprites), `glow`/`sphere`/`globe`, smooth `drawRot` with scaling, color math (`add`, `half`), HDMA-style `bands`, parallax `layer`/`scrollX`/`scrollY`, Mode 7 `texture`/`mode7` |
 | `FACES` | `js/faces.js` | Character portraits (56×64), painted like SNES fighting-game select screens: shapes drawn in 40×48 units on a 4× canvas (materials with form lighting plus shadow/highlight shapes), reduced to pixels with hand-picked ramps and a silhouette outline, then eyes and glints stamped pixel by pixel. The pilots (`pilot()`) are front views in full flight gear with the mirror visor down over the eyes (helmet, visor, oxygen mask and hose); Mira and Voss are painted front-view faces (`frontNeck`/`frontHead`). `drawFace` frames them at 60×68; dialogue puts the frame in the widescreen margin left of the text box. |
 | `YARD` | `js/shipyard.js` | Painter for the big pre-rendered machines (carrier, capital ships, boss warships): `sheet(w, h)` lays down materials at height levels (`rect`, `poly`, `ellipse`, `mirrorX`, `recolor`), `bake()` bevels, drop-shadows and outlines them; detail helpers `modules`, `plates`, `greebles`, `vent`, `turret`, `windows` |
-| `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Top-down sprites point **up** and the game rotates them. Side-mission sprites are **side profiles**, drawn unrotated. |
+| `SPR` | `js/sprites.js` | All pixel art as ASCII rows + color maps, baked at load time. Top-down sprites point **up** and the game rotates them. Side-mission sprites are **side profiles**, drawn unrotated. Each hull has its own Fighter; its Guardian and Battloid are the shared bodies with its head, shoulder armor and backpack stamped on (`hullParts`, `HULL_PARTS`). |
 | `Sound` | `js/audio.js` | SNES-style (SPC700) sound: instruments are samples synthesized at start-up and BRR-encoded (`buildSamples`), played with ADSR, pan and one shared echo. `Sound.sfx(name)` (names in the `SFX` table), `Sound.playSong(Sound.SONGS.x)`. Sequencer notes are `"NOTE:LEN"` tokens in sixteenths, `A4+C5:2` chords, `inst@NOTE` to borrow an instrument; drum tracks use the kit letters. Songs are built bar by bar with `arrange(bpm, echo, sections, parts)`. The music takes its tempo, keys and harmony from Acen's 1992 records ("Trip II The Moon", "Obsessed II"), with our own melodies. |
 | `Input` | `js/input.js` | Keyboard, gamepad and touch merged into abstract actions: `Input.pressed(a)`, `Input.just(a)`. Actions: `left right up down fire special transform prevForm start back form1-3`. Per-pad remaps live in `localStorage['chimera.padmap']`. Touch feeds `Input.setVirtual(a, on)` (held) and `Input.pulse(a)` (one frame). |
 | `Touch` | `js/touch.js` | Touch controls (DOM overlay): floating joystick in flight, A/B/X/START buttons, taps elsewhere go to `Game.tap(x, y)`. On for Android/Samsung UAs, `?touch`, or the first touch. `Touch.on` switches `main.js` to fill-the-screen scaling. |
@@ -105,9 +105,10 @@ base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT M
   carrier's first arrival in a galaxy.
 - `startBriefing(label, title, pages, done)` runs any sequence of pages in the `intro` state. Fire
   finishes the typing and then turns the page. The game menu's SKIP BRIEFING jumps to `done()`.
-- In-game radio: `say(text, who = villain, queued = false)`. In flight its window is drawn see-through, so keep
-  messages off the moments that matter (a boss's intro plays while it's still out of reach). With `queued`, the message waits in `radioQ`
-  until the current one ends. `hint(key)` shows one of Mira's `HINTS` once per game.
+- In-game radio: `say(text, who = villain, queued = false)`. In `play` and `clear` a message **freezes the stage**
+  (`radioHolds()`: `update()` only runs `updateRadioHold()`) until a fresh A or B press (or a tap) after 20 frames
+  calls `nextRadio()`, so every message costs the player a pause: keep them few. With `queued`, the message waits in
+  `radioQ` until the current one ends. `hint(key)` shows one of Mira's `HINTS` once per game.
 - `VOSS` in `game.js` keeps the in-play radio barks (silenced, restored, boss phases, game over).
 
 ### Stage types
@@ -192,19 +193,30 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - `FORMS`: the player's three forms (speed, hitbox). Every form flies in all four directions; `p.tilt`
   eases toward the stick and `drawShip(..., tilt)` shows bank frames (vertical, `SPR.hulls[h].top.bankR/bankL`)
   or pitch steps (side). The Battloid's engine glow comes from its feet. What each form fires is a
-  gun part: `fittedGun(form)` reads `camp.fit[hull]` and falls back to the hull's default fit
-  `HULLS[h].guns`. `HULLS[h].mounts[f]` ('light' | 'heavy') limits what fits (`canMount`); `HULLS[h].form[f]`
-  is the hull's damage multiplier in that form. Guns level up (`gunLevel(id)`, 1 to 5 at `GUN_LEVELS`)
-  from the points each form scores (`addGunXP` in `killEnemy`), and `fireWeapon()` reads the level.
-  `triggerGun()` runs every frame (charge meter `p.charge`, swivel angle `p.swivel`) and calls
-  `fireWeapon()`; it, `updateBullets()`, `steerBullet()` and `drawPlayerBullet()` live in `weapons.js`;
+  gun part on the **gun ladder** (FUTURE.md, M4): every gun has one `form` and a `rung`, and
+  `HULLS[h].fit[f]` = `[start, upgrade]` (the CHIMERA's upgrades are `null`); each hull starts with the
+  upgrades of the rung below. `fittedGun(form)` reads `camp.fit[hull]` and falls back to the start gun;
+  `hullGuns(h, f)` = the two that are owned (`canMount` = in `fit`). Buying a hull adds its start guns
+  (`startGuns(h)`). `HULLS[h].form[f]` is the hull's damage multiplier in that form. Gun levels are
+  **bought**, never earned in flight: `gunLevel(id)` reads `camp.gunLv[id]` (1 to 5, the market's GUN
+  LEVELS page in `starbase.js`), and `fireWeapon()` reads the level. `triggerGun()` runs every frame
+  (charge meter `p.charge`, swivel angle `p.swivel`; the hyper beam, thunder sword and lightning lock have
+  their own `triggerHyper/Sword/Lock`) and calls `fireWeapon()`; it, `updateBullets()`, `steerBullet()`,
+  `drawPlayerBullet()` and `drawGunFx()` (chain lightning, locks, charge glows) live in `weapons.js`;
   `collide()` calls `bulletHits(b, e)` there (piercing shots carry `pierce` and a `hit` list; wide ones a
-  `rad`; `bulletEnd(b)` bursts bombs, clusters and charge balls).
+  `rad`; `bulletEnd(b)` bursts bombs, rockets, shells, clusters and charge balls). Bullets with `noHit`
+  skip `collide()` and hit in their own way: `zone` bullets (flak clouds, grenade fires) tick damage
+  through `zoneTick()`, lobbed mortars burst on a fuse, the sword cuts along its blade. `allTargets()`,
+  `damageAny()` and `blastAt()` reach planes, boss parts and capital targets alike. `noCopy` keeps a
+  shot from being copied by the Wingman and the option trail.
 - `ENEMY`: enemy types (hp, points `[formation, diving]` (gold doubles them), hit radius, `ammo`). Planes get their hp
   from `enemyHp(base)` (`hpMul()` times `ENEMY_HP`, the one tuning knob, in half points). A new enemy type needs an entry
   here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`; each is baked `normal`, `acetyl`, `red`, `dmg` and `white`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
-- `SPECIALS` (in `specials.js`): special weapons, learned at even levels. The hangar (`hangarRowIds()`:
+- `SPECIALS` (in `specials.js`): special weapons, learned at even levels. Each has a `family` (ATTACK,
+  DEFENSE, SUPPORT) and a hull can only fly the families in `HULLS[h].bays` (`specialBlock(idx, h)` says
+  why not; a `hulls` list limits MISSILE BARRAGE to the PHOENIX and SPHINX). The hangar grays blocked ones
+  and won't launch with one; `learnOptions('special')` weights open ones 3:1. The hangar (`hangarRowIds()`:
   0-2 guns, 3 SPECIAL, 4 MODULE; `hangarRow` indexes that list, `hangarChange(dir)`, `tapHangar`) opens
   before every sortie. The SPECIAL row (`specialOptions()`) lists `camp.learned`, then stocked ordnance;
   it and the MODULE row hide while empty. `this.special` is `{ idx, ammo, cd }` or `{ ord, ammo, cd }`.
@@ -214,7 +226,7 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - `ORDNANCE` and `MODULES` (in `arsenal.js`): ordnance is bought by the rack into `camp.ord[id]`, fired
   through `useSpecial()` → `useOrdnance()`, loaded at launch up to its `carry` limit (`launchHangar`) and
   given back by `returnOrdnance()` in `missionComplete` (a failed mission loses it). `hulls` limits who
-  carries it. Modules are owned in `camp.mods` and fitted as `camp.mod` (`fittedModule()`);
+  carries it (`ordAllowed`); `ordCarry(id)` is the carry limit, one rack more for DRAC. Modules are owned in `camp.mods` and fitted as `camp.mod` (`fittedModule()`);
   `setupModule()` (in `setupStage`) refills `barrier` and the side fighters, `takeHit()` spends the
   barrier first, and `updateModule`/`moduleCollide`/`drawModule` run next to the passives. The option
   trail copies shots in `shoot()` (`moduleCopy`); escort copies carry `copy: true` and don't count
@@ -223,24 +235,29 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   ones run in `updatePassives()`; others hook in where they act (`takeHit`, `silenceForm`, `battMax`,
   `maxShields`, `specialAmmo`, rewards, `tet.js`). Per-leg flags reset in `resetPassives()`.
 - `PILOTS` and `HULLS` (in `pilots.js`): `statOf(key)` = pilot + hull + the hull's market upgrades
-  (`camp.up['key@hull']`, `upKey()` in `starbase.js`) + `camp.train` (a point every third level), capped per
+  (`camp.up['key@hull']`, `upKey()` in `starbase.js`) + `camp.train` (a point at levels 3, 9, 15...; the
+  bonus every third level alternates a stat point and an extra passive, `gainLevels()`), capped per
   stat at `STAT_CAP` (8 / 8 / 5). `gunPower(form)` = `(1 + weapons) / 4` times the
   hull's form multiplier and the form's gun upgrade; `speedMul()` = hull speed and engine upgrades.
   There are no lives: `Game.shields` soaks hits through `takeHit()`, one more hit at 0 fails the
-  mission, and shields refill to `maxShields()` in `setupStage`.
+  mission, and shields refill to `maxShields()` in `setupStage`. Pilot perks are mechanics keyed by
+  `PILOTS[i].perkId` (`hasPerk(id)`): `levels` (MAVERICK: gun levels 25% off), `recharge` (TURTLE: 600
+  frames without a hit restore a shield, `quietT`) and `rack` (DRAC: `ordCarry`).
 - `LEVELS` (in `campaign.js`), `UPGRADES`, `PRICE` and `upgradePrice` (in `starbase.js`; `camp.up[key]`
   counts purchases). Mk II / Mk III entries (`engine2`, `engine3`, ... from `MK_KEYS` in `world.js`)
   have `of` and `mk`, cost `PRICE.mk` times the base, need the tier below maxed (`mkNeeds`), and
   `upLevel(key)` adds them to Mk I. `marketGal(key)` (`world.js`) says which galaxy first sells a
-  market entry (guns, modules, Mk tiers).
-- `Game.camp` is the whole saved campaign (`v: 4`: pilot, hull, owned hulls, `up`, `train`, money, xp,
+  market entry (guns, modules, Mk tiers). Guns cost `GUN_PRICE[rung]`; levels cost `GUN_LV_MUL[n]` times
+  that (rung 0 from 1,000) and LV4 / LV5 need the galaxy in `GUN_LV_GAL` (`gunLevelGate`).
+- `Game.camp` is the whole saved campaign (`v: 5`: pilot, hull, owned hulls, `up`, `train`, money, xp,
   level, `learned` specials, `passives`, `pending` choices, `cleared` missions, `at` planet, `seen`
-  galaxies, loop, story beats, score, `guns` owned, `fit[hull]`, `gunXP[id]`, `ord` (ordnance stock),
+  galaxies, loop, story beats, score, `guns` owned, `fit[hull]`, `gunLv[id]`, `ord` (ordnance stock),
   `ordLast` (last ordnance fitted), `mods` and `mod` (modules owned and fitted), and `opened` systems
   for converted saves). It is saved as JSON in `localStorage['chimera.save']` by
   `saveCampaign()` whenever the carrier docks, you buy something or you launch from the hangar.
-  `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), `migrateV2()` (v2 → v3), then
-  `migrateV3()` (v3 → v4).
+  `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), `migrateV2()` (v2 → v3),
+  `migrateV3()` (v3 → v4), then `migrateV4()` (v4 → v5: earned gun XP becomes bought levels at the old
+  thresholds, owned hulls' start guns are added, and fits the ladder doesn't allow go back to the start gun).
 - Pickups (`tet.js`): `this.pickups` entries have a `kind`. `tet`: acetylated kills may drop one (`dropTet`); collecting
   it restores a silenced form. `cell`: the red squadron's shield cell (`dropCell`, `collectCell`).
 
@@ -282,10 +299,13 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   `drawSpecialFx`/`specialCollide`/`clearSpecialFx` if it lasts over time), and add an icon to
   `SPR.specialIcons` at the same index.
 - **New passive skill:** add it to `PASSIVES` (`skills.js`) and check `hasPassive('id')` where it acts.
-- **New gun:** add it to `GUNS` (`weapons.js`: `price`, `mount`, `gal` = first galaxy that sells it,
-  two `desc` lines, four `lv` effects of 18 characters or fewer) and a `case` in `fireWeapon()` that reads
-  the level `L` (and `gunCap()` if it fires more per shot); give new bullet kinds flight in
-  `steerBullet()` and art in `drawPlayerBullet()`. Markets pick it up from `MARKET_POOL` automatically.
+- **New gun:** add it to `GUNS` (`weapons.js`: `form`, `rung` (its price and galaxy follow from it), two
+  `desc` lines, four `lv` effects of 18 characters or fewer), put it in a hull's `fit`, and add a `case`
+  in `fireWeapon()` that reads the level `L` (and `gunCap()` if it fires more per shot); give new bullet
+  kinds flight in `steerBullet()`, art in `drawPlayerBullet()` (keep the form's color family: Fighter
+  white and yellow, Guardian aqua and green, Battloid orange and red) and a picture in `howArtGun`.
+  Anything that seeks or hits outside `collide()` should use `allTargets()`/`damageAny()`. Markets pick
+  it up from `MARKET_POOL` automatically.
 - **New market upgrade:** add it to `UPGRADES` (`starbase.js`) and `MARKET_POOL` (`world.js`), then read
   `upLevel('key')` where it acts. Add its key to `MK_KEYS` to give it Mk II and Mk III tiers.
 - **New ordnance:** add it to `ORDNANCE` (`arsenal.js`: `family`, `uses` per rack, `carry`, `price`,
@@ -318,8 +338,11 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   intro), plus a layout to `BASE_LAYOUTS`, a hull to `BASE_STYLES` or a rule to `updateBossShields` if needed.
 - **New capital ship:** add an entry to `CAPITALS` (name, `style`, size, palette, target counts, `launch`
   type, intro). A new `CAP_STYLES` hull must return at least as many slots as the ship mounts.
-- **New hull:** add it to `HULLS` (`pilots.js`, with `guns` and `form`) and `HULL_ART` (`sprites.js`,
-  same index, with top-down and side-profile rows), and put its index in a planet's `hulls` to sell it.
+- **New hull:** add it to `HULLS` at the end (`pilots.js`, with `rung`, `fit`, `bays` and `form`; saves store
+  the index), a Fighter (top-down and side rows) and a `HULL_PARTS` entry (head, shoulder, pack) in
+  `sprites.js` with a `HULL_ART` row at the same index, and put its index in a planet's `hulls` (or
+  `EXTRA_HULLS` in `world.js`) to sell it. Its Guardian and Battloid come from `hullParts()`, which
+  stamps the parts onto the shared bodies (add a style to `PARTS` for a new look).
 - **HOW TO PLAY** (`howto.js`): an illustrated FAQ. `howPages()` builds the topics and pages once:
   `page(q, paragraphs, art)` or `list(q, items, art)` (lists come from the game's tables and split over
   pages by height). Each `art(ctx, x, y, hi)` draws in the left pane, centered on x, y; on lists `hi` is

@@ -120,18 +120,27 @@ Object.assign(Game, {
 
     topic('GUNS');
     page('HOW DO GUNS WORK?', [
-      'EACH FORM OF A HULL TAKES TWO GUNS: THE ONE IT STARTS WITH AND AN UPGRADE SOLD AT MARKETS. A NEW HULL COMES WITH ITS START GUNS.',
-      'THE HANGAR OPENS BEFORE EVERY MISSION: PICK ONE OF THE TWO FOR EACH FORM.'],
+      'EVERY GUN BELONGS TO ONE FORM. EACH FORM OF A HULL TAKES TWO: THE GUN IT STARTS WITH AND AN UPGRADE SOLD AT MARKETS.',
+      'THE HULLS MAKE A LADDER: EACH STARTS WITH THE UPGRADES OF THE ONE BEFORE IT, AND COMES WITH THOSE GUNS.',
+      'PICK ONE OF THE TWO FOR EACH FORM IN THE HANGAR.'],
     (ctx, x, y) => this.howArtGun(ctx, GUN_IDS[(this.t / 150 | 0) % GUN_IDS.length], x, y + 60));
     page('HOW DO GUNS LEVEL UP?', [
-      'GUN LEVELS ARE BOUGHT AT STARBASE MARKETS, UP TO LV5. A LEVEL COUNTS ON EVERY HULL THAT CARRIES THE GUN.',
-      'EVERY LEVEL CHANGES THE SHOT. THE HANGAR SHOWS WHAT THE NEXT ONE DOES.'],
+      'GUNS NEVER LEVEL UP IN FLIGHT. BUY LEVELS AT ANY STARBASE: MARKET, GUN LEVELS. LV4 SELLS FROM THE MAGELLANIC CLOUD ON, LV5 IN ANDROMEDA.',
+      'A LEVEL COUNTS ON EVERY HULL THAT CARRIES THE GUN. THE HANGAR SHOWS WHAT THE NEXT ONE DOES.'],
     (ctx, x, y) => {
       const L = 1 + ((this.t / 120 | 0) % 5);
       this.howArtGun(ctx, 'twin', x, y + 60, L, 'TWIN CANNON LV' + L);
     });
     list('WHICH GUNS ARE THERE?', GUN_IDS.map(id => { const G = GUNS[id]; return [G.name, FORMS[G.form].name + ', ' + (G.rung ? this.gunPrice(id) + ' CR. ' : 'ON THE CHIMERA. ') + G.desc.join(' '), C.aqua]; }),
       (ctx, x, y, hi, items) => this.howArtGun(ctx, GUN_IDS.find(id => GUNS[id].name === items[hi][0]), x, y + 60));
+    list('WHAT CAN EACH HULL CARRY?', HULLS.map(h => [h.name, h.fit.map((f, i) => FORMS[i].short + ' ' + f.filter(g => g).map(g => GUNS[g].short).join('>')).join('. ') +
+      '. BAYS: ' + h.bays.join(' ') + '.', C.aqua]),
+      (ctx, x, y, hi, items) => {
+        const h = HULLS.findIndex(q => q.name === items[hi][0]);
+        for (let f = 0; f < 3; f++) this.drawShip(ctx, f, x - 44 + f * 44, y - 30, 0, true, false, h);
+        NES.text(ctx, 'SPECIAL BAYS', x, y + 2, C.gray, { align: 'center' });
+        HULLS[h].bays.forEach((F, k) => NES.text(ctx, F, x, y + 14 + k * 10, C.lime, { align: 'center' }));
+      });
 
     topic('SPECIAL WEAPONS');
     page('WHAT ARE SPECIAL WEAPONS?', [
@@ -144,7 +153,16 @@ Object.assign(Game, {
       NES.draw(ctx, SPR.specialIcons[k], x - 48 + (k % 4) * 32, y - 60 + (k >> 2) * 26);
       NES.text(ctx, SPECIALS[k].name, x, y + 60, SPECIALS[k].color, { align: 'center' });
     });
-    list('WHICH SPECIALS ARE THERE?', SPECIALS.map(s => [s.name, s.desc.join(' '), s.color]),
+    page('WHAT ARE SPECIAL BAYS?', [
+      'SPECIALS COME IN THREE FAMILIES: ATTACK, DEFENSE AND SUPPORT. EACH HULL HAS BAYS FOR SOME OF THEM.',
+      'THE HANGAR GRAYS OUT A SPECIAL YOUR HULL HAS NO BAY FOR. LEVEL-UPS OFFER THE ONES YOUR HULLS CAN USE MORE OFTEN.',
+      'MISSILE BARRAGE FLIES ONLY ON THE PHOENIX AND THE SPHINX.'],
+    (ctx, x, y) => ['ATTACK', 'DEFENSE', 'SUPPORT'].forEach((F, r) => {
+      NES.text(ctx, F, x, y - 74 + r * 46, C.white, { align: 'center' });
+      const ids = SPECIALS.map((s, i) => i).filter(i => SPECIALS[i].family === F);
+      ids.forEach((i, k) => NES.draw(ctx, SPR.specialIcons[i], x - (ids.length - 1) * 13 + k * 26, y - 54 + r * 46));
+    }));
+    list('WHICH SPECIALS ARE THERE?', SPECIALS.map(s => [s.name, s.family + '. ' + s.desc.join(' '), s.color]),
       (ctx, x, y, hi, items) => this.howArtIcon(ctx, SPECIALS.findIndex(s => s.name === items[hi][0]), x, y));
 
     topic('PASSIVE SKILLS');
@@ -510,8 +528,26 @@ Object.assign(Game, {
         break;
       }
       case 'rail': for (const a of ages(22, 22)) add({ kind: 'rail', x, y: y + 8 + a * 10, vx: 0, vy: 1 }); break;
+      case 'ring': for (let i = 0; i < 4; i++) { const a = t * 0.14 + i * TAU / 4; add({ kind: 'orbit', x: x + Math.cos(a) * 22, y: y + Math.sin(a) * 22, vx: 0, vy: -1 }); } break;
+      case 'sword': add({ kind: 'sword', x, y: y - 14 - (t % 40) * 3, vx: 0, vy: -1, cur: 50 }); break;
+      case 'flak': add({ kind: 'flak', x, y: y - 10 - (t % 28) * 3, vx: 0, vy: -1 }); add({ kind: 'cloud', x, y: y - 100, zone: { r: 16 }, life: 40, age: t, vx: 0, vy: 0 }); break;
+      case 'chain': case 'lock': {
+        const pts = id === 'chain' ? [[x, y - 10], [x - 20, y - 70], [x + 18, y - 100], [x - 6, y - 130]] : [[x, y - 10], [x - 24, y - 90], [x, y - 10], [x + 24, y - 110]];
+        const cols = id === 'chain' ? ['#20a080', C.mint, C.white] : ['#a04010', C.orange, C.yellow];
+        for (let i = 1; i < pts.length; i++) if (id === 'chain' || i % 2) this.drawBolt(ctx, pts[i - 1], pts[i], cols, (t >> 2) & 1);
+        break;
+      }
+      default: {   // the other M4 guns: a stream of their own shots (the tail vulcan fires behind too)
+        const kind = { gunpod: 'pod', tail: 'shot', needle: 'needle', rocket: 'rocket', burner: 'flame', freeway: 'freeway', diagonal: 'diag',
+          mortar: 'mortar', grenade: 'grenade', hyper: 'hyper', canister: 'pellet' }[id];
+        const range = id === 'burner' || id === 'canister' ? 14 : 30;
+        for (const a of ages(5, range)) {
+          add({ kind, x: x + (id === 'canister' || id === 'burner' ? Math.sin(a * 2.3) * a * 0.8 : 0), y: y - 10 - a * 5, vx: 0, vy: -1, age: a, life: range - a, T: range });
+          if (id === 'tail') add({ kind, x, y: y + 10 + a * 5, vx: 0, vy: 1 });
+        }
+      }
     }
-    this.drawShip(ctx, 0, x, y, 0, true, false, 0);
+    this.drawShip(ctx, GUNS[id].form, x, y, 0, true, false, 0);
     for (const b of B) this.drawPlayerBullet(ctx, b);
     NES.text(ctx, label, x, HOW_ART.y + 10, C.aqua, { align: 'center' });
   },

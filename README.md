@@ -84,46 +84,70 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 
 - **Every market sells ordnance** (see Ordnance below) from its ORDNANCE page.
 
-- Some planets have a **shipyard** that sells a hull. Each hull comes with a default gun for each form
-  (you keep those guns), its own strengths, and a mount per form (L = light, H = heavy):
+- Some planets have a **shipyard** that sells a hull. Each hull has its own strengths, two guns per
+  form (the **start** gun it comes with and an **upgrade** sold at markets, shown `start > upgrade`) and
+  **special bays** (A = ATTACK, D = DEFENSE, S = SUPPORT; see Special weapons):
 
-| Hull | Fighter | Guardian | Battloid | Mounts | Strength | Stats | Speed | Sold at |
-|---|---|---|---|---|---|---|---|---|
-| VX-3 CHIMERA | Twin cannon | 3-way spread | Homing missiles | L L H | Balanced | – | 100% | (starting ship) |
-| VX-5 MANTICORE | Vulcan | 3-way spread | Homing missiles | L L L | Fighter ×1.4 | WPN+1 SPC+1 | 110% | Proxima B |
-| VX-6 GRIFFIN | Piercing laser | Bomb shot | Vulcan | H H H | Battloid ×1.4 | SHD+2 | 90% | Barnard B |
-| VX-9 HYDRA | Helix wave | Ripple laser | Homing missiles | L H H | All ×1.1 | SHD+1 | 110% | Calico (Sirius), Neutrino (SN 1987A) |
-| VX-7 WYVERN | Twin cannon | Ripple laser | Bomb shot | L H H | Guardian ×1.4 | SHD+1 SPC+1 | 100% | Imprint (Tarantula), Rosewater (M32) |
-| VX-8 BASILISK | Piercing laser | Helix wave | Homing missiles | H L H | Fighter/Guardian ×1.2 | WPN+2 SHD−1 SPC+2 | 115% | Lumina (S Doradus), Azure (NGC 206) |
-| VX-12 PHOENIX | Piercing laser | Ripple laser | Homing missiles | H H H | All ×1.3 | +1 each | 115% | Relic (Mayall II), Aegir (M31 Nucleus) |
+| Hull | Fighter | Guardian | Battloid | Bays | Strength | Stats | Speed | Price | Sold at |
+|---|---|---|---|---|---|---|---|---|---|
+| VX-3 CHIMERA | Twin | Spread | Laser | A D S | Balanced | – | 100% | – | (starting ship) |
+| VX-5 MANTICORE | Twin > Vulcan | Spread > Wave | Laser > Grenade | A | Fighter ×1.4 | WPN+1 SPC+1 | 110% | 4,000 | Proxima B |
+| VX-6 GRIFFIN | Vulcan > Ripple | Wave > Bomb | Grenade > Charge | D A | Battloid ×1.4 | SHD+2 | 90% | 5,000 | Barnard B |
+| VX-9 HYDRA | Ripple > Gun pod | Bomb > Swivel | Charge > Rail | A D S | All ×1.1 | SHD+1 | 110% | 9,000 | Calico (Sirius), Neutrino (SN 1987A) |
+| VX-7 WYVERN | Gun pod > Tail vulcan | Swivel > Flak field | Rail > Hyper beam | S D | Guardian ×1.4 | SHD+1 SPC+1 | 100% | 12,000 | Imprint (Tarantula), Rosewater (M32) |
+| VX-8 BASILISK | Tail vulcan > Needle | Flak field > Diagonal | Hyper beam > Thunder sword | A | Fighter/Guardian ×1.2 | WPN+2 SHD−1 SPC+2 | 115% | 18,000 | Lumina (S Doradus) |
+| VX-10 BEHEMOTH | Needle > Rocket salvo | Diagonal > Mortar | Thunder sword > Canister | A D | Fighter ×1.1, Battloid ×1.2 | WPN+1 SHD+2 | 85% | 25,000 | Blister (N44 Bubble) |
+| VX-12 PHOENIX | Rocket salvo > Afterburner | Mortar > Orbit ring | Canister > Homing | A D S | All ×1.3 | +1 each | 115% | 30,000 | Relic (Mayall II), Aegir (M31 Nucleus) |
+| VX-11 SPHINX | Afterburner > Free Way | Orbit ring > Chain arc | Homing > Lightning lock | A S | Fighter ×1.2, Guardian ×1.1 | WPN+1 | 120% | 60,000 | Azure (NGC 206) |
 
 ### Guns
 
-Guns are parts. You own the default guns of every hull you own, markets sell more (`OWNED` or a price),
-and the **hangar** fits one gun to each form before every sortie. A light mount takes only light guns;
-a heavy mount takes either. The hull's strength in a form still multiplies whatever gun is fitted there.
+Every gun belongs to one form, and each form of a hull takes exactly two: its start gun and one
+upgrade. The hulls make a **ladder**: each one starts with the guns the hull before it buys as
+upgrades, so buying a hull gives you its three start guns and the only gun to buy is the upgrade. Guns
+are owned across hulls, so an upgrade bought for one hull is already yours, at its level, on the next.
+The **hangar** opens before every sortie: each gun row switches between the form's two guns (the
+upgrade shows `BUY <GUN>` until you own it; the CHIMERA has one gun per form). The hull's strength in a
+form multiplies the gun's damage.
 
-**Guns level up with use.** Every point a form scores trains the gun fitted in it: LV2 at 2,000,
-LV3 at 6,000, LV4 at 15,000 and LV5 at 35,000. Each level changes the shot in a way you can see. The
-hangar shows each gun's level, a bar to the next one and what it will do; the debrief lists guns that
-levelled.
+**Gun levels are bought, never earned in flight.** Every starbase's MARKET has a GUN LEVELS page for the
+guns you own: LV2 to LV5 cost 0.2, 0.3, 0.5 and 0.75 times the gun's price (the CHIMERA's guns from a
+base of 1,000). LV4 is sold from the Magellanic Cloud on and LV5 in Andromeda (`NEEDS MAGELLANIC`,
+`NEEDS ANDROMEDA`). A level counts on every hull that carries the gun. Market gun rows show the form
+(`FTR`, `GRD`, `BTL` in the form's color) and which hulls take the gun, owned ones in white.
 
-| Gun | Mount | Price | What it does | LV2 / LV3 / LV4 / LV5 |
-|---|---|---|---|---|
-| Twin cannon | Light | 1,200 | Fast pairs of bolts | Faster bolts / third stream / wider streams / pierces one plane |
-| 3-way spread | Light | 1,500 | Three pellets in a fan | Faster / five ways / bigger pellets / seven ways |
-| Vulcan | Light | 1,800 | Rapid machine gun | Tighter / more rounds / tighter / more rounds |
-| Helix wave | Light | 2,400 | Two shots twisting round each other | Wider sway / faster / three strands / bigger orbs |
-| Homing missiles | Light | 2,800 | Missiles that hunt the nearest target | Turn faster / three missiles / turn faster / four missiles |
-| Ripple laser | Light | 3,000 | A piercing ring that widens as it flies | Grows faster / wider / faster / widest |
-| Bomb shot | Heavy | 2,600 | Bursts on impact; falls onto ground targets in side stages | Bigger blast / two bombs / bigger blast / three bombs |
-| Piercing laser | Heavy | 3,000 | Goes through three planes | One more plane per level |
-| Swivel vulcan | Light | 4,500 | Two barrels splayed to the sides swing forward while fire is held, back when released (Axelay's Round Vulcan) | Wider sweep / center barrel / faster swing / heavier rounds |
-| Charge shot | Heavy | 6,000 | Tap for bolts; hold fire to charge three steps and release a big piercing ball (Gradius III, Strikers 1945) | Charges faster / bigger ball / tap fires a pair / full charge bursts |
-| Rear rail gun | Heavy | 7,500 | A slug fired backward that hits harder the closer the target (Thunder Force IV) | Faster reload / pierces / twin rails / forward rail too |
+| Gun | Form | Rung | Price | What it does | LV2 / LV3 / LV4 / LV5 |
+|---|---|---|---|---|---|
+| Twin cannon | Fighter | 0 | 1,200 | Fast pairs of bolts | Faster bolts / third stream / wider streams / pierces one plane |
+| Vulcan | Fighter | 1 | 1,200 | Rapid machine gun | Tighter / more rounds / tighter / more rounds |
+| Ripple laser | Fighter | 2 | 1,800 | A piercing ring that widens as it flies | Grows faster / wider / faster / widest |
+| Gun pod | Fighter | 3 | 2,600 | Heavy three-round bursts (Robotech VF-1) | Heavier / 4 rounds / heavier / 5 rounds |
+| Tail vulcan | Fighter | 4 | 4,000 | Twin bolts ahead and a tail gun behind (Gradius) | Faster / angled tail shots / faster / wider tail fan |
+| Needle gun | Fighter | 5 | 5,000 | A very fast thin shot through planes | Pierces 2 / faster / pierces 3 / twin needles |
+| Rocket salvo | Fighter | 6 | 6,000 | A rack of micro rockets that burst on impact | Four / bigger blast / five / biggest blast |
+| Afterburner | Fighter | 7 | 9,000 | A short flame cone, hottest up close | Longer / wider / longer / widest |
+| Free Way | Fighter | 8 | 12,000 | Shots lean toward where you steer (Thunder Force IV) | Wider angle / faster / heavier / extra stream |
+| 3-way spread | Guardian | 0 | 1,200 | Three pellets in a fan | Faster / five ways / bigger pellets / seven ways |
+| Helix wave | Guardian | 1 | 1,200 | Two shots twisting round each other | Wider sway / faster / three strands / bigger orbs |
+| Bomb shot | Guardian | 2 | 1,800 | Bursts on impact; falls onto ground targets in side stages | Bigger blast / two bombs / bigger blast / three bombs |
+| Swivel vulcan | Guardian | 3 | 2,600 | Splayed barrels swing forward while fire is held (Axelay) | Wider sweep / center barrel / faster swing / heavier rounds |
+| Flak field | Guardian | 4 | 4,000 | Shells burst into clouds that hang, hurting planes and catching seekers and splitting shells (Radiant Silvergun) | Bigger / longer hang / bigger / two shells |
+| Diagonal laser | Guardian | 5 | 5,000 | Slowing shots that split into four diagonal lasers (Darius Twin) | Longer / faster / longer / two shots |
+| Mortar | Guardian | 6 | 6,000 | Lobbed over the planes in between; airbursts over ground targets | Two shells / bigger blast / three / biggest blast |
+| Orbit ring | Guardian | 7 | 9,000 | Shots circle the ship blocking bullets, then fly off ahead (Axelay) | Wider / more shots / wider / more shots |
+| Chain arc | Guardian | 8 | 12,000 | Lightning that jumps from plane to plane | More jumps / more damage / more jumps / most damage |
+| Piercing laser | Battloid | 0 | 1,200 | Goes through three planes | One more plane per level |
+| Grenade launcher | Battloid | 1 | 1,200 | Thrown above and below by turns; burns where it lands (Thunder Force IV) | Longer burn / two at once / longer burn / bigger flames |
+| Charge shot | Battloid | 2 | 1,800 | Tap for bolts; hold to charge a big piercing ball (Gradius III) | Charges faster / bigger ball / tap fires a pair / full charge bursts |
+| Rear rail gun | Battloid | 3 | 2,600 | A slug fired backward, hardest up close (Thunder Force IV) | Faster reload / pierces / twin rails / forward rail too |
+| Hyper beam | Battloid | 4 | 4,000 | Hold to charge, then heavy rapid fire until it overheats (R-Type III) | Longer burst / cools faster / longer / cools fastest |
+| Thunder sword | Battloid | 5 | 5,000 | Charges while you hold your fire, then a huge piercing blade (Thunder Force IV) | Charges faster / longer blade / faster / longest blade |
+| Canister shot | Battloid | 6 | 6,000 | A short-range shotgun blast | More pellets / longer range / more / longest range |
+| Homing missiles | Battloid | 7 | 9,000 | Missiles that hunt the nearest target | Turn faster / three missiles / turn faster / four missiles |
+| Lightning lock | Battloid | 8 | 12,000 | Locks onto two targets and hits harder the longer it holds (Radiant Silvergun) | Faster ramp / three targets / faster / four targets |
 
-Milky Way markets sell the first eight; the swivel vulcan, charge shot and rail gun appear from the
-Magellanic Cloud on.
+The rung sets where a gun is sold: rungs 0 to 3 in the Milky Way, 4 to 6 from the Magellanic Cloud and
+7 and 8 in Andromeda.
 
 ### Ordnance
 
@@ -135,8 +159,8 @@ mission and what you carried is lost**, as in U.N. Squadron; the rest of your st
 
 | Ordnance | Per use | Rack | Carry | Price | Sold from | Hulls |
 |---|---|---|---|---|---|---|
-| MISSILE POD I / II / III | 3 / 5 / 7 homing missiles | 3 | 6 | 300 / 750 / 1,500 | Milky Way / Magellanic / Andromeda | All |
-| BOMB RACK I / II / III | 1 / 2 / 3 heavy bombs (they fall in side stages) | 3 | 6 | 360 / 900 / 1,800 | Milky Way / Magellanic / Andromeda | Chimera, Griffin, Wyvern, Phoenix |
+| MISSILE POD I / II / III | 3 / 5 / 7 homing missiles | 3 | 6 | 300 / 750 / 1,500 | Magellanic / Magellanic / Andromeda | Phoenix, Sphinx |
+| BOMB RACK I / II / III | 1 / 2 / 3 heavy bombs (they fall in side stages) | 3 | 6 | 360 / 900 / 1,800 | Milky Way / Magellanic / Andromeda | Chimera, Griffin, Wyvern, Phoenix, Behemoth |
 | CLUSTER POD | 3 bombs that burst into 8 fragments | 3 | 6 | 600 | Milky Way | All |
 | SHIELD CELL | Repairs one shield (not used at full shields) | 2 | 3 | 800 | Milky Way | All |
 
@@ -223,19 +247,19 @@ upgrades and a trained point every sixth level (3, 9, 15...) add to them, up to 
   every takeoff, and score bonuses (20,000, then every 70,000) repair one.
 - **Special** is how many times you can use your special weapon on each leg.
 
-| Pilot    |               | Weapons | Shields | Special |
-|----------|---------------|---------|---------|---------|
-| MAVERICK | Hotshot ace   | 2       | 2       | 1       |
-| TURTLE   | Iron wall     | 1       | 3       | 1       |
-| DRAC     | Alien tactician | 1     | 2       | 2       |
+| Pilot    |               | Weapons | Shields | Special | Perk |
+|----------|---------------|---------|---------|---------|------|
+| MAVERICK | Hotshot ace   | 2       | 2       | 1       | Gun levels cost 25% less |
+| TURTLE   | Iron wall     | 1       | 3       | 1       | 10 seconds without a hit recharges a shield (stacks with AUTO REPAIR) |
+| DRAC     | Alien tactician | 1     | 2       | 2       | Loads one more rack of ordnance |
 
 ## The three forms
 
 | Form      | Weapon                  | Movement                     | Special |
 |-----------|-------------------------|------------------------------|---------|
-| FIGHTER   | Rapid twin cannons      | Fastest                      | Smallest hitbox |
-| GUARDIAN  | 3-way spread            | Can climb/dive in the low sky | |
-| BATTLOID  | Homing micro-missiles   | Slow, can climb/dive          | Armor absorbs one hit (then 10 s reboot) |
+| FIGHTER   | The hull's Fighter gun (Chimera: twin cannon) | Fastest | Smallest hitbox |
+| GUARDIAN  | The hull's Guardian gun (Chimera: 3-way spread) | Can climb/dive in the low sky | |
+| BATTLOID  | The hull's Battloid gun (Chimera: piercing laser) | Slow, can climb/dive | Armor absorbs one hit (then 10 s reboot) |
 
 ## The epigenetics
 
@@ -259,6 +283,9 @@ upgrades and a trained point every sixth level (3, 9, 15...) add to them, up to 
 - **Epigenetic memory:** if one form gets 60% or more of your kills in a stage, the next squadron
   adapts and takes half damage from it. Keep transforming.
 ## The two kinds of stage
+
+When Mira or Voss radios in during a stage, the action **pauses** until you've read it: press A (or B,
+or tap) to go on. Held fire doesn't skip it.
 
 - **Vertical** (Galaga-style, top-down, you fly up): four squadrons of 40 planes fly into formation and
   dive at you, one after another. Every form can fly up, down, left and right in the lower part of the
@@ -304,6 +331,12 @@ You learn a special at every even level. After every briefing, the **hangar** sc
 (one row per form), the special you'll carry (or ordnance), and the module you've fitted. Fire it with **C** (keyboard) or **B** (controller). Every takeoff rearms it
 with as many uses as your **Special** stat.
 
+Specials come in three **families**, and each hull has **bays** for some of them (see the hull table):
+ATTACK (Thunder laser, Cluster bomb, Mega crush, Gravity bomb, Missile barrage), DEFENSE (Gene shield,
+Reflect field, EMP blast, Chrono field) and SUPPORT (TET burst, Wingman, Force pod, Hyper mode). The
+hangar grays out a learned special your hull has no bay for, and level-ups offer specials your hulls can
+use three times as often. MISSILE BARRAGE flies only on the PHOENIX and the SPHINX, like the homing gun.
+
 | Weapon        | Effect |
 |---------------|--------|
 | THUNDER LASER | One-second beam that pierces everything ahead |
@@ -342,7 +375,7 @@ js/side.js        side-scrolling assaults: enemy script, behaviors
 js/traffic.js     vertical-stage traffic, the heavy mini-boss, red squadrons, rear attacks, intermissions
 js/scenery.js     per-planet scenery: Mode 7 surfaces, parallax layers, nebula
 js/specials.js    hangar screen (gun fit, special or ordnance, module) + special weapons
-js/weapons.js     gun parts, mounts, gun levels, firing, bullet flight, drawing
+js/weapons.js     the gun ladder's 27 guns, gun levels, firing, bullet flight, drawing
 js/arsenal.js     ordnance and modules (barriers, escorts): data, firing, effects
 js/pilots.js      pilot select, ship hulls, stats, shields
 js/skills.js      passive skills, level-up choices (stat, special, passive)
