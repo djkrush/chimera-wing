@@ -2,7 +2,7 @@
 
 Ideas for later versions of Chimera Wing. The **Roadmap** orders them into releases; the **Economy**
 and **Design specs** sections size the first ones; the **Idea catalog** holds every idea once, with the
-game it comes from. Add new ideas to the catalog; tag them `(unplanned)` unless they belong in M4 or M5. Move an item to the README
+game it comes from. Add new ideas to the catalog and give them a milestone. Move an item to the README
 when it ships.
 
 Sources: GameFAQs guides for U.N. Squadron (SNES), Carrier Air Wing (arcade), Gradius III (SNES),
@@ -17,8 +17,7 @@ Steel Empire, Zanac, Super Aleste, Arrow Flash and DoDonPachi.
 
 ## Roadmap
 
-Each milestone is a release the game can ship on its own. Items link to the catalog below. Only M4 and
-M5 are planned; everything after them waits for the re-plan after M5.
+Each milestone is a release the game can ship on its own. Items link to the catalog below.
 
 | # | Milestone | What it adds | Why first |
 |---|---|---|---|
@@ -27,9 +26,8 @@ M5 are planned; everything after them waits for the re-plan after M5.
 | M3 | **Vertical stages** (shipped, see the README) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls and the gun ladder** | Two guns per form (a start gun and a market upgrade), one form per gun, 16 new guns, gun levels bought at markets, special bays, two new hulls, pilot perks with a mechanic, unique hull art | Every hull becomes its own ship, and credits get a steady use in every galaxy |
 | M5 | **Bosses and rewards** | Side bosses become ground fortresses, part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
-| — | **Re-plan after M5** | Review every proposed feature (the catalog, Stages, Later and new ideas), find where they conflict or depend on each other, and lay out new milestones from M6 on | Many ideas are still coming and they touch the same systems; planning them one by one now would lock in conflicts |
-| — | **Needs planning: Stages** (was M6) | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign; waits for the re-plan |
-| — | **Needs planning: Later** | Carrier upgrades, card game, music, passive slots, planet reputation, more galaxies, touch polish, save slots, score attack | Worth doing, but they don't fix the long-campaign problem |
+| M6 | **Stages** | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
+| — | **Later** | Carrier upgrades, card game, music, passive slots, planet reputation, more galaxies, touch polish, save slots, score attack | Worth doing, but they don't fix the long-campaign problem |
 
 ## Economy
 
@@ -474,10 +472,10 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
 - **Interceptors from every edge (SUPERCRUISE).** Enemies spawn from all four sides at random speeds and
   turn toward the player at a fixed 0.1 degrees per step, so faster ones overshoot. Each kill scores the
   enemy's speed squared, so the fastest planes pay most. For us: a fast interceptor type (kamikaze
-  family, `spawnKamikaze`) whose points scale with speed, as a new traffic group. (unplanned)
+  family, `spawnKamikaze`) whose points scale with speed, as a new traffic group. (M6)
 - **Threat markers that track (SUPERCRUISE).** It projects every approaching enemy's line onto the
   screen border: yellow when far, red within 500 px, brighter as it closes. Ours are fixed arrows for
-  rear attacks, the heavy and side ambushes; interceptors and kamikazes would want the tracking kind. (unplanned)
+  rear attacks, the heavy and side ambushes; interceptors and kamikazes would want the tracking kind. (M6)
 - **Gun heat (SUPERCRUISE).** Each shot adds heat (3.3 of 100), heat bleeds off 1.5% per frame, a
   caution sound plays above 80, and at 100 the gun locks until it drops to 5. For us: a heat meter
   instead of the bullets-on-screen `cap` for some guns (vulcan, hyper beam), and it gives the GUN
@@ -488,7 +486,7 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
 - **Mission cards (SUPERCRUISE).** A typed-out title card on takeoff ("International Waters, Bering Sea,
   May 3rd, 1984, 1800 hours, DEFCON 3") and a KIA card with kills and time survived. For us: a short
   typed card at takeoff (planet, system, time, mission kind) and kills and time on the failed-mission
-  screen. (unplanned)
+  screen. (M6)
 
 ### Bosses (M5)
 
@@ -556,7 +554,7 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
 - **Collisions cost power, not a hit (Strikers 1945).** Touching a plane knocks the gun down a level
   instead of killing. Worth trying once guns have in-flight levels.
 
-### Stages (unplanned)
+### Stages (M6)
 
 - **Branching paths with different rewards (TF4, Axelay, Radiant Silvergun, Darius Twin).** TF4's caves
   fork into routes with different pickups; Axelay's cavern forks into an easy and a hard path; Radiant
