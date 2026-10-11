@@ -65,7 +65,7 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 - **Every odd level** (up to level 30) teaches a **passive skill**, picked from three offers; even levels
   give nothing by themselves. Specials never come from levels: they come with hulls and markets. **Every third level** adds a bonus, taking turns: a stat
   point (+1 WEAPONS, SHIELDS or SPECIAL) at levels 3, 9, 15..., and an extra passive at 6, 12, 18....
-  A new pilot also picks a starting passive: DRONE ESCORT, REINFORCED HULL or GROUND MISSILES.
+  A new pilot starts with no passives: every one is earned by leveling up.
 - **Every planet's market stocks different things**, from this list (prices rise with each purchase):
 
 | Upgrade | Effect |

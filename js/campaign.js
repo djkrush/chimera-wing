@@ -66,7 +66,7 @@ Object.assign(Game, {
   // ---- Campaign start, save and load --------------------------------------------------
   newCamp(pilot) {
     return { v: 6, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
-      level: 1, specs: [HULLS[0].sp[0]], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0,
+      level: 1, specs: [HULLS[0].sp[0]], passives: [], pending: [], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0,
       guns: this.startGuns(0), fit: {}, gunLv: {}, // guns owned, fit[hull] = [gun0, gun1, gun2], levels bought per gun
       ord: {}, ordLast: null, mods: [], mod: null };  // ordnance stock, last one fitted, modules owned and fitted (arsenal.js)
   },
@@ -112,6 +112,7 @@ Object.assign(Game, {
       this.toast('SAVE DATA UNREADABLE');
       return;
     }
+    c.pending = (c.pending || []).filter(k => k !== 'starter');   // new pilots no longer pick a starting passive
     this.hullStatUpgrades(c);
     this.camp = c;
     this.pilot = c.pilot;
@@ -133,7 +134,7 @@ Object.assign(Game, {
   },
 
   // Version 1 saves (six sectors, one mission per planet): cleared planets keep every mission cleared,
-  // the carrier moves to the old sector's first planet, and the pilot picks a starting passive.
+  // the carrier moves to the old sector's first planet.
   migrateSave(o) {
     if (!o || !PILOTS[o.pilot]) return null;
     const c = this.newCamp(o.pilot);

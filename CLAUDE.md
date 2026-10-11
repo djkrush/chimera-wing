@@ -64,7 +64,7 @@ them to `drawMenuScreen`). While `inBase` is set, `intro`/`hangar` draw over the
 Campaign flow (`campaign.js`):
 
 ```
-NEW GAME → pilot → newCampaign() → travel → base (autosave) → learn (starter passive)
+NEW GAME → pilot → newCampaign() → travel → base (autosave)
 base: MISSIONS → startMission(i) → intro (briefing) → hangar (guns and special) → sortie
   → startLeg(0) → takeoff → play → clear/result → legDone() → landing → afterLanding()
   → startLeg(1) ... (as many legs as the mission has; a stronghold's last leg has the boss)

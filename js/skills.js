@@ -1,9 +1,9 @@
 'use strict';
 // Pilot skills. Odd levels teach a passive skill; every third level adds a stat point (+1 WEAPONS,
 // SHIELDS or SPECIAL) or an extra passive, in turn. Specials come with hulls and markets, never with
-// levels (specials.js). Passive skills are always on once learned. A new pilot picks one of three
-// starter passives. Choices wait in camp.pending ('starter', 'stat', 'passive') until the LEARN screen
-// takes them, so a quit in the middle loses nothing.
+// levels (specials.js). Passive skills are always on once learned; a new pilot starts with none. Choices
+// wait in camp.pending ('stat', 'passive') until the LEARN screen takes them, so a quit in the middle
+// loses nothing.
 // Ideas borrowed from the classics: Gradius's Options (DRONE ESCORT), air-to-ground Missile (GROUND
 // MISSILES) and Double (TAIL GUN), and the shield-cell and repair pickups of many a shooter.
 
@@ -23,7 +23,6 @@ const PASSIVES = [
   { id: 'overclock', name: 'OVERCLOCK', col: C.red, desc: ['EVERY GUN FIRES 15%', 'FASTER.'] },
 ];
 const PASSIVE_BY_ID = Object.fromEntries(PASSIVES.map(s => [s.id, s]));
-const STARTER_PASSIVES = ['drone', 'hull', 'gmissile'];
 const STAT_ROWS = [['weapons', 'WEAPONS', C.red, 'SHOTS HIT HARDER.'], ['shields', 'SHIELDS', C.sky, 'TAKE ONE MORE HIT.'],
   ['special', 'SPECIAL', C.gold, 'ONE MORE SPECIAL PER LEG.']];
 
@@ -45,7 +44,6 @@ Object.assign(Game, {
   learnOptions(kind) {
     const c = this.camp, shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
     if (kind === 'stat') return STAT_ROWS.map(r => r[0]).filter(k => this.statOf(k) < STAT_CAP[k]);
-    if (kind === 'starter') return STARTER_PASSIVES.filter(id => !c.passives.includes(id));
     return shuffle(PASSIVES.map(s => s.id).filter(id => !c.passives.includes(id))).slice(0, 3);
   },
 
@@ -93,9 +91,9 @@ Object.assign(Game, {
   drawLearn(ctx) {
     const center = { align: 'center' }, L = this.learnUI, c = this.camp;
     NES.box(ctx, 2, 2, 252, 236, C.black, C.lime);
-    const head = { starter: 'FIRST SKILL', stat: 'LEVEL ' + c.level + '!' }[L.kind] || 'LEVEL ' + c.level + '!';
+    const head = 'LEVEL ' + c.level + '!';
     NES.text(ctx, head, 128, 16, C.lime, { align: 'center', scale: 2, shadow: C.dgreen });
-    const sub = { starter: ['CHOOSE A STARTING PASSIVE.', 'IT IS ALWAYS ON.'], stat: ['TRAIN ONE STAT: +1.', 'YOU KEEP IT FOR GOOD.'],
+    const sub = { stat: ['TRAIN ONE STAT: +1.', 'YOU KEEP IT FOR GOOD.'],
       passive: ['LEARN A PASSIVE SKILL.', 'IT IS ALWAYS ON.'] }[L.kind];
     sub.forEach((l, i) => NES.text(ctx, l, 128, 42 + i * 10, i ? C.lgray : C.white, center));
     let desc = [];
