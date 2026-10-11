@@ -46,7 +46,15 @@ Object.assign(Game, {
     const c = this.camp, shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
     if (kind === 'stat') return STAT_ROWS.map(r => r[0]).filter(k => this.statOf(k) < STAT_CAP[k]);
     if (kind === 'starter') return STARTER_PASSIVES.filter(id => !c.passives.includes(id));
-    if (kind === 'special') return shuffle(SPECIALS.map((s, i) => i).filter(i => !c.learned.includes(i))).slice(0, 3);
+    if (kind === 'special') {   // specials one of your hulls has a bay for come up three times as often
+      const open = i => c.hulls.some(h => !this.specialBlock(i, h)), pool = SPECIALS.map((s, i) => i).filter(i => !c.learned.includes(i)), out = [];
+      while (out.length < 3 && pool.length) {
+        let r = Math.random() * pool.reduce((n, i) => n + (open(i) ? 3 : 1), 0), k = 0;
+        while ((r -= open(pool[k]) ? 3 : 1) > 0) k++;
+        out.push(pool.splice(k, 1)[0]);
+      }
+      return out;
+    }
     return shuffle(PASSIVES.map(s => s.id).filter(id => !c.passives.includes(id))).slice(0, 3);
   },
 
@@ -134,7 +142,7 @@ Object.assign(Game, {
   },
 
   // ---- Passive skills in flight ------------------------------------------------------------
-  resetPassives() { this.secondUsed = false; this.lockUsed = false; this.regenT = 0; this.gmT = 0; },
+  resetPassives() { this.secondUsed = false; this.lockUsed = false; this.regenT = 0; this.gmT = 0; this.quietT = 0; },
 
   // Where the escort drone flies: the other side from the Wingman special's drone.
   escortOffset() { return this.orient(26, 10); },
@@ -145,6 +153,10 @@ Object.assign(Game, {
     if (this.hasPassive('drone') && Input.pressed('fire') && this.t % 14 === 0) {
       const [ox, oy] = this.escortOffset(), [vx, vy] = this.orient(0, -6);
       this.pBul.push({ x: p.x + ox, y: p.y + oy, vx, vy, kind: 'shot', dmg: this.gunPower() * 0.5, form: -1 });
+    }
+    if (this.hasPerk('recharge') && ++this.quietT >= 600) {   // TURTLE: 10 seconds without a hit (stacks with AUTO REPAIR)
+      this.quietT = 0;
+      if (this.shields < this.maxShields()) { this.shields++; this.popup(p.x, p.y - 28, 'RECHARGE +1', C.lime); Sound.sfx('restore'); }
     }
     if (this.hasPassive('regen') && this.shields < this.maxShields() && ++this.regenT >= 1200) {
       this.regenT = 0;

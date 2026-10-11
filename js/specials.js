@@ -4,33 +4,35 @@
 // The later ones come from the classics: Macross's missile swarms (BARRAGE), R-Type's Force (FORCE
 // POD), DoDonPachi's hyper mode (HYPER), and the bullet-cancelling and time-slowing bombs of many
 // modern shooters.
+// family: ATTACK, DEFENSE or SUPPORT. A hull only uses specials its bays take (HULLS[h].bays), and hulls
+// limits one to those hulls (the missile barrage follows the homing gun: PHOENIX and SPHINX).
 
 const SPECIALS = [
-  { id: 'laser', name: 'THUNDER LASER', short: 'LSR', color: C.aqua,
+  { id: 'laser', name: 'THUNDER LASER', short: 'LSR', color: C.aqua, family: 'ATTACK',
     desc: ['A ONE-SECOND BEAM THAT', 'PIERCES EVERYTHING AHEAD.'] },
-  { id: 'cluster', name: 'CLUSTER BOMB', short: 'CLU', color: C.orange,
+  { id: 'cluster', name: 'CLUSTER BOMB', short: 'CLU', color: C.orange, family: 'ATTACK',
     desc: ['3 BOMBS. EACH BURSTS INTO', '8 FRAGMENTS ON IMPACT.'] },
-  { id: 'crush', name: 'MEGA CRUSH', short: 'MGC', color: C.white,
+  { id: 'crush', name: 'MEGA CRUSH', short: 'MGC', color: C.white, family: 'ATTACK',
     desc: ['HITS EVERY ENEMY ON SCREEN', 'AND ERASES ENEMY BULLETS.'] },
-  { id: 'shield', name: 'GENE SHIELD', short: 'SHD', color: C.lime,
+  { id: 'shield', name: 'GENE SHIELD', short: 'SHD', color: C.lime, family: 'DEFENSE',
     desc: ['5-SECOND BARRIER. BLOCKS', 'BULLETS AND METHYL BEAMS.'] },
-  { id: 'tet', name: 'TET BURST', short: 'TET', color: C.mint,
+  { id: 'tet', name: 'TET BURST', short: 'TET', color: C.mint, family: 'SUPPORT',
     desc: ['RESTORES EVERY SILENCED', 'FORM AND STOPS BEAMS.'] },
-  { id: 'wingman', name: 'WINGMAN', short: 'WNG', color: C.sky,
+  { id: 'wingman', name: 'WINGMAN', short: 'WNG', color: C.sky, family: 'SUPPORT',
     desc: ['A DRONE FLIES WITH YOU FOR', '10 SECONDS AND COPIES SHOTS.'] },
-  { id: 'barrage', name: 'MISSILE BARRAGE', short: 'BRG', color: C.lgray,
+  { id: 'barrage', name: 'MISSILE BARRAGE', short: 'BRG', color: C.lgray, family: 'ATTACK', hulls: [6, 8],
     desc: ['12 HOMING MISSILES FAN OUT', 'AND HUNT DOWN TARGETS.'] },
-  { id: 'chrono', name: 'CHRONO FIELD', short: 'CHR', color: C.periwinkle,
+  { id: 'chrono', name: 'CHRONO FIELD', short: 'CHR', color: C.periwinkle, family: 'DEFENSE',
     desc: ['FOR 5 SECONDS THE ENEMY', 'MOVES AT HALF SPEED.'] },
-  { id: 'emp', name: 'EMP BLAST', short: 'EMP', color: C.ice,
+  { id: 'emp', name: 'EMP BLAST', short: 'EMP', color: C.ice, family: 'DEFENSE',
     desc: ['ERASES BULLETS. NO ENEMY', 'GUN FIRES FOR 5 SECONDS.'] },
-  { id: 'reflect', name: 'REFLECT FIELD', short: 'RFL', color: C.white,
+  { id: 'reflect', name: 'REFLECT FIELD', short: 'RFL', color: C.white, family: 'DEFENSE',
     desc: ['4 SECONDS: BULLETS THAT', 'COME CLOSE BOUNCE BACK.'] },
-  { id: 'gravity', name: 'GRAVITY BOMB', short: 'GRV', color: C.violet,
+  { id: 'gravity', name: 'GRAVITY BOMB', short: 'GRV', color: C.violet, family: 'ATTACK',
     desc: ['A SMALL BLACK HOLE PULLS', 'IN PLANES AND BULLETS.'] },
-  { id: 'pod', name: 'FORCE POD', short: 'POD', color: C.orange,
+  { id: 'pod', name: 'FORCE POD', short: 'POD', color: C.orange, family: 'SUPPORT',
     desc: ['12 SECONDS: A POD AHEAD OF', 'YOU BLOCKS AND SHOOTS.'] },
-  { id: 'hyper', name: 'HYPER MODE', short: 'HYP', color: C.gold,
+  { id: 'hyper', name: 'HYPER MODE', short: 'HYP', color: C.gold, family: 'SUPPORT',
     desc: ['6 SECONDS: DOUBLE FIRE', 'RATE, +50% DAMAGE.'] },
 ];
 
@@ -47,11 +49,20 @@ Object.assign(Game, {
   openHangar() {
     this.setState('hangar');
     this.hangarRow = 0;
-    const o = this.specialOptions(), last = this.camp.ordLast;
-    this.hangarSel = Math.max(0, o.findIndex(q => (last ? q.ord === last : q.idx === this.lastSpecial)));
+    const o = this.specialOptions(), last = this.camp.ordLast, ok = q => q.ord || !this.specialBlock(q.idx);
+    this.hangarSel = o.findIndex(q => ok(q) && (last ? q.ord === last : q.idx === this.lastSpecial));
+    if (this.hangarSel < 0) this.hangarSel = Math.max(0, o.findIndex(ok));
   },
 
-  // What the SPECIAL row offers: learned specials, then stocked ordnance this hull can carry.
+  // Why hull h can't use special idx, or null if it can.
+  specialBlock(idx, h = this.camp.hull) {
+    const S = SPECIALS[idx];
+    if (S.hulls && !S.hulls.includes(h)) return S.hulls.map(i => HULLS[i].name.split(' ')[1]).join(' AND ') + ' ONLY';
+    return HULLS[h].bays.includes(S.family) ? null : 'NO ' + S.family + ' BAY';
+  },
+
+  // What the SPECIAL row offers: learned specials (the ones without a bay grayed out), then stocked
+  // ordnance this hull can carry.
   specialOptions() {
     const c = this.camp;
     return [...c.learned.map(idx => ({ idx })), ...ORDNANCE.filter(o => this.ordStock(o.id) > 0 && this.ordAllowed(o.id)).map(o => ({ ord: o.id }))];
@@ -108,10 +119,11 @@ Object.assign(Game, {
 
   // Ordnance is loaded here: up to its carry limit comes out of stock, and it isn't rearmed between legs.
   launchHangar() {
-    const c = this.camp, sel = this.specialOptions()[this.hangarSel];
+    const c = this.camp, sel = this.specialOptions()[this.hangarSel], block = sel && !sel.ord && this.specialBlock(sel.idx);
+    if (block) { Sound.sfx('denied'); this.toast(block); this.hangarRow = this.hangarRowIds().indexOf(3); return; }
     if (!sel) this.special = null;
     else if (sel.ord) {
-      const n = Math.min(this.ordStock(sel.ord), ORD_BY_ID[sel.ord].carry);
+      const n = Math.min(this.ordStock(sel.ord), this.ordCarry(sel.ord));
       c.ord[sel.ord] -= n;
       c.ordLast = sel.ord;
       this.special = { ord: sel.ord, ammo: n, cd: 0 };
@@ -428,12 +440,12 @@ Object.assign(Game, {
           const o = ORD_BY_ID[pick.ord], st = this.ordStock(o.id);
           NES.text(ctx, o.name, 100, y, sel ? C.white : C.lgray);
           NES.draw(ctx, SPR.ordIcons[o.family], 104, y + 12);
-          NES.text(ctx, 'X' + Math.min(st, o.carry) + '/' + st, 240, y + 9, C.orange, { align: 'right' });
+          NES.text(ctx, 'X' + Math.min(st, this.ordCarry(o.id)) + '/' + st, 240, y + 9, C.orange, { align: 'right' });
         } else {
-          const S = SPECIALS[pick.idx];
-          NES.text(ctx, S.name, 100, y, sel ? C.white : C.lgray);
+          const S = SPECIALS[pick.idx], block = this.specialBlock(pick.idx);
+          NES.text(ctx, S.name, 100, y, block ? C.gray : sel ? C.white : C.lgray);
           NES.draw(ctx, SPR.specialIcons[pick.idx], 104, y + 12);
-          NES.text(ctx, 'X' + this.specialAmmo(), 240, y + 9, S.color, { align: 'right' });
+          NES.text(ctx, block ? S.family : 'X' + this.specialAmmo(), 240, y + 9, block ? C.gray : S.color, { align: 'right' });
         }
       } else {
         NES.text(ctx, 'MODULE', 22, y, C.white);
@@ -449,7 +461,9 @@ Object.assign(Game, {
     } else if (row === 3 && pick.ord) {
       lines = NES.wrap(ORD_BY_ID[pick.ord].desc, 26).slice(0, 2); extra = 'UNUSED ONES COME BACK';
     } else if (row === 3) {
-      lines = SPECIALS[pick.idx].desc; extra = 'FIRE IT WITH: C KEY / PAD B';
+      const block = this.specialBlock(pick.idx);
+      lines = SPECIALS[pick.idx].desc; extra = block ? block + ': PICK ANOTHER' : 'FIRE IT WITH: C KEY / PAD B';
+      if (block) col = C.orange;
     } else {
       lines = M ? NES.wrap(M.desc, 26).slice(0, 2) : ['NO MODULE FITTED.']; extra = 'BUY MODULES AT MARKETS';
     }

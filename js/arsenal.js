@@ -10,17 +10,17 @@
 // (1942's side fighters, Gradius's trailing and rotating options). Both refill at every takeoff.
 
 const ORDNANCE = [
-  { id: 'missile1', name: 'MISSILE POD I', short: 'MSL1', family: 'missile', n: 3, uses: 3, carry: 6, price: 300, gal: 0, hulls: null,
+  { id: 'missile1', name: 'MISSILE POD I', short: 'MSL1', family: 'missile', n: 3, uses: 3, carry: 6, price: 300, gal: 1, hulls: [6, 8],
     desc: '3 HOMING MISSILES A USE.' },
-  { id: 'missile2', name: 'MISSILE POD II', short: 'MSL2', family: 'missile', n: 5, uses: 3, carry: 6, price: 750, gal: 1, hulls: null,
+  { id: 'missile2', name: 'MISSILE POD II', short: 'MSL2', family: 'missile', n: 5, uses: 3, carry: 6, price: 750, gal: 1, hulls: [6, 8],
     desc: '5 HOMING MISSILES A USE.' },
-  { id: 'missile3', name: 'MISSILE POD III', short: 'MSL3', family: 'missile', n: 7, uses: 3, carry: 6, price: 1500, gal: 2, hulls: null,
+  { id: 'missile3', name: 'MISSILE POD III', short: 'MSL3', family: 'missile', n: 7, uses: 3, carry: 6, price: 1500, gal: 2, hulls: [6, 8],
     desc: '7 HOMING MISSILES A USE.' },
-  { id: 'bomb1', name: 'BOMB RACK I', short: 'BMB1', family: 'bomb', n: 1, blast: 30, uses: 3, carry: 6, price: 360, gal: 0, hulls: [0, 2, 4, 6],
+  { id: 'bomb1', name: 'BOMB RACK I', short: 'BMB1', family: 'bomb', n: 1, blast: 30, uses: 3, carry: 6, price: 360, gal: 0, hulls: [0, 2, 4, 6, 7],
     desc: 'A HEAVY BOMB THAT FALLS.' },
-  { id: 'bomb2', name: 'BOMB RACK II', short: 'BMB2', family: 'bomb', n: 2, blast: 36, uses: 3, carry: 6, price: 900, gal: 1, hulls: [0, 2, 4, 6],
+  { id: 'bomb2', name: 'BOMB RACK II', short: 'BMB2', family: 'bomb', n: 2, blast: 36, uses: 3, carry: 6, price: 900, gal: 1, hulls: [0, 2, 4, 6, 7],
     desc: '2 BOMBS, A WIDER BLAST.' },
-  { id: 'bomb3', name: 'BOMB RACK III', short: 'BMB3', family: 'bomb', n: 3, blast: 42, uses: 3, carry: 6, price: 1800, gal: 2, hulls: [0, 2, 4, 6],
+  { id: 'bomb3', name: 'BOMB RACK III', short: 'BMB3', family: 'bomb', n: 3, blast: 42, uses: 3, carry: 6, price: 1800, gal: 2, hulls: [0, 2, 4, 6, 7],
     desc: '3 BOMBS, THE WIDEST BLAST.' },
   { id: 'cluster', name: 'CLUSTER POD', short: 'CLU', family: 'cluster', n: 3, uses: 3, carry: 6, price: 600, gal: 0, hulls: null,
     desc: '3 BOMBS THAT BURST INTO 8.' },
@@ -46,6 +46,8 @@ Object.assign(Game, {
 
   // ---- Stock ----------------------------------------------------------------------------
   ordAllowed(id, h = this.camp.hull) { const o = ORD_BY_ID[id]; return !o.hulls || o.hulls.includes(h); },
+  // How many go up at launch: its carry limit, and one more rack for DRAC.
+  ordCarry(id) { const o = ORD_BY_ID[id]; return o.carry + (this.hasPerk('rack') ? o.uses : 0); },
   ordStock(id) { return (this.camp.ord && this.camp.ord[id]) || 0; },
   fittedModule() { const c = this.camp; return c && c.mod && (c.mods || []).includes(c.mod) ? MODULE_BY_ID[c.mod] : null; },
 

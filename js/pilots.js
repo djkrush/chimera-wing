@@ -3,14 +3,16 @@
 //   weapons: shot strength, (1 + weapons) / 4 times a gun's damage: 1 is half, 3 is the guns' own damage.
 //   shields: hits the ship can take. With none left, the next hit destroys it and ends the game.
 //   special: uses of the hangar's special weapon in each leg.
+// perkId: MAVERICK pays 25% less for gun levels (starbase.js), TURTLE's shields recharge after 600 frames
+// without a hit (skills.js: updatePassives), DRAC loads one more rack of ordnance (arsenal.js: ordCarry).
 
 const PILOTS = [
-  { name: 'MAVERICK', tag: 'HOTSHOT ACE', col: C.red, weapons: 2, shields: 2, special: 1,
+  { name: 'MAVERICK', tag: 'HOTSHOT ACE', col: C.red, weapons: 2, shields: 2, special: 1, perkId: 'levels',
     perk: 'GUN LEVELS COST 25% LESS.' },
-  { name: 'TURTLE', tag: 'IRON WALL', col: C.lime, weapons: 1, shields: 3, special: 1,
-    perk: 'TAKES THE MOST HITS.' },
-  { name: 'DRAC', tag: 'ALIEN TACTICIAN', col: C.magenta, weapons: 1, shields: 2, special: 2,
-    perk: 'TWO SPECIALS EACH LEG.' },
+  { name: 'TURTLE', tag: 'IRON WALL', col: C.lime, weapons: 1, shields: 3, special: 1, perkId: 'recharge',
+    perk: 'SHIELDS RECHARGE IF NOT HIT FOR 10 SEC.' },
+  { name: 'DRAC', tag: 'ALIEN TACTICIAN', col: C.magenta, weapons: 1, shields: 2, special: 2, perkId: 'rack',
+    perk: 'CARRIES ONE MORE RACK OF ORDNANCE.' },
 ];
 const STAT_MAX = 4;   // pips on the pilot cards
 const STAT_CAP = { weapons: 8, shields: 8, special: 5 };   // pilot + hull + hull upgrades + training never go past these
@@ -18,28 +20,38 @@ const STAT_CAP = { weapons: 8, shields: 8, special: 5 };   // pilot + hull + hul
 // Ship hulls. The pilot flies one hull at a time. Its modifiers add to the pilot's stats, and speed
 // scales every form. fit = each form's two guns, [start, upgrade] (weapons.js: GUNS; the CHIMERA has no
 // upgrades); rung = its step on the gun ladder (FUTURE.md, M4): each hull starts with the guns the one
-// below it buys as upgrades. form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID.
+// below it buys as upgrades. form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID. bays = the special
+// families it can use (specials.js); its `special` stat adds uses per leg.
 // Planet markets sell them (P.hulls in world.js). Keep the order: saves store the index, and HULL_ART
 // (sprites.js) follows it, so the BEHEMOTH (rung 6) and SPHINX (rung 8) come after the PHOENIX (rung 7).
 const HULLS = [
   { name: 'VX-3 CHIMERA', rung: 0, weapons: 0, shields: 0, special: 0, speed: 1, price: 0, form: [1, 1, 1],
-    fit: [['twin', null], ['spread', null], ['laser', null]], desc: 'THE ORIGINAL. BALANCED.' },
+    fit: [['twin', null], ['spread', null], ['laser', null]], bays: ['ATTACK', 'DEFENSE', 'SUPPORT'],
+    desc: 'THE ORIGINAL. BALANCED.' },
   { name: 'VX-5 MANTICORE', rung: 1, weapons: 1, shields: 0, special: 1, speed: 1.1, price: 4000, form: [1.4, 1, 0.8],
-    fit: [['twin', 'vulcan'], ['spread', 'wave'], ['laser', 'grenade']], desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
+    fit: [['twin', 'vulcan'], ['spread', 'wave'], ['laser', 'grenade']], bays: ['ATTACK'],
+    desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
   { name: 'VX-6 GRIFFIN', rung: 2, weapons: 0, shields: 2, special: 0, speed: 0.9, price: 5000, form: [0.9, 1, 1.4],
-    fit: [['vulcan', 'ripple'], ['wave', 'bomb'], ['grenade', 'charge']], desc: 'ARMOR. BEST AS A BATTLOID.' },
+    fit: [['vulcan', 'ripple'], ['wave', 'bomb'], ['grenade', 'charge']], bays: ['DEFENSE', 'ATTACK'],
+    desc: 'ARMOR. BEST AS A BATTLOID.' },
   { name: 'VX-9 HYDRA', rung: 3, weapons: 0, shields: 1, special: 0, speed: 1.1, price: 9000, form: [1.1, 1.1, 1.1],
-    fit: [['ripple', 'gunpod'], ['bomb', 'swivel'], ['charge', 'rail']], desc: 'ALL-ROUNDER. GOOD AT EVERYTHING.' },
+    fit: [['ripple', 'gunpod'], ['bomb', 'swivel'], ['charge', 'rail']], bays: ['ATTACK', 'DEFENSE', 'SUPPORT'],
+    desc: 'ALL-ROUNDER. GOOD AT EVERYTHING.' },
   { name: 'VX-7 WYVERN', rung: 4, weapons: 0, shields: 1, special: 1, speed: 1, price: 12000, form: [0.9, 1.4, 1],
-    fit: [['gunpod', 'tail'], ['swivel', 'flak'], ['rail', 'hyper']], desc: 'GUARDIAN. BEST AS A GUARDIAN.' },
+    fit: [['gunpod', 'tail'], ['swivel', 'flak'], ['rail', 'hyper']], bays: ['SUPPORT', 'DEFENSE'],
+    desc: 'GUARDIAN. BEST AS A GUARDIAN.' },
   { name: 'VX-8 BASILISK', rung: 5, weapons: 2, shields: -1, special: 2, speed: 1.15, price: 18000, form: [1.2, 1.2, 1],
-    fit: [['tail', 'needle'], ['flak', 'diagonal'], ['hyper', 'sword']], desc: 'PIERCING. HITS HARD, BREAKS EASY.' },
+    fit: [['tail', 'needle'], ['flak', 'diagonal'], ['hyper', 'sword']], bays: ['ATTACK'],
+    desc: 'PIERCING. HITS HARD, BREAKS EASY.' },
   { name: 'VX-12 PHOENIX', rung: 7, weapons: 1, shields: 1, special: 1, speed: 1.15, price: 30000, form: [1.3, 1.3, 1.3],
-    fit: [['rocket', 'burner'], ['mortar', 'ring'], ['canister', 'homing']], desc: 'TOP OF THE LINE. FIRE AND HOMING.' },
+    fit: [['rocket', 'burner'], ['mortar', 'ring'], ['canister', 'homing']], bays: ['ATTACK', 'DEFENSE', 'SUPPORT'],
+    desc: 'TOP OF THE LINE. FIRE AND HOMING.' },
   { name: 'VX-10 BEHEMOTH', rung: 6, weapons: 1, shields: 2, special: 0, speed: 0.85, price: 25000, form: [1.1, 1, 1.2],
-    fit: [['needle', 'rocket'], ['diagonal', 'mortar'], ['sword', 'canister']], desc: 'GROUND ATTACK. HEAVY AND SLOW.' },
+    fit: [['needle', 'rocket'], ['diagonal', 'mortar'], ['sword', 'canister']], bays: ['ATTACK', 'DEFENSE'],
+    desc: 'GROUND ATTACK. HEAVY AND SLOW.' },
   { name: 'VX-11 SPHINX', rung: 8, weapons: 1, shields: 0, special: 0, speed: 1.2, price: 60000, form: [1.2, 1.1, 1],
-    fit: [['burner', 'freeway'], ['ring', 'chain'], ['homing', 'lock']], desc: 'MISSILE CARRIER. LOCKS ON.' },
+    fit: [['burner', 'freeway'], ['ring', 'chain'], ['homing', 'lock']], bays: ['ATTACK', 'SUPPORT'],
+    desc: 'MISSILE CARRIER. LOCKS ON.' },
 ];
 
 Object.assign(Game, {
@@ -56,6 +68,7 @@ Object.assign(Game, {
   // Levels bought, Mk II and Mk III included (starbase.js), so every effect picks them up.
   upLevel(key) { const u = this.camp ? this.camp.up : {}; return (u[key] || 0) + (u[key + '2'] || 0) + (u[key + '3'] || 0); },
   hasPassive(id) { return !!this.camp && this.camp.passives.includes(id); },
+  hasPerk(id) { return this.pilotDef().perkId === id; },
   // Shot damage for a form: the weapons stat, the hull's strength in that form and the form's gun upgrade.
   gunPower(form = this.player.form) {
     return (1 + this.statOf('weapons')) / 4 * this.hullDef().form[form] * (1 + 0.2 * this.upLevel(['ftr', 'grd', 'btl'][form]));
@@ -89,6 +102,7 @@ Object.assign(Game, {
   // Shields soak hits. Returns false when there were none left and the ship went down.
   takeHit() {
     const p = this.player;
+    this.quietT = 0;   // TURTLE's recharge waits for 10 seconds without a hit
     if (this.barrier > 0) { this.barrierHit(); return true; }   // a barrier module soaks it first (arsenal.js)
     if (this.shields <= 0 && this.hasPassive('second') && !this.secondUsed) {   // SECOND WIND: once per leg
       this.secondUsed = true;

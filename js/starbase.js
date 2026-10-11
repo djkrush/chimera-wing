@@ -76,7 +76,7 @@ Object.assign(Game, {
       return [...ORDNANCE.filter(o => o.gal <= gi).map(o => {
         const ok = this.ordAllowed(o.id);
         return { label: o.name, right: o.price + ' CR', col: ok && c.money >= o.price ? C.white : C.gray, act: () => this.buyOrdnance(o.id),
-          info: 'OWN ' + this.ordStock(o.id) + ', CARRY ' + o.carry + '. ' + o.uses + ' PER RACK. ' + (ok ? o.desc : 'NOT FOR THIS HULL.') };
+          info: 'OWN ' + this.ordStock(o.id) + ', CARRY ' + this.ordCarry(o.id) + '. ' + o.uses + ' PER RACK. ' + (ok ? o.desc : 'NOT FOR THIS HULL.') };
       }), { label: 'BACK', act: () => this.basePage('shop') }];
     }
     if (U.page === 'levels') {   // every gun you own, by form and rung
@@ -107,7 +107,7 @@ Object.assign(Game, {
     if (U.page === 'skills') {
       const rows = [
         ...c.passives.map(id => { const s = PASSIVE_BY_ID[id]; return { label: s.name, right: 'PASSIVE', col: s.col, info: s.desc.join(' ') }; }),
-        ...c.learned.map(i => { const s = SPECIALS[i]; return { label: s.name, right: 'SPECIAL', col: s.color, info: s.desc.join(' ') }; }),
+        ...c.learned.map(i => { const s = SPECIALS[i], block = this.specialBlock(i); return { label: s.name, right: block ? 'NO BAY' : s.family, col: block ? C.gray : s.color, info: s.desc.join(' ') + (block ? ' THIS HULL: ' + block + '.' : '') }; }),
       ];
       if (!rows.length) rows.push({ label: 'NONE YET', info: 'LEVEL UP TO LEARN SKILLS.' });
       return [...rows, back];
@@ -128,7 +128,7 @@ Object.assign(Game, {
   // Price of a gun's level n (the level it goes to); MAVERICK pays 25% less.
   gunLevelPrice(id, n) {
     const base = GUNS[id].rung ? this.gunPrice(id) : 1000;
-    return Math.round(base * GUN_LV_MUL[n] * (this.pilotDef().name === 'MAVERICK' ? 0.75 : 1) / 10) * 10;
+    return Math.round(base * GUN_LV_MUL[n] * (this.hasPerk('levels') ? 0.75 : 1) / 10) * 10;
   },
   // The galaxy level n needs, or null once you're there.
   gunLevelGate(n) { const g = GUN_LV_GAL[n]; return this.galaxyDef().index >= g ? null : GALAXIES[g].name.split(' ')[0]; },
