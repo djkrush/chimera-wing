@@ -37,7 +37,7 @@ B zooms back out. You can also click or tap galaxies, systems and planets.
   - **PATROL**: a vertical Galaga-style stage.
   - **INTERCEPT**: a side-scrolling stage.
   - **GROUND RAID**: a side-scrolling stage full of tank columns and missile sites.
-  - **CONTROL GROUP**: a bonus stage. The planes don't shoot; hit all 64.
+  - **CONTROL GROUP**: a bonus stage. The planes only take the odd shot; hit all 64.
   - **STRONGHOLD**: two legs and a boss. Either a vertical approach and a side-scrolling assault on a
     grounded **boss warship**, or a side-scrolling approach and a vertical **capital-ship flyover**.
   - **SUPPLY RAID**: a contract on every *cleared* planet, for players short of credits. A 30-second
@@ -252,7 +252,8 @@ upgrades and level-up training add to them, up to 16):
 - **Vertical** (Galaga-style, top-down, you fly up): squadrons of 40 planes fly into formation and dive
   at you, one after another (2 squadrons early on, up to 4 in the far galaxies). Every form can fly up,
   down, left and right in the lower part of the screen, and the ship banks as it turns.
-  On a challenging stage they don't shoot.
+  Planes shoot as they fly in, as they dive, and now and then from the formation. On a challenging
+  stage they only take the odd shot.
 - **Capital-ship flyover** (vertical boss): a giant Star Destroyer-style ship scrolls beneath you.
   Knock out its gun turrets, fighter hangars and histone reactor cores, and the fighters it
   launches. If you reach the end of the ship with targets left, you come about and fly over it

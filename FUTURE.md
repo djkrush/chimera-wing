@@ -213,12 +213,12 @@ the last is cleared (`buildNormalWaves`, `nextSquadron` in `js/game.js`).
   flagged by a warning arrow at the screen edge first.
 - **Fire budgets and formation fire (kavros 1942).** Every second, each enemy on screen has a 20% chance
   to shoot, and each carries limited ammo (big planes spend 3 to 5 per volley), so old planes run dry.
-  Ours cap bullets on screen (`10 + stage`) and fire only on entry and at fixed dive heights; planes in
-  formation never fire. For us: a slow per-second chance from the formation (`updateAttacks`), and an
-  ammo count per plane in `enemyFire`, with more for acetylated planes.
+  Ours cap bullets on screen (`10 + stage`), fire on entry and on the way down a dive, and the formation
+  takes a potshot every two or three seconds (`formationFire`). Still to try: an ammo count per plane in
+  `enemyFire`, with more for acetylated planes.
 - **Fair homing (kavros 1942).** Its grey planes pick a down-left, down-right or straight path from where
-  the player is, with a 10 px dead zone, and stop steering and shooting within 100 px. Ours fire at
-  y 70, 110 and 140 whatever the distance. For us: skip a diver's shot when it is right on top of the player.
+  the player is, with a 10 px dead zone, and stop steering and shooting within 100 px. Ours spread two or
+  three shots down each dive and skip a shot within 24 px above the ship; a wider dead zone could follow.
 - **Shot-down % at stage clear (kavros 1942).** Its clear screen shows the percent of enemies destroyed
   and 1,000 points per unused loop. For us: show the percent and pay credits for it. We already pay
   `stageHits * 10` and 500 for a perfect challenge stage (`checkStageEnd`); extend that to every leg.

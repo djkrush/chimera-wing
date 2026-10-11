@@ -119,7 +119,7 @@ Object.assign(Game, {
       hd: beh === 'rear' ? 0 : Math.PI, spd: base * (acetyl ? 1.2 : 1),
       ang: beh === 'rear' ? Math.PI / 2 : -Math.PI / 2,
       slot: null, wave: -1, acetyl, holding: -1, flash: 0, fireYs: [], t: randi(0, 60), dead: false,
-      fireAt: s >= 2 && Math.random() < 0.5 ? randi(40, 110) : 0,
+      fireAt: Math.random() < (s >= 2 ? 0.5 : 0.35) ? randi(40, 110) : 0,
       ...extra,
     };
     if (type === 'sam' || type === 'tank') e.face = 0;

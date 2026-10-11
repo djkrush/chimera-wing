@@ -41,7 +41,7 @@ const MISSION_KINDS = {
   patrol: { name: 'PATROL', legs: ['normal'], pay: 0.8, desc: 'VERTICAL. BREAK HER SQUADRON.' },
   intercept: { name: 'INTERCEPT', legs: ['side'], pay: 0.8, desc: 'SIDE-SCROLLING. CUT OFF HER FIGHTERS.' },
   raid: { name: 'GROUND RAID', legs: ['raid'], pay: 0.9, desc: 'SIDE-SCROLLING. TANKS AND MISSILE SITES.' },
-  bonus: { name: 'CONTROL GROUP', legs: ['challenge'], pay: 0.7, desc: 'BONUS STAGE. THEY WILL NOT FIRE.' },
+  bonus: { name: 'CONTROL GROUP', legs: ['challenge'], pay: 0.7, desc: 'BONUS STAGE. LIGHT FIRE. HIT EVERY ONE.' },
   strike: { name: 'STRONGHOLD', legs: ['boss'], pay: 1.5, desc: 'TWO LEGS AND A BOSS. CLEARS THE PLANET.' },
   // The SUPPLY RAID contract on every cleared planet: never in P.missions (the draw below has its own pool).
   convoy: { name: 'SUPPLY RAID', legs: ['convoy'], pay: 0.6, desc: 'SIDE-SCROLLING. HIT HER SAM CONVOY. PAYS.' },

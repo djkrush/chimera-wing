@@ -227,6 +227,7 @@ const Game = {
     this.formationReady = false;
     this.formation = { t: 0, ox: 0, spread: 1, bt: 0 };
     this.attackCd = 90;
+    this.volleyCd = 150;   // first formation potshot
     this.boss = null; this.capital = null; this.bossWin = false; this.scrollLock = false;
     this.stageHits = 0;
     this.adapt = this.nextAdapt;
@@ -641,7 +642,7 @@ const Game = {
       acetyl: !chall && this.stage >= 2 && Math.random() < this.acetylChance(),
       holding: -1, flash: 0, fireYs: [], t: randi(0, 60), dead: false, enterFireAt: 0,
     };
-    if (!chall && this.stage >= 2 && Math.random() < Math.min(0.15 + this.stage * 0.04, 0.6)) {
+    if (Math.random() < (chall ? 0.3 : Math.min(0.25 + this.stage * 0.04, 0.6))) {   // every stage shoots back, a bonus stage lightly
       e.enterFireAt = randi(40, Math.max(41, Math.min(160, path.length - 40)));
     }
     this.enemies.push(e);
@@ -702,7 +703,7 @@ const Game = {
       e.ang += clamp(angDiff(e.ang, target), -0.25, 0.25);
       if (e.state === 'dive' && e.fireYs.length && oy < e.fireYs[0] && e.y >= e.fireYs[0]) {
         e.fireYs.shift();
-        this.enemyFire(e);
+        if (e.y < this.player.y - 24) this.enemyFire(e);   // no point-blank shots from beside the ship
       }
     }
     this.enemies = this.enemies.filter(e => !e.dead);
@@ -713,7 +714,10 @@ const Game = {
     e.turn = turn ?? (e.x < CX ? -1 : 1);
     e.spd = 1.6;
     e.maxSpd = Math.min(2.2 + this.stage * 0.06, 3.4) * (e.acetyl ? 1.2 : 1);
-    e.fireYs = [70, 110, 140].slice(0, this.stage < 2 ? 1 : this.stage < 6 ? 2 : 3);
+    // Shots on the way down, spread between the plane's slot and just above the ship's zone (a plane in a
+    // low row still gets its shots in), two early on and three later.
+    const n = this.stage < 6 ? 2 : 3, y0 = e.y + 12, y1 = Math.max(y0 + 16, PY_MIN + 10);
+    e.fireYs = Array.from({ length: n }, (_, i) => Math.round(y0 + (y1 - y0) * i / (n - 1)));
     e.wob = rand(0, TAU);
     Sound.sfx('dive');
   },
@@ -795,7 +799,16 @@ const Game = {
     }
   },
 
+  // Planes holding formation take potshots too (Galaga's never do), so a vertical stage is never quiet.
+  formationFire() {
+    if (this.stageType !== 'normal' || !this.player.alive || --this.volleyCd > 0) return;
+    this.volleyCd = randi(Math.max(40, 130 - this.stage * 6), Math.max(80, 210 - this.stage * 8));
+    const pool = this.enemies.filter(e => e.state === 'form' && e.type !== 'methyl');
+    if (pool.length) this.enemyFire(pick(pool));
+  },
+
   updateAttacks() {
+    this.formationFire();
     if (this.stageType !== 'normal' || !this.formationReady || !this.player.alive) return;
     if (--this.attackCd > 0) return;
     const pool = this.enemies.filter(e => e.state === 'form');
@@ -822,7 +835,7 @@ const Game = {
 
   enemyFire(e) {
     const p = this.player;
-    if (this.stageType === 'challenge' || !p.alive || this.empT > 0 || e.cargo) return;   // convoy cargo tanks are unarmed
+    if (!p.alive || this.empT > 0 || e.cargo) return;   // convoy cargo tanks are unarmed
     if (this.eBul.length > 10 + this.stage) return;
     const sp = Math.min(2 + this.stage * 0.08, 3.4);
     let a = Math.atan2(p.y - e.y, p.x - e.x);
