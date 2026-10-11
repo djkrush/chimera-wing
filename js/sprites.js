@@ -39,7 +39,7 @@ const SPR = (() => {
     '...WWWWG..WWGK..',
     '..........KKK...',
   ]);
-  const GUARDIAN = SNES.mirror([   // GERWALK: wings out, arms holding gun pods forward, legs down with feet
+  const GUARDIAN_HALF = [   // GERWALK: wings out, arms holding gun pods forward, legs down with feet
     '...............W',
     '...............W',
     '..............WW',
@@ -70,7 +70,8 @@ const SPR = (() => {
     '........GWWWG...',
     '.......KKKKKKK..',
     '.......KKKKKKK..',
-  ]);
+  ];
+  const GUARDIAN = SNES.mirror(GUARDIAN_HALF);
   const BATTLOID = [   // Battloid: twin head lasers, visor, intake shoulders, folded wings, gun pod up
     '..........K...K......K.....',
     '..........K...K......K.....',
@@ -286,28 +287,295 @@ const SPR = (() => {
     '......gGGGGGGGGGGg..................',
     '........KKK.........................',
   ];
+  // ---- M4 Fighters: the WYVERN, BASILISK, PHOENIX, BEHEMOTH and SPHINX ----
+  const WYVERN_FIGHTER = SNES.mirror([   // cranked delta with fins on the wingtips
+    '...............W',
+    '...............W',
+    '..............WW',
+    '..............WB',
+    '..............WB',
+    '.............WBB',
+    '.............WBB',
+    '.............WWB',
+    '............GWWW',
+    '...........GKWWW',
+    '..........WRKWWW',
+    '.........WWRKGWW',
+    '........WWWWKGWW',
+    '.......WWWWWKGWW',
+    '......WWWWWWKGWW',
+    '.....WWWWWWWKGWR',
+    '....WWWWWWWWKGWR',
+    '...WWWWWWWWWKGWR',
+    '..WWWWWWWWWWKGWW',
+    '.GWWWWWWWWWWKGWW',
+    'GGWWWWWWWWWWKGWW',
+    'GRWWWWWWWWWWKGWW',
+    'GRggggggggWWKGKW',
+    'GR........WWGKKW',
+    '.G........WWGK.K',
+    '.........GWWGK..',
+    '........GGWWGK..',
+    '..........KKK...',
+  ]);
+  const WYVERN_FIGHTER_SIDE = [
+    '..GG................................',
+    '..GWG...............................',
+    '..GWWG..............BBB.............',
+    '..GWWWG...........BBBBBW............',
+    '.KKWWWWWWWWWWWWWWWWWWWWWWWWW........',
+    'KKKWWWWWWWWWWWWWWWWWWWWWWWWWWWWW....',
+    'KKKRRRRRRRRRRRRRRRRRRRRRRWWWWWWWWWWW',
+    '.KKWWWWWWWWWWWWWWWWWWWWWWWWWWWW.....',
+    '...GGGGGGGGGGWWWWWWWWGG.............',
+    '.....gGGGGGGGGGGGg..................',
+    '.GG.......KKK.......................',
+  ];
+  const BASILISK_FIGHTER = SNES.mirror([   // a needle: long nose, canards, small wings set far back
+    '...............W',
+    '...............W',
+    '...............W',
+    '...............W',
+    '..............WW',
+    '..............WW',
+    '..............WB',
+    '..............WB',
+    '.............WBB',
+    '.............WBB',
+    '.............WWB',
+    '..........GG.WWW',
+    '........GGWWGWWW',
+    '..........GGKWWW',
+    '............KGWW',
+    '............KGWW',
+    '...........RKGWW',
+    '.........WWRKGWW',
+    '.......WWWWWKGWR',
+    '.....WWWWWWWKGWR',
+    '...WWWWWWWWWKGWR',
+    '..RWWWWWWWWWKGWW',
+    '.RRggggggWWWKGWW',
+    '..........WWGKWW',
+    '.........GWWGKKW',
+    '........GGWWGK.K',
+    '.......GG.WWGK..',
+    '..........KKK...',
+  ]);
+  const BASILISK_FIGHTER_SIDE = [
+    '.GG...................................',
+    '.GWG..................................',
+    '.GWWG..............BBB................',
+    '.GWWWG...........BBBBBW...G...........',
+    'KKWWWWWWWWWWWWWWWWWWWWWWWWGW..........',
+    'KKRRRRRRRRRRRRRRRRRRRRRRRWWWWWWWWWWWWW',
+    'KKWWWWWWWWWWWWWWWWWWWWWWWWWWWW........',
+    '..GGGGWWWWWWWWWWWWGG..................',
+    '....gGGGGGGGGg........................',
+    '........KKK...........................',
+  ];
+  const PHOENIX_FIGHTER = SNES.mirror([   // a firebird: broad swept wings with feathered trailing edges
+    '...............W',
+    '...............W',
+    '..............WW',
+    '..............WB',
+    '.............WBB',
+    '.............WBB',
+    '...........G.WBB',
+    '..........GWGWWB',
+    '............GWWW',
+    '...........RKGWW',
+    '..........WRKGWW',
+    '.........WWWKGWW',
+    '........WWWWKGWW',
+    '......WWWWWWKGWW',
+    '.....WWWWWWWKGWR',
+    '...WWWWWWWWWKGWR',
+    '..WWWWWWWWWWKGWR',
+    '.RRWWWWWWWWWKGWW',
+    'RRWWWWWWWWWWKGWW',
+    'RgWgWgWWWWWWKGWW',
+    'g.g.gWgWWWWWKGWW',
+    '.....g.gWWWWKGWW',
+    '.........GWWGKWW',
+    '........GGWWGKKW',
+    '.......GG.WWGK.K',
+    '......RG..WWGK..',
+    '..........KKK...',
+  ]);
+  const PHOENIX_FIGHTER_SIDE = [
+    '.RR.................................',
+    '.RWG................................',
+    '.GWWG.............BBB.....G.........',
+    '.GWWWG..........BBBBBB...GW.........',
+    'KKWWWWWWWWWWWWWWBBBBBWWWWWWW........',
+    'KKWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.....',
+    'KKRRRRRRRRRRRRRRRRRRRRRRWWWWWWWWWWWW',
+    '.KWWWWWWWWWWWWWWWWWWWWWWWWWWWW......',
+    '..GgGgGWWWWWWWWWWWWWWGGG............',
+    '...g.g.gGGGGGGGGGGg.................',
+    '..........KKK.......................',
+  ];
+  const BEHEMOTH_FIGHTER = SNES.mirror([   // heavy: straight wings with stores on pylons, big twin tails
+    '..............WW',
+    '.............WWW',
+    '.............WWB',
+    '............WWBB',
+    '............WBBB',
+    '............WBBB',
+    '...........GWWBB',
+    '..........GKKWWW',
+    '..........GKKWWW',
+    '.........WRKKGWW',
+    '.......WWWRKKGWW',
+    '....WWWWWWWKKGWW',
+    '..WWWWWWWWWKKGWW',
+    '.WWWWWWWWWWKKGWR',
+    'WWWKWWWWKWWKKGWR',
+    'WWWKWWWWKWWKKGWR',
+    'WggKggggKgWKKGWW',
+    '...K....K.WKKGWW',
+    '..KKK..KKKWWKGKW',
+    '..KRK..KRKWWKGKW',
+    '...K....K.WWKGKW',
+    '.......GGGWWKGKW',
+    '......GWWGWWKGKW',
+    '......GWWGWWKGKK',
+    '......GWWG.WKG.K',
+    '.....GGGGG.KKK..',
+  ]);
+  const BEHEMOTH_FIGHTER_SIDE = [
+    '.GGG................................',
+    '.GWWG...............................',
+    '.GWWWG..............................',
+    '.GWWWWG..........BBBB...............',
+    '.GWWWWWG.......BBBBBBB..............',
+    'KKKWWWWWWWWWWWWWBBBBBBWWWW..........',
+    'KKKWWWWWWWWWWWWWWWWWWWWWWWWWWW......',
+    'KKKRRRRRRRRRRRRRRRRRRRRRRWWWWWWWWW..',
+    'KKKWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.',
+    '.KKWWWWWWWWWWWWWWWWWWWWWWWWWWWW.....',
+    '...GGGGWWWWWWWWWWWWWWWGGGG..........',
+    '.....gGGGKKKKgGGKKKKGg..............',
+    '.........KRK....KRK.................',
+  ];
+  const SPHINX_FIGHTER = SNES.mirror([   // a flat faceted wedge with missile bays along the wings
+    '...............W',
+    '...............W',
+    '..............WW',
+    '..............WB',
+    '.............WWB',
+    '.............WBB',
+    '............WWBB',
+    '............WGWW',
+    '...........WWGWW',
+    '..........WWWGWW',
+    '.........WWWWGWW',
+    '........WWKWWGWW',
+    '.......WWWKWWGWW',
+    '......WWWWKWWGWR',
+    '.....WWKWWWWWGWR',
+    '....WWWKWWWWWGWR',
+    '...WWWWKWWWWWGWW',
+    '..GWWWWWWWWWWGWW',
+    '.GGGWWWWWWWWWGWW',
+    'GGGGGGWWWWWWWGWW',
+    '.....GGGGWWWWGKW',
+    '.........GGGWGKW',
+    '...........GGRKW',
+    '...........KKK..',
+  ]);
+  const SPHINX_FIGHTER_SIDE = [
+    '..........................BBB.........',
+    'KK..................BBBBBBBBBWW.......',
+    'KKWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW....',
+    'KKRRRRRRRRRRRRRRRRRRRRRRRRRWWWWWWWWWWW',
+    'KKWWWWKKKWWWWKKKWWWWWWWWWWWWWWW.......',
+    '.GGGGGGGGGGGGGGGGGGGGGGGGGG...........',
+    '..gggggggggggggg......................',
+  ];
+
+  // ---- Guardian and Battloid by parts (like the VF-1 A, J, S and R heads) ----
+  // One shared body per form; each hull stamps on its own head, shoulder armor and backpack before
+  // baking, so bank frames and side profiles come from the same parts. In a stamp '.' keeps the body's
+  // pixel and ' ' erases it. Left-side stamps are mirrored for the right. GERWALK hides the head under
+  // the fuselage, so the Guardian takes shoulders and pack only.
+  const PARTS = {
+    head: {   // Battloid head: [top view, 7x5 at (9, 0)], [side view, 6x4 at (6, 0)]
+      single: [['   K   ', '   K   ', '.GWWWG.', 'GWBBBWG', '.GWWWG.'], ['KGWWG.', 'GWWBBB', 'GWWBBB', '.GWWG.']],
+      quad: [[' KK KK ', ' KK KK ', '.GWWWG.', 'GWBBBWG', '.GWWWG.'], ['KGWWGK', 'GWWBBB', 'GWWBBB', '.GWWG.']],
+      crest: [['  RRR  ', ' RWWWR ', '.GWWWG.', 'GWBBBWG', '.GWWWG.'], ['RGWWG.', 'RWWBBB', 'GWWBBB', '.GWWG.']],
+      visor: [['       ', ' GKKKG ', 'GWWWWWG', 'GBBBBBG', 'GWWWWWG'], ['.GWWG.', 'GWBBBB', 'GWBBBB', '.GWWG.']],
+      horn: [['   W   ', '  GWG  ', '.GWWWG.', 'GWBBBWG', '.GWWWG.'], ['.GWWGW', 'GWWBBB', 'GWWBBB', '.GWWG.']],
+      fin: [['K     K', 'GK   KG', '.GWWWG.', 'GWBBBWG', '.GWWWG.'], ['KGWWG.', 'KWWBBB', 'GWWBBB', '.GWWG.']],
+      dome: [['       ', '  GGG  ', ' GWWWG ', 'GWBBBWG', '.GWWWG.'], ['.GGGG.', 'GWWBBB', 'GWWBBB', '.GWWG.']],
+    },
+    shoulder: {   // [Battloid top 3x5 at (0, 6), mirrored at (23, 7)], [Battloid side 4x3 at (3, 3)],
+                  // [Guardian top 4x8 at (8, 4)], [Guardian side 4x3 at (14, 9)]
+      pads: [['.GG', 'GWW', 'GWW', 'GWW', '.GG'], ['GGGG', 'GWWG', 'GWWG'],
+        ['..K.', '..K.', '..K.', '.GKG', 'GWWW', 'GWWW', 'GKKK', '..GK'], ['GGGG', 'GWWG', 'GWWG']],
+      spikes: [['..R', '.RW', 'RWW', '.GW', '..G'], ['..R.', '.RWR', 'GWWG'],
+        ['..K.', '..K.', '.RK.', 'RWK.', '.KKK', '.KKK', '.KKK', '..GK'], ['.RR.', 'RWWR', 'GWWG']],
+      missile: [['KKK', 'KRK', 'KKK', 'KRK', 'KKK'], ['KKKK', 'KRRK', 'KKKK'],
+        ['.KK.', '.KK.', '.KK.', '.KK.', 'KKKK', 'KRRK', 'KKKK', '..GK'], ['KKKK', 'KRRK', 'KKKK']],
+      round: [['.G.', 'GWW', 'WWW', 'GWW', '.G.'], ['.GG.', 'GWWG', 'GWWG'],
+        ['..K.', '..K.', '..K.', '.GKG', 'GWKW', 'GWKW', '.GKG', '..GK'], ['.GG.', 'GWWG', '.GG.']],
+    },
+    pack: {   // [Battloid top 4x4 at (4, 0), mirrored at (16, 0)], [Battloid side 4x5 at (0, 2)],
+              // [Guardian top 4x5 at (0, 15)], [Guardian side 7x5 at (0, 0)]
+      wings: [['G...', 'GW..', 'GWW.', '.GWG'], ['G...', 'GWG.', '.GWW', '.GWW', '..GW'],
+        ['..GW', '.GRW', 'GRWW', 'GRgg', 'G...'], ['GGG....', 'GWWG...', '.GWWG..', '.GWWWG.', '.GWWWWG']],
+      boosters: [['.KK.', '.GG.', 'GWWG', 'GWWG'], ['....', 'KGWG', 'KGWW', 'KGWW', '..GW'],
+        ['...W', '.RRW', 'KRWW', 'KKgg', 'KK..'], ['.GG....', '.GWG...', 'KGWWG..', 'KGWWWG.', 'KGWWWWG']],
+      tanks: [['.GG.', 'GWWG', 'GWWG', '.GG.'], ['.GG.', 'GWWG', 'GWWW', 'GWWW', '.GGW'],
+        ['...W', 'GRRW', 'GWWW', 'GWgg', '.G..'], ['.GG....', '.GWG...', '.GWWG..', 'GGWWWG.', 'GWWWWWG']],
+    },
+  };
+  // Which parts each hull wears, in HULLS order (the CHIMERA wears none: it is the base kit).
+  const HULL_PARTS = [null,
+    { head: 'horn', shoulder: 'spikes', pack: 'wings' },       // MANTICORE
+    { head: 'visor', shoulder: 'round', pack: 'tanks' },       // GRIFFIN
+    { head: 'quad', shoulder: 'round', pack: 'boosters' },     // HYDRA
+    { head: 'dome', shoulder: 'pads', pack: 'wings' },         // WYVERN
+    { head: 'single', shoulder: 'spikes', pack: 'boosters' },  // BASILISK
+    { head: 'crest', shoulder: 'round', pack: 'wings' },       // PHOENIX
+    { head: 'visor', shoulder: 'pads', pack: 'tanks' },        // BEHEMOTH
+    { head: 'fin', shoulder: 'missile', pack: 'boosters' },    // SPHINX
+  ];
+  const stamp = (rows, s, x, y) => rows.map((r, j) => {
+    const line = s[j - y];
+    if (line === undefined) return r;
+    const a = r.split('');
+    for (let i = 0; i < line.length; i++) if (line[i] !== '.') a[x + i] = line[i] === ' ' ? '.' : line[i];
+    return a.join('');
+  });
+  const flip = s => s.map(r => [...r].reverse().join(''));
+  // The rows of hull h's Guardian (form 1) or Battloid (form 2), top-down or side.
+  const hullParts = (h, form, side) => {
+    const P = HULL_PARTS[h];
+    if (form === 1) {
+      if (!P) return side ? GUARDIAN_SIDE : GUARDIAN;
+      if (side) return stamp(stamp(GUARDIAN_SIDE, PARTS.shoulder[P.shoulder][3], 14, 9), PARTS.pack[P.pack][3], 0, 0);
+      return SNES.mirror(stamp(stamp(GUARDIAN_HALF, PARTS.shoulder[P.shoulder][2], 8, 4), PARTS.pack[P.pack][2], 0, 15));
+    }
+    if (!P) return side ? BATTLOID_SIDE : BATTLOID;
+    if (side) return stamp(stamp(stamp(BATTLOID_SIDE, PARTS.head[P.head][1], 6, 0), PARTS.shoulder[P.shoulder][1], 3, 3), PARTS.pack[P.pack][1], 0, 2);
+    const sh = PARTS.shoulder[P.shoulder][0], pk = PARTS.pack[P.pack][0];
+    let r = stamp(BATTLOID, PARTS.head[P.head][0], 9, 0);
+    r = stamp(stamp(r, sh, 0, 6), flip(sh), 23, 7);
+    return stamp(stamp(r, pk, 4, 0), flip(pk), 16, 0);
+  };
+  const forms = (h, fighter, side) => ({ top: [fighter, hullParts(h, 1, false), hullParts(h, 2, false)], side: [side, hullParts(h, 1, true), hullParts(h, 2, true)] });
   // Same order as HULLS in pilots.js.
   const HULL_ART = [
-    { top: [FIGHTER, GUARDIAN, BATTLOID], side: [FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.white, G: C.lgray, B: C.sky, R: C.red, K: C.gray } },
-    { top: [MANTICORE_FIGHTER, GUARDIAN, BATTLOID], side: [MANTICORE_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.orange, G: C.rust, B: C.yellow, R: C.darkred, K: C.brown } },
-    { top: [GRIFFIN_FIGHTER, GUARDIAN, BATTLOID], side: [GRIFFIN_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.cream, G: C.olive, B: C.aqua, R: C.green, K: C.gray } },
-    { top: [HYDRA_FIGHTER, GUARDIAN, BATTLOID], side: [HYDRA_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.ice, G: C.teal, B: C.gold, R: C.cyan, K: C.teal } },
-    // The later hulls share airframes with the first four, in their own colors (see FUTURE.md).
-    { top: [GRIFFIN_FIGHTER, GUARDIAN, BATTLOID], side: [GRIFFIN_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.mint, G: C.green, B: C.gold, R: C.dgreen, K: C.teal } },
-    { top: [MANTICORE_FIGHTER, GUARDIAN, BATTLOID], side: [MANTICORE_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.lavender, G: C.purple, B: C.pink, R: C.magenta, K: C.violet } },
-    { top: [HYDRA_FIGHTER, GUARDIAN, BATTLOID], side: [HYDRA_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.red, G: C.maroon, B: C.gold, R: C.yellow, K: C.darkred } },
-    // BEHEMOTH and SPHINX: placeholder recolors until their own art (FUTURE.md, M4 step 7).
-    { top: [GRIFFIN_FIGHTER, GUARDIAN, BATTLOID], side: [GRIFFIN_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.lgray, G: C.gray, B: C.orange, R: C.rust, K: C.brown } },
-    { top: [MANTICORE_FIGHTER, GUARDIAN, BATTLOID], side: [MANTICORE_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
-      pal: { W: C.cream, G: C.gold, B: C.aqua, R: C.brown, K: C.olive } },
+    { ...forms(0, FIGHTER, FIGHTER_SIDE), pal: { W: C.white, G: C.lgray, B: C.sky, R: C.red, K: C.gray } },
+    { ...forms(1, MANTICORE_FIGHTER, MANTICORE_FIGHTER_SIDE), pal: { W: C.orange, G: C.rust, B: C.yellow, R: C.darkred, K: C.brown } },
+    { ...forms(2, GRIFFIN_FIGHTER, GRIFFIN_FIGHTER_SIDE), pal: { W: C.cream, G: C.olive, B: C.aqua, R: C.green, K: C.gray } },
+    { ...forms(3, HYDRA_FIGHTER, HYDRA_FIGHTER_SIDE), pal: { W: C.ice, G: C.teal, B: C.gold, R: C.cyan, K: C.teal } },
+    { ...forms(4, WYVERN_FIGHTER, WYVERN_FIGHTER_SIDE), pal: { W: C.mint, G: C.green, B: C.gold, R: C.dgreen, K: C.teal } },
+    { ...forms(5, BASILISK_FIGHTER, BASILISK_FIGHTER_SIDE), pal: { W: C.lavender, G: C.purple, B: C.pink, R: C.magenta, K: C.violet } },
+    { ...forms(6, PHOENIX_FIGHTER, PHOENIX_FIGHTER_SIDE), pal: { W: C.red, G: C.maroon, B: C.gold, R: C.yellow, K: C.darkred } },
+    { ...forms(7, BEHEMOTH_FIGHTER, BEHEMOTH_FIGHTER_SIDE), pal: { W: C.lgray, G: C.gray, B: C.orange, R: C.rust, K: C.brown } },
+    { ...forms(8, SPHINX_FIGHTER, SPHINX_FIGHTER_SIDE), pal: { W: C.cream, G: C.gold, B: C.aqua, R: C.brown, K: C.olive } },
   ];
   // How a form looks once Dr. Voss has methylated (silenced) it.
   const silencedMap = { W: C.pink, G: C.purple, B: C.lime, R: C.magenta, K: C.purple };
