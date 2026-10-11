@@ -274,7 +274,8 @@ upgrades and level-up training add to them, up to 16):
   - A **red squadron** of five crosses in a line once or twice a leg. Down all five and the last one
     drops a **shield cell** (+1 shield, or 500 points at full shields) and SQUADRON BONUS 1000.
   - A leg runs about 90 to 150 seconds.
-- **Capital-ship flyover** (vertical boss): a giant Star Destroyer-style ship scrolls beneath you.
+- **Capital-ship flyover** (vertical boss): you fight your way in first (two squadrons and traffic),
+  then Mira calls it in and a giant Star Destroyer-style ship scrolls beneath you.
   Knock out its gun turrets, fighter hangars and histone reactor cores, and the fighters it
   launches. If you reach the end of the ship with targets left, you come about and fly over it
   again, and again, until every target is gone. The HUD shows the pass and the targets left.

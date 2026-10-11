@@ -41,7 +41,7 @@ Object.assign(Game, {
     for (let k = 0; k < reds; k++) list.splice(k ? randi(3, 6) : randi(0, 1), 0, { gap: randi(g0 * 60, g1 * 60), kind: 'redline' });
     list[0].gap = Math.min(list[0].gap, 240);   // the first group comes soon after the formation is set
     const slots = Array.from({ length: squads - 1 }, (_, i) => i).sort(() => Math.random() - 0.5);
-    const heavies = stage < 3 ? [] : slots.slice(0, b >= 2 ? 2 : 1);
+    const heavies = stage < 3 || this.capLeg ? [] : slots.slice(0, b >= 2 ? 2 : 1);   // a capital ship is boss enough
     return { list, i: 0, t: 0, heavies };
   },
 

@@ -105,7 +105,8 @@ base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT M
   carrier's first arrival in a galaxy.
 - `startBriefing(label, title, pages, done)` runs any sequence of pages in the `intro` state. Fire
   finishes the typing and then turns the page. The game menu's SKIP BRIEFING jumps to `done()`.
-- In-game radio: `say(text, who = villain, queued = false)`. With `queued`, the message waits in `radioQ`
+- In-game radio: `say(text, who = villain, queued = false)`. In flight its window is drawn see-through, so keep
+  messages off the moments that matter (a boss's intro plays while it's still out of reach). With `queued`, the message waits in `radioQ`
   until the current one ends. `hint(key)` shows one of Mira's `HINTS` once per game.
 - `VOSS` in `game.js` keeps the in-play radio barks (silenced, restored, boss phases, game over).
 
@@ -165,7 +166,10 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   The hull is scenery: shots pass through it and the ship can fly over the whole screen.
 - **Homing missiles** re-check `targetable()` every frame, so they drop targets that die, leave the
   screen, get shielded or are removed. New target kinds must be added to `findTarget`/`targetable`.
-- **Capital ships** (`capital.js`, vertical boss): `CAPITALS[id]` sets the hull `style` (`CAP_STYLES`:
+- **Capital ships** (`capital.js`, vertical boss): a `capital` leg starts as a `normal` leg with `capLeg` set (two
+  squadrons and traffic, no heavy); when they're gone `approachDone()` calls the ship in and `capitalArrives()`
+  switches `stageType` to `capital` 2 seconds later. Voss's intro plays during the first zoom.
+  `CAPITALS[id]` sets the hull `style` (`CAP_STYLES`:
   battleship, destroyer, carrier, twin), size, palette and target counts. The style paints the hull and
   returns target slots. The ship is drawn with a transform (`placeCapital`: center, angle, scale) through
   three phases: `zoom` (it grows from far away to full size), `pass` (it scrolls under you; only now can

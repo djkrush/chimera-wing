@@ -236,6 +236,20 @@ Object.assign(Game, {
       cy: 0, ang: 0, s: 1 };
   },
 
+  // A capital leg's approach (two squadrons and traffic) is over: Mira calls the ship in, traffic breaks
+  // off, and two seconds later it arrives.
+  approachDone() {
+    this.capLeg = false;
+    this.traffic = null;
+    for (const e of this.enemies) if (e.transit) e.beh = 'flee';
+    if (this.hintsSeen.has('capital')) this.say('CAPITAL SHIP INBOUND. HERE IT COMES!', 'mira'); else this.hint('capital');
+    this.capT = 120;
+  },
+  capitalArrives() {
+    this.stageType = 'capital';
+    this.capital = this.makeCapital(this.missionCapital());
+  },
+
   capitalLeft() { return this.capital.targets.filter(q => !q.dead).length; },
 
   // Targets that can be hit right now (only while flying over the ship, not while it turns).
@@ -278,8 +292,8 @@ Object.assign(Game, {
       if (q.flash > 0) q.flash--;
       if (q.kind === 'turret' && p.alive) q.aim += clamp(angDiff(q.aim, Math.atan2(p.y - q.y, p.x - q.x)), -0.03, 0.03);
     }
+    if (K.pass === 1 && K.phase === 'zoom' && K.pt === 1) this.say(def.intro);   // while it's far off and can't be hit
     if (K.phase !== 'pass') return;
-    if (K.pass === 1 && K.pt === 60) { this.say(def.intro); this.hint('capital'); }
     if (K.dying > 0) {
       if (K.dying % 5 === 0) {
         const [x, y] = this.capitalToScreen(rand(-def.w / 2, def.w / 2) * 0.8, rand(0, def.len));

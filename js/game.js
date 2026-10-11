@@ -241,7 +241,8 @@ const Game = {
     this.waves = type === 'normal' ? buildNormalWaves() : type === 'challenge' ? buildChallengeWaves(this.stage) : [];
     this.waveI = 0;
     this.squad = 0;                                        // squadrons flown so far in a vertical stage
-    this.squads = 4;   // with traffic, intermissions and heavies a leg runs about 90 to 150 seconds
+    this.squads = this.capLeg ? 2 : 4;   // about 90 to 150 seconds a leg; a capital ship's approach is shorter
+    this.capT = 0;
     this.traffic = type === 'normal' ? this.buildTraffic(this.stage, this.squads) : null;   // traffic.js
     this.inter = null;
     this.challengeTotal = this.waves.reduce((n, w) => n + w.list.length, 0);
@@ -584,6 +585,7 @@ const Game = {
       this.tallyLeg();
       return;
     }
+    if (this.capT) { if (--this.capT === 0) this.capitalArrives(); return; }   // capital.js: the ship is on its way
     if (this.waveI < this.waves.length || this.enemies.some(e => !e.transit)) return;   // traffic doesn't hold a leg up
     if (this.stageType === 'normal' && this.squad + 1 < this.squads) {
       // Intermission: traffic keeps coming (and a heavy, if one arrived) before the next squadron.
@@ -595,6 +597,7 @@ const Game = {
       this.nextSquadron();
       return;
     }
+    if (this.capLeg) { this.approachDone(); return; }   // capital.js: the approach is over, the ship is coming
     this.nextAdapt = this.computeAdapt();
     if (this.stageType === 'challenge') {
       const perfect = this.stageHits >= this.challengeTotal;
@@ -1561,8 +1564,8 @@ const Game = {
 
   // Dialogue sits in the centered panel; the speaker's portrait goes in the widescreen margin to its left.
   drawRadio(ctx) {
-    const r = this.radio;
-    NES.box(ctx, 2, 10, 252, 42, C.black, CAST[r.who].col);   // below the HUD's top row
+    const r = this.radio, box = () => NES.box(ctx, 2, 10, 252, 42, C.black, CAST[r.who].col);   // below the HUD's top row
+    if (this.state === 'play') SNES.half(ctx, box, 0.55); else box();   // in flight the window is see-through (color math)
     this.drawPortrait(ctx, -64, 10, r.who);
     r.lines.forEach((l, i) => NES.text(ctx, l, 12, 17 + i * 11, C.white));
   },

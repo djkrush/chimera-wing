@@ -242,7 +242,8 @@ Object.assign(Game, {
     this.raid = L.type === 'raid';
     this.convoy = L.type === 'convoy';
     this.stage = this.difficulty(L.boss);
-    this.setupStage(this.raid || this.convoy ? 'side' : L.type);
+    this.capLeg = L.type === 'capital';   // a capital leg opens with a vertical approach; the ship comes after it
+    this.setupStage(this.raid || this.convoy ? 'side' : this.capLeg ? 'normal' : L.type);
     if (Sound.current !== Sound.SONGS.mission) Sound.playSong(Sound.SONGS.mission);   // keep the groove across legs
     this.startTakeoff();
     if (i > 0) this.say('APPROACH CLEAR. REARMED AND REFUELED. NOW THE ASSAULT ON ' + M.planet.name + '.', 'mira');
