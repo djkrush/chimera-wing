@@ -65,9 +65,9 @@ Object.assign(Game, {
 
   // ---- Campaign start, save and load --------------------------------------------------
   newCamp(pilot) {
-    return { v: 4, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
+    return { v: 5, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
       level: 1, learned: [], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0,
-      guns: [...HULLS[0].guns], fit: {}, gunXP: {}, // guns owned, fit[hull] = [gun0, gun1, gun2], XP per gun
+      guns: this.startGuns(0), fit: {}, gunLv: {}, // guns owned, fit[hull] = [gun0, gun1, gun2], levels bought per gun
       ord: {}, ordLast: null, mods: [], mod: null };  // ordnance stock, last one fitted, modules owned and fitted (arsenal.js)
   },
 
@@ -105,7 +105,8 @@ Object.assign(Game, {
     if (c && c.v === 1) c = this.migrateSave(c);   // old saves step up one version at a time
     if (c && c.v === 2) c = this.migrateV2(c);
     if (c && c.v === 3) c = this.migrateV3(c);
-    if (!c || c.v !== 4 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
+    if (c && c.v === 4) c = this.migrateV4(c);
+    if (!c || c.v !== 5 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
       Sound.sfx('denied');
       this.toast('SAVE DATA UNREADABLE');
       return;
@@ -152,7 +153,7 @@ Object.assign(Game, {
   migrateV2(c) {
     c.hulls = (c.hulls || [0]).filter(h => HULLS[h]);
     if (!c.hulls.length) c.hulls = [0];
-    c.guns = [...new Set(c.hulls.flatMap(h => HULLS[h].guns))];
+    c.guns = [...new Set(c.hulls.flatMap(h => HULLS[h] ? HULLS[h].fit.map(f => f[0]) : []))];
     Object.assign(c, { fit: {}, gunXP: {}, ord: {}, v: 3 });
     return c;
   },
@@ -160,6 +161,31 @@ Object.assign(Game, {
   // Version 3 saves (no modules yet): an empty arsenal.
   migrateV3(c) {
     Object.assign(c, { ord: c.ord || {}, ordLast: null, mods: [], mod: null, v: 4 });
+    return c;
+  },
+
+  // A hull's three start guns (the CHIMERA's are the campaign's first guns).
+  startGuns(h) { return HULLS[h].fit.map(f => f[0]); },
+
+  // Version 4 saves (any gun on most forms, levels earned with XP): levels already earned are kept as
+  // bought levels, every owned hull's start guns are owned, and a fit the ladder doesn't allow goes
+  // back to the hull's start gun. Guns owned that no hull uses stay owned.
+  migrateV4(c) {
+    const XP = [0, 2000, 6000, 15000, 35000];   // the old thresholds for LV1 to LV5
+    c.gunLv = {};
+    for (const [id, x] of Object.entries(c.gunXP || {})) {
+      let n = 1;
+      while (n < XP.length && x >= XP[n]) n++;
+      if (GUNS[id] && n > 1) c.gunLv[id] = n;
+    }
+    delete c.gunXP;
+    c.guns = (c.guns || []).filter(g => GUNS[g]);
+    for (const h of c.hulls) for (const g of this.startGuns(h)) if (!c.guns.includes(g)) c.guns.push(g);
+    for (const h of Object.keys(c.fit || {})) {
+      if (!HULLS[h]) { delete c.fit[h]; continue; }
+      c.fit[h] = [0, 1, 2].map(f => (HULLS[h].fit[f].includes(c.fit[h][f]) ? c.fit[h][f] : HULLS[h].fit[f][0]));
+    }
+    c.v = 5;
     return c;
   },
 
@@ -174,9 +200,9 @@ Object.assign(Game, {
     Object.assign(this.camp, { test: true, at: P.id, learned: SPECIALS.map((s, i) => i), passives, pending: [],
       hull: clamp(parseInt(q.get('hull'), 10) || 0, 0, HULLS.length - 1) });
     this.camp.hulls = [this.camp.hull];
-    this.camp.guns = GUN_IDS.slice();
+    this.camp.guns = GUN_IDS.slice();   // every gun at LV1
     const fit = (q.get('fit') || '').split(',');
-    if (fit.some(g => GUNS[g])) this.camp.fit[this.camp.hull] = [0, 1, 2].map(f => (GUNS[fit[f]] && this.canMount(this.camp.hull, f, fit[f]) ? fit[f] : HULLS[this.camp.hull].guns[f]));
+    if (fit.some(g => GUNS[g])) this.camp.fit[this.camp.hull] = [0, 1, 2].map(f => (GUNS[fit[f]] && this.canMount(this.camp.hull, f, fit[f]) ? fit[f] : HULLS[this.camp.hull].fit[f][0]));
     for (let i = 0; i < k; i++) PLANETS[i].missions.forEach((m, j) => { this.camp.cleared[PLANETS[i].id + ':' + j] = true; });
     this.camp.mods = MODULES.map(m => m.id);
     this.camp.mod = MODULE_BY_ID[q.get('mod')] ? q.get('mod') : null;
@@ -227,7 +253,6 @@ Object.assign(Game, {
   startMission(mi) {
     const P = this.planetHere(), S = this.systemDef();
     this.mission = this.makeMission(P, mi);
-    this.mission.gunLv0 = Object.fromEntries(this.camp.guns.map(g => [g, this.gunLevel(g)]));   // for the debrief
     this.nextAdapt = -1;
     const B = this.planetBriefing(S, P, this.mission.kind);
     this.startBriefing(P.name, B.title, B.pages, () => this.openLoadout());
@@ -314,9 +339,8 @@ Object.assign(Game, {
     c.money += money;
     c.xp += gain;
     const levels = this.gainLevels();
-    const gunUps = c.guns.filter(g => M.gunLv0 && this.gunLevel(g) > (M.gunLv0[g] || 1)).map(g => [g, this.gunLevel(g)]);
     this.debrief = { planet: P.name, kind: K.name, lines, total: money, levels, unlocked, planetClear, secured, liberated,
-      system: S.name, finale: this.isFinale(), gunUps };
+      system: S.name, finale: this.isFinale() };
     this.setState('debrief');
     Sound.playSong(Sound.SONGS.victory);
   },
@@ -361,7 +385,6 @@ Object.assign(Game, {
       if (D.planetClear) msgs.push([D.planet + ' CLEARED!', C.gold]);
       if (D.secured) msgs.push([D.system + ' SECURED!', C.gold]);
       if (D.liberated) msgs.push([D.system + ' LIBERATED!', C.gold]);
-      for (const [g, lv] of D.gunUps) msgs.push([GUNS[g].name + ' LV' + lv + '!', C.aqua]);
       for (const u of D.unlocked) msgs.push(['NEW ' + u, C.pink]);
       for (const [m, col, blink] of msgs.slice(0, 5)) {
         if (!blink || (this.t >> 3) & 1) NES.text(ctx, m, 128, y, col, center);

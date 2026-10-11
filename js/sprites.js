@@ -303,6 +303,11 @@ const SPR = (() => {
       pal: { W: C.lavender, G: C.purple, B: C.pink, R: C.magenta, K: C.violet } },
     { top: [HYDRA_FIGHTER, GUARDIAN, BATTLOID], side: [HYDRA_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
       pal: { W: C.red, G: C.maroon, B: C.gold, R: C.yellow, K: C.darkred } },
+    // BEHEMOTH and SPHINX: placeholder recolors until their own art (FUTURE.md, M4 step 7).
+    { top: [GRIFFIN_FIGHTER, GUARDIAN, BATTLOID], side: [GRIFFIN_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.lgray, G: C.gray, B: C.orange, R: C.rust, K: C.brown } },
+    { top: [MANTICORE_FIGHTER, GUARDIAN, BATTLOID], side: [MANTICORE_FIGHTER_SIDE, GUARDIAN_SIDE, BATTLOID_SIDE],
+      pal: { W: C.cream, G: C.gold, B: C.aqua, R: C.brown, K: C.olive } },
   ];
   // How a form looks once Dr. Voss has methylated (silenced) it.
   const silencedMap = { W: C.pink, G: C.purple, B: C.lime, R: C.magenta, K: C.purple };

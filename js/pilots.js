@@ -16,25 +16,30 @@ const STAT_MAX = 4;   // pips on the pilot cards
 const STAT_CAP = { weapons: 8, shields: 8, special: 5 };   // pilot + hull + hull upgrades + training never go past these
 
 // Ship hulls. The pilot flies one hull at a time. Its modifiers add to the pilot's stats, and speed
-// scales every form. guns = the hull's default fit, one gun per form (weapons.js: GUNS); mounts = the
-// heaviest gun class each form takes; form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID.
+// scales every form. fit = each form's two guns, [start, upgrade] (weapons.js: GUNS; the CHIMERA has no
+// upgrades); rung = its step on the gun ladder (FUTURE.md, M4): each hull starts with the guns the one
+// below it buys as upgrades. form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID.
 // Planet markets sell them (P.hulls in world.js). Keep the order: saves store the index, and HULL_ART
-// (sprites.js) follows it.
+// (sprites.js) follows it, so the BEHEMOTH (rung 6) and SPHINX (rung 8) come after the PHOENIX (rung 7).
 const HULLS = [
-  { name: 'VX-3 CHIMERA', weapons: 0, shields: 0, special: 0, speed: 1, price: 0,
-    guns: ['twin', 'spread', 'homing'], form: [1, 1, 1], mounts: ['light', 'light', 'heavy'], desc: 'THE ORIGINAL. BALANCED.' },
-  { name: 'VX-5 MANTICORE', weapons: 1, shields: 0, special: 1, speed: 1.1, price: 4000,
-    guns: ['vulcan', 'spread', 'homing'], form: [1.4, 1, 0.8], mounts: ['light', 'light', 'light'], desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
-  { name: 'VX-6 GRIFFIN', weapons: 0, shields: 2, special: 0, speed: 0.9, price: 5000,
-    guns: ['laser', 'bomb', 'vulcan'], form: [0.9, 1, 1.4], mounts: ['heavy', 'heavy', 'heavy'], desc: 'HEAVY ARMOR. BEST AS A BATTLOID.' },
-  { name: 'VX-9 HYDRA', weapons: 0, shields: 1, special: 0, speed: 1.1, price: 9000,
-    guns: ['wave', 'ripple', 'homing'], form: [1.1, 1.1, 1.1], mounts: ['light', 'heavy', 'heavy'], desc: 'GOOD AT EVERYTHING.' },
-  { name: 'VX-7 WYVERN', weapons: 0, shields: 1, special: 1, speed: 1, price: 12000,
-    guns: ['twin', 'ripple', 'bomb'], form: [0.9, 1.4, 1], mounts: ['light', 'heavy', 'heavy'], desc: 'BEST AS A GUARDIAN.' },
-  { name: 'VX-8 BASILISK', weapons: 2, shields: -1, special: 2, speed: 1.15, price: 18000,
-    guns: ['laser', 'wave', 'homing'], form: [1.2, 1.2, 1], mounts: ['heavy', 'light', 'heavy'], desc: 'GLASS CANNON. HITS HARD, BREAKS EASY.' },
-  { name: 'VX-12 PHOENIX', weapons: 1, shields: 1, special: 1, speed: 1.15, price: 30000,
-    guns: ['laser', 'ripple', 'homing'], form: [1.3, 1.3, 1.3], mounts: ['heavy', 'heavy', 'heavy'], desc: 'THE LAST WORD IN CHIMERAS.' },
+  { name: 'VX-3 CHIMERA', rung: 0, weapons: 0, shields: 0, special: 0, speed: 1, price: 0, form: [1, 1, 1],
+    fit: [['twin', null], ['spread', null], ['laser', null]], desc: 'THE ORIGINAL. BALANCED.' },
+  { name: 'VX-5 MANTICORE', rung: 1, weapons: 1, shields: 0, special: 1, speed: 1.1, price: 4000, form: [1.4, 1, 0.8],
+    fit: [['twin', 'vulcan'], ['spread', 'wave'], ['laser', 'grenade']], desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
+  { name: 'VX-6 GRIFFIN', rung: 2, weapons: 0, shields: 2, special: 0, speed: 0.9, price: 5000, form: [0.9, 1, 1.4],
+    fit: [['vulcan', 'ripple'], ['wave', 'bomb'], ['grenade', 'charge']], desc: 'ARMOR. BEST AS A BATTLOID.' },
+  { name: 'VX-9 HYDRA', rung: 3, weapons: 0, shields: 1, special: 0, speed: 1.1, price: 9000, form: [1.1, 1.1, 1.1],
+    fit: [['ripple', 'gunpod'], ['bomb', 'swivel'], ['charge', 'rail']], desc: 'ALL-ROUNDER. GOOD AT EVERYTHING.' },
+  { name: 'VX-7 WYVERN', rung: 4, weapons: 0, shields: 1, special: 1, speed: 1, price: 12000, form: [0.9, 1.4, 1],
+    fit: [['gunpod', 'tail'], ['swivel', 'flak'], ['rail', 'hyper']], desc: 'GUARDIAN. BEST AS A GUARDIAN.' },
+  { name: 'VX-8 BASILISK', rung: 5, weapons: 2, shields: -1, special: 2, speed: 1.15, price: 18000, form: [1.2, 1.2, 1],
+    fit: [['tail', 'needle'], ['flak', 'diagonal'], ['hyper', 'sword']], desc: 'PIERCING. HITS HARD, BREAKS EASY.' },
+  { name: 'VX-12 PHOENIX', rung: 7, weapons: 1, shields: 1, special: 1, speed: 1.15, price: 30000, form: [1.3, 1.3, 1.3],
+    fit: [['rocket', 'burner'], ['mortar', 'ring'], ['canister', 'homing']], desc: 'TOP OF THE LINE. FIRE AND HOMING.' },
+  { name: 'VX-10 BEHEMOTH', rung: 6, weapons: 1, shields: 2, special: 0, speed: 0.85, price: 25000, form: [1.1, 1, 1.2],
+    fit: [['needle', 'rocket'], ['diagonal', 'mortar'], ['sword', 'canister']], desc: 'GROUND ATTACK. HEAVY AND SLOW.' },
+  { name: 'VX-11 SPHINX', rung: 8, weapons: 1, shields: 0, special: 0, speed: 1.2, price: 60000, form: [1.2, 1.1, 1],
+    fit: [['burner', 'freeway'], ['ring', 'chain'], ['homing', 'lock']], desc: 'MISSILE CARRIER. LOCKS ON.' },
 ];
 
 Object.assign(Game, {

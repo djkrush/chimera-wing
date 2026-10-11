@@ -1002,7 +1002,7 @@ const Game = {
     if (diving || pts >= 300) this.popup(e.x, e.y - 4, String(pts), e.acetyl ? C.gold : C.white);
     this.explode(e.x, e.y, e.type === 'methyl' ? 18 : 12);
     Sound.sfx('explode');
-    if (form >= 0) { this.formKills[form]++; this.addGunXP(form, pts); }   // the gun in that form earns the points
+    if (form >= 0) this.formKills[form]++;
     this.stageHits++;
     if (e.type === 'splitter') this.splitEnemy(e);
     if (e.type === 'heavy') this.heavyDown(e);   // traffic.js

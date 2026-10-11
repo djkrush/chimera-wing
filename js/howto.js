@@ -120,18 +120,17 @@ Object.assign(Game, {
 
     topic('GUNS');
     page('HOW DO GUNS WORK?', [
-      'GUNS ARE PARTS. YOU OWN THE GUNS OF EVERY HULL YOU OWN, AND MARKETS SELL MORE.',
-      'THE HANGAR OPENS BEFORE EVERY MISSION: FIT ONE GUN TO EACH FORM. A LIGHT MOUNT TAKES LIGHT GUNS. A HEAVY MOUNT TAKES ANY.'],
-    (ctx, x, y) => this.howArtGun(ctx, GUN_IDS[(this.t / 150 | 0) % 8], x, y + 60));
+      'EACH FORM OF A HULL TAKES TWO GUNS: THE ONE IT STARTS WITH AND AN UPGRADE SOLD AT MARKETS. A NEW HULL COMES WITH ITS START GUNS.',
+      'THE HANGAR OPENS BEFORE EVERY MISSION: PICK ONE OF THE TWO FOR EACH FORM.'],
+    (ctx, x, y) => { const ids = GUN_IDS.filter(id => !GUNS[id].wip); this.howArtGun(ctx, ids[(this.t / 150 | 0) % ids.length], x, y + 60); });
     page('HOW DO GUNS LEVEL UP?', [
-      'EVERY POINT A FORM SCORES TRAINS THE GUN FITTED IN IT: LV2 AT ' + GUN_LEVELS[1] + ', LV3 AT ' + GUN_LEVELS[2] + ', LV4 AT ' +
-        GUN_LEVELS[3] + ' AND LV5 AT ' + GUN_LEVELS[4] + '.',
+      'GUN LEVELS ARE BOUGHT AT STARBASE MARKETS, UP TO LV5. A LEVEL COUNTS ON EVERY HULL THAT CARRIES THE GUN.',
       'EVERY LEVEL CHANGES THE SHOT. THE HANGAR SHOWS WHAT THE NEXT ONE DOES.'],
     (ctx, x, y) => {
       const L = 1 + ((this.t / 120 | 0) % 5);
       this.howArtGun(ctx, 'twin', x, y + 60, L, 'TWIN CANNON LV' + L);
     });
-    list('WHICH GUNS ARE THERE?', GUN_IDS.map(id => { const G = GUNS[id]; return [G.name, (G.mount === 'heavy' ? 'HEAVY, ' : 'LIGHT, ') + G.price + ' CR. ' + G.desc.join(' '), C.aqua]; }),
+    list('WHICH GUNS ARE THERE?', GUN_IDS.map(id => { const G = GUNS[id]; return [G.name, FORMS[G.form].name + ', ' + G.price + ' CR. ' + G.desc.join(' '), C.aqua]; }),
       (ctx, x, y, hi, items) => this.howArtGun(ctx, GUN_IDS.find(id => GUNS[id].name === items[hi][0]), x, y + 60));
 
     topic('SPECIAL WEAPONS');
@@ -239,9 +238,9 @@ Object.assign(Game, {
         const h = HULLS.findIndex(q => q.name === items[hi][0]);
         for (let f = 0; f < 3; f++) {
           this.drawShip(ctx, f, x - 44 + f * 44, y - 20, 0, true, false, h);
-          NES.text(ctx, HULLS[h].mounts[f] === 'heavy' ? 'H' : 'L', x - 44 + f * 44, y + 8, C.gray, { align: 'center' });
+          NES.text(ctx, GUNS[HULLS[h].fit[f][0]].short.slice(0, 7), x - 44 + f * 44, y + 8, C.gray, { align: 'center' });
         }
-        NES.text(ctx, 'MOUNTS', x, y + 22, C.gray, { align: 'center' });
+        NES.text(ctx, 'START GUNS', x, y + 22, C.gray, { align: 'center' });
       });
 
     topic('LEVELS AND CREDITS');

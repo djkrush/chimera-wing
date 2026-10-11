@@ -157,7 +157,7 @@ const GALAXIES = [
 ];
 
 // Hulls sold at a generated planet: a few markets carry one (the rest come from the story planets).
-const EXTRA_HULLS = { sdor: 5, sn87: 3, ngc206: 5, mayall: 6, m32: 4 };
+const EXTRA_HULLS = { sdor: 5, sn87: 3, n44: 7, ngc206: 8, mayall: 6, m32: 4 };
 
 // ---- Build the tables ---------------------------------------------------------------
 const SYSTEMS = [], PLANETS = [];

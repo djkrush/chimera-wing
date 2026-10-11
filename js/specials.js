@@ -78,8 +78,13 @@ Object.assign(Game, {
     if (this.stateT > 12 && Input.just('fire')) this.launchHangar();
   },
 
-  // Guns form f can take: the ones owned that its mount fits, in GUNS order.
-  hangarGuns(f) { const c = this.camp; return GUN_IDS.filter(g => c.guns.includes(g) && this.canMount(c.hull, f, g)); },
+  // Guns form f can take: the hull's start gun and its upgrade, once owned (weapons.js: hullGuns).
+  hangarGuns(f) { return this.hullGuns(this.camp.hull, f); },
+  // Why form f's gun can't change: no upgrade on this hull, not built yet, or not bought.
+  hangarLocked(f) {
+    const up = HULLS[this.camp.hull].fit[f][1];
+    return !up ? 'THE CHIMERA HAS ONE GUN PER FORM' : GUNS[up].wip ? GUNS[up].short + ' IS COMING SOON' : 'BUY THE ' + GUNS[up].short + ' AT A MARKET';
+  },
 
   // Step the picked row's gun (or the special) by dir.
   hangarChange(dir) {
@@ -93,7 +98,7 @@ Object.assign(Game, {
       c.mod = list[(i + dir + list.length) % list.length];
     } else {
       const list = this.hangarGuns(r);
-      if (list.length < 2) { Sound.sfx('denied'); return; }
+      if (list.length < 2) { Sound.sfx('denied'); this.toast(this.hangarLocked(r)); return; }
       const fit = [0, 1, 2].map(f => this.fittedGun(f));
       fit[r] = list[(list.indexOf(fit[r]) + dir + list.length) % list.length];
       c.fit[c.hull] = fit;
@@ -407,13 +412,15 @@ Object.assign(Game, {
       if (sel && blink) NES.text(ctx, '>', 13, y, C.gold);
       const arrows = sel && (r < 3 ? this.hangarGuns(r).length : r === 3 ? opts.length : mods.length) > 1;
       if (arrows) { NES.text(ctx, '<', 90, y, C.gold); NES.text(ctx, '>', 232, y, C.gold); }
-      if (r < 3) {   // line 1: form and gun; line 2: mount class, XP bar and level
-        const g = this.fittedGun(r), G = GUNS[g], lv = this.gunLevel(g), x = this.gunXP(g), lo = GUN_LEVELS[lv - 1], hi = GUN_LEVELS[lv];
+      if (r < 3) {   // line 1: form and gun; line 2: start or upgrade, the other gun, and the level bought
+        const g = this.fittedGun(r), G = GUNS[g], lv = this.gunLevel(g), [st, up] = H.fit[r], other = g === st ? up : st;
         NES.text(ctx, FORMS[r].name, 22, y, H.form[r] > 1 ? C.lime : H.form[r] < 1 ? C.orange : C.white);
         NES.text(ctx, G.name, 100, y, sel ? C.white : C.lgray);
-        NES.text(ctx, H.mounts[r] === 'heavy' ? 'HEAVY' : 'LIGHT', 22, y + 9, C.gray);
-        this.drawBar(ctx, 100, y + 10, 104, 4, hi ? (x - lo) / (hi - lo) : 1, lv >= 5 ? C.gold : C.aqua, '#082028');
-        NES.text(ctx, hi ? 'LV' + lv : 'MAX', 240, y + 9, lv >= 5 ? C.gold : C.aqua, { align: 'right' });
+        NES.text(ctx, g === st ? 'START' : 'UPGRADE', 22, y + 9, C.gray);
+        const alt = !other ? ['NO UPGRADE', C.gray] : this.hangarGuns(r).includes(other) ? ['OR ' + GUNS[other].short, C.lime]
+          : [GUNS[other].short + (GUNS[other].wip ? ' SOON' : ' NOT OWNED'), C.gray];
+        NES.text(ctx, alt[0], 100, y + 9, alt[1]);
+        NES.text(ctx, 'LV' + lv, 240, y + 9, lv >= 5 ? C.gold : C.aqua, { align: 'right' });
       } else if (r === 3) {   // a special (uses per leg) or ordnance (loaded now / in stock)
         NES.text(ctx, 'SPECIAL', 22, y, C.white);
         NES.text(ctx, (opts.indexOf(pick) + 1) + '/' + opts.length, 22, y + 9, C.gray);
@@ -437,8 +444,8 @@ Object.assign(Game, {
     let lines, extra, col = C.lgray;
     if (row < 3) {
       const g = this.fittedGun(row), G = GUNS[g], lv = this.gunLevel(g);
-      lines = G.desc; extra = lv >= 5 ? 'MAX LEVEL' : 'NEXT LV' + (lv + 1) + ': ' + G.lv[lv - 1];
-      col = lv >= 5 ? C.gold : C.lime;
+      lines = G.desc; extra = G.wip ? 'NOT BUILT YET: FIRES AS ' + GUNS[this.gunAct(g)].short : lv >= 5 ? 'MAX LEVEL' : 'LV' + (lv + 1) + ' AT MARKETS: ' + G.lv[lv - 1];
+      col = G.wip ? C.orange : lv >= 5 ? C.gold : C.lime;
     } else if (row === 3 && pick.ord) {
       lines = NES.wrap(ORD_BY_ID[pick.ord].desc, 26).slice(0, 2); extra = 'UNUSED ONES COME BACK';
     } else if (row === 3) {

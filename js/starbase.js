@@ -107,7 +107,7 @@ Object.assign(Game, {
   hullInfo(h) {
     const best = h.form.indexOf(Math.max(...h.form)), even = h.form.every(v => v === h.form[0]);
     return (even ? 'ALL-ROUNDER' : 'BEST AS ' + FORMS[best].name) + '. SPEED ' + Math.round(h.speed * 100) + '%.' +
-      ' GUNS: ' + h.guns.map(g => GUNS[g].short).join('/');
+      ' GUNS: ' + h.fit.map(f => f.filter(g => g).map(g => GUNS[g].short).join('>')).join(' ');
   },
 
   // A part for sale (gun or module): its price, or OWNED once bought.
@@ -116,7 +116,8 @@ Object.assign(Game, {
   },
   gunRow(id) {
     const G = GUNS[id];
-    return this.partRow(G.name, G.price, this.camp.guns.includes(id), G.desc.join(' ') + (G.mount === 'heavy' ? ' HEAVY MOUNT.' : ' LIGHT MOUNT.'), () => this.buyGun(id));
+    if (G.wip) return { label: G.name, right: 'COMING SOON', col: C.gray, info: FORMS[G.form].name + ' GUN. ' + G.desc.join(' ') };
+    return this.partRow(G.name, G.price, this.camp.guns.includes(id), FORMS[G.form].name + ' GUN. ' + G.desc.join(' '), () => this.buyGun(id));
   },
   moduleRow(id) {
     const M = MODULE_BY_ID[id];
@@ -218,7 +219,7 @@ Object.assign(Game, {
       if (c.money < h.price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
       c.money -= h.price;
       c.hulls.push(i);
-      for (const g of h.guns) if (!c.guns.includes(g)) c.guns.push(g);   // a hull comes with its default guns
+      for (const g of this.startGuns(i)) if (!c.guns.includes(g)) c.guns.push(g);   // a hull comes with its three start guns
       Sound.sfx('cash');
     }
     c.hull = i;
