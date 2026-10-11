@@ -26,7 +26,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 | M3 | **Vertical stages** (shipped, see the README) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls and the gun ladder** | Two guns per form (a start gun and a market upgrade), one form per gun, 16 new guns, gun levels bought at markets, special bays, two new hulls, pilot perks with a mechanic, unique hull art | Every hull becomes its own ship, and credits get a steady use in every galaxy |
 | M5 | **Bosses and rewards** | Side bosses become ground fortresses, part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
-| M6 | **Stages** | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
+| M6 | **Stages** (each feature needs an interview first, see the M6 spec) | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
 | — | **Later** | Carrier upgrades, card game, music, passive slots, planet reputation, more galaxies, touch polish, save slots, score attack | Worth doing, but they don't fix the long-campaign problem |
 
 ## Economy
@@ -398,6 +398,30 @@ costs about 225k, so no one does it all. The early galaxies run above the 70 to 
 hull purchases are optional (the CHIMERA can finish the Milky Way). If the climb feels slow, lower
 `GUN_PRICE` for rungs 4 to 8 first, then the level multipliers.
 
+### M6: stages (interview first)
+
+M6 is a list of candidate features, not a plan. The user likes some and not others, so **every feature
+needs an interview with the user before it gets a spec**: keep, change or drop it, then settle the open
+questions below. Only interviewed features are written up (rules, numbers, files, a build step), and only
+they go into M6. A dropped feature moves to the catalog's Later list with a note saying why. Interview
+one feature at a time and record the answers here.
+
+| Feature | Status | Questions for the interview |
+|---|---|---|
+| Branching paths | needs interview | Side legs only, or vertical too? How is the fork chosen (fly up or down at a marked split, or picked at the briefing)? What does the hard path pay or give? |
+| New mission kinds: escort, carrier defense, timed evacuation, stealth run, asteroid race | needs interview | Which of the five? Vertical or side for each? What fails the mission? Do they replace patrol slots on generated planets or add to them? |
+| Hazards: crushing ceilings, rotating walls, lava, a breaking dam | needs interview | Which hazards, and on which terrains? Do they cost a shield or destroy the ship? Before or after M5's fortresses? |
+| Checkpoints | needs interview | Restart at a leg's halfway point, or at each squadron? How much pay does a restart cost? Any limit per mission? |
+| Full-shields reward | needs interview | What drops (a shield cell, credits, ordnance)? Bosses only, or the mini-boss heavy too? Does it overlap M5's rewards? |
+| Adjustable speed | needs interview | A held slow mode or set speeds? Which button on an NES pad and on touch, since SELECT transforms? |
+| Weapon-swap beam | needs interview | Should a beam force a form change instead of silencing one? On every methylator or a new enemy? How does it work with M4's two guns per form? |
+| Risk contracts | needs interview | Which modifiers (faster bullets, no specials, a time limit, others)? How much bonus each? Offered on every mission or only some? |
+| Harder second loop | needs interview | Recolored enemies, new patterns, faster fire, or all three? Does the Echo campaign need anything else? |
+| Hand-written planet briefings | needs interview | Every generated planet, or one per system? New side characters and Voss's lieutenants: who are they? |
+| Interceptors from every edge | needs interview | A new enemy or a traffic group? Points by speed? In side missions too? |
+| Tracking threat markers | needs interview | Replace the fixed warning arrows everywhere, or only for fast enemies? |
+| Mission cards | needs interview | What goes on the takeoff card? A stats card on failure too? Skippable? |
+
 ## Idea catalog
 
 ### Hulls (M4 spec above; what's left)
@@ -555,6 +579,8 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
   instead of killing. Worth trying once guns have in-flight levels.
 
 ### Stages (M6)
+
+Candidates only: each needs an interview before it is planned (see the M6 spec).
 
 - **Branching paths with different rewards (TF4, Axelay, Radiant Silvergun, Darius Twin).** TF4's caves
   fork into routes with different pickups; Axelay's cavern forks into an easy and a hard path; Radiant
