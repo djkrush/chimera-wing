@@ -24,7 +24,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 | M1 | **Loadout** (shipped, see the README) | Guns as parts, new guns sold at markets, guns that level up with use, a hangar that fits guns, save v3 | The core of both problems: markets run out of stock, and progress stops once stats cap |
 | M2 | **Arsenal and economy** (shipped, see the README) | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, a price table, supply raids, save v4 | Gives credits a use in every galaxy (see Economy) |
 | M3 | **Vertical stages** (shipped, see the README) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
-| M4 | **Hulls and the gun ladder** (shipped, see the README) | Two guns per form (a start gun and a market upgrade), one form per gun, 16 new guns, gun levels bought at markets, special bays, two new hulls, pilot perks with a mechanic, unique hull art | Every hull becomes its own ship, and credits get a steady use in every galaxy |
+| M4 | **Hulls and the gun ladder** (shipped, see the README) | Two guns per form (a start gun and a market upgrade), one form per gun, 16 new guns, gun levels bought at markets, specials tied to hulls, two new hulls, pilot perks with a mechanic, unique hull art | Every hull becomes its own ship, and credits get a steady use in every galaxy |
 | M5 | **Bosses and rewards** (each feature needs an interview first, see the M5 spec) | Side bosses become ground fortresses, part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
 | M6 | **Stages** (each feature needs an interview first, see the M6 spec) | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
 | — | **Later** | Carrier upgrades, card game, music, passive slots, planet reputation, more galaxies, touch polish, save slots, score attack | Worth doing, but they don't fix the long-campaign problem |
@@ -166,19 +166,25 @@ two passes for a WEAPONS 1 pilot.
 ### M4: hulls and the gun ladder (shipped)
 
 The gun ladder (two guns per form, one form per gun, 27 guns), bought gun levels, market rows that say
-who a gun is for, special bays, the BEHEMOTH and the SPHINX, pilot perks, every hull's own art and save
-v5 are in the README (hulls, Guns, Pilots, Special weapons) and CLAUDE.md (`fit`, `rung`, `gunLv`,
-`bays`, `perkId`, `hullParts`, `migrateV4`).
+who a gun is for, specials tied to hulls, the BEHEMOTH and the SPHINX, pilot perks, every hull's own art
+and saves v5 and v6 are in the README (hulls, Guns, Pilots, Special weapons) and CLAUDE.md (`fit`, `rung`,
+`gunLv`, `sp`, `specs`, `perkId`, `hullParts`, `migrateV4`, `migrateV5`).
 
-Confirmed with the user before building: special bays by family, MISSILE BARRAGE and the missile pods
-only on the PHOENIX and SPHINX, and a hull coming with its three start guns. Rules the user added:
+Confirmed with the user before building: special bays by family (later replaced, see below), the missile
+pods only on the PHOENIX and SPHINX, and a hull coming with its three start guns. Rules the user added:
 
 - **No upgrades in flight.** Gun XP is gone; levels are only bought at markets. The hangar only offers
   the hull's own two guns per form.
 - **Radio pauses the stage.** A message in `play` or `clear` freezes everything until a fresh A, B or
   tap (after 20 frames, so held fire can't skip it). The window is drawn solid.
-- **Level-ups:** each level still teaches a special (even) or a passive (odd); the bonus every third
-  level alternates a stat point (3, 9, 15...) and an extra passive (6, 12, 18...).
+- **Level-ups:** odd levels teach a passive and even levels give nothing; the bonus every third level
+  alternates a stat point (3, 9, 15...) and an extra passive (6, 12, 18...).
+- **Specials are tied to hulls, like guns** (replacing the special bays built in step 6). Each hull has a
+  start special and one bought at markets (priced like that hull's upgrade guns); levels never teach
+  them. Old saves drop the specials they had learned and keep their hulls' start specials. Pairs:
+  CHIMERA cluster > gene shield, MANTICORE thunder laser > mega crush, GRIFFIN gene shield > reflect,
+  HYDRA TET burst > wingman, WYVERN chrono > force pod, BASILISK mega crush > gravity bomb, BEHEMOTH
+  cluster > EMP, PHOENIX hyper mode > missile barrage, SPHINX wingman > missile barrage.
 
 Changes from the spec:
 
@@ -293,7 +299,7 @@ biggest homing missile only to the F-14), pilot perks with a mechanic (U.N. Squa
 Greg) and unique hull art. Left for later:
 
 - **Signature moves** (1942's loop, a shield bash, a lock-on volley): tried in the first M4 draft and
-  dropped; hulls are set apart by their guns and bays instead.
+  dropped; hulls are set apart by their guns and specials instead.
 - **More late hulls:** a stealth hull (enemy homing loses it, methyl beams lock on slower; U.N.
   Squadron's YF-23), a drone carrier (escorts in every form), and a prototype won from a boss instead of
   bought. Each would need a ladder rung or a branch off it.

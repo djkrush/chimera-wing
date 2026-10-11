@@ -88,6 +88,7 @@ Object.assign(Game, {
         { label: 'GUN LEVELS', right: '>', col: C.orange, act: () => this.basePage('levels'), info: 'LEVEL UP THE GUNS YOU OWN. EVERY STARBASE SELLS LEVELS.' },
         ...P.market.map(key => {
           if (key.startsWith('gun:')) return this.gunRow(key.slice(4));
+          if (key.startsWith('spec:')) return this.specialRow(key.slice(5));
           if (key.startsWith('mod:')) return this.moduleRow(key.slice(4));
           const u = UPGRADES[key], n = c.up[this.upKey(key)] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
           const max = n >= u.max || (u.hull && this.statOf(key) >= STAT_CAP[key]);
@@ -107,9 +108,9 @@ Object.assign(Game, {
     if (U.page === 'skills') {
       const rows = [
         ...c.passives.map(id => { const s = PASSIVE_BY_ID[id]; return { label: s.name, right: 'PASSIVE', col: s.col, info: s.desc.join(' ') }; }),
-        ...c.learned.map(i => { const s = SPECIALS[i], block = this.specialBlock(i); return { label: s.name, right: block ? 'NO BAY' : s.family, col: block ? C.gray : s.color, info: s.desc.join(' ') + (block ? ' THIS HULL: ' + block + '.' : '') }; }),
+        ...c.specs.map(id => { const s = SPECIALS[SPECIAL_IDX[id]], fits = HULLS[c.hull].sp.includes(id); return { label: s.name, right: fits ? 'SPECIAL' : 'OTHER HULL', col: fits ? s.color : C.gray, info: s.desc.join(' ') }; }),
       ];
-      if (!rows.length) rows.push({ label: 'NONE YET', info: 'LEVEL UP TO LEARN SKILLS.' });
+      if (!rows.length) rows.push({ label: 'NONE YET', info: 'LEVEL UP TO LEARN PASSIVE SKILLS.' });
       return [...rows, back];
     }
     return [back];   // status
@@ -120,11 +121,26 @@ Object.assign(Game, {
     const best = h.form.indexOf(Math.max(...h.form)), even = h.form.every(v => v === h.form[0]);
     const spans = [[(even ? 'ALL-ROUNDER' : 'BEST AS ' + FORMS[best].name) + '. SPEED ' + Math.round(h.speed * 100) + '%. GUNS:', C.aqua]];
     for (const f of h.fit) f.forEach((g, k) => { if (g) spans.push([(k ? '>' : '') + GUNS[g].short.replace(' ', ''), this.camp.guns.includes(g) ? C.white : C.gray, k > 0]); });
+    spans.push(['SPC:', C.aqua]);
+    h.sp.forEach((id, k) => spans.push([(k ? '>' : '') + SPECIALS[SPECIAL_IDX[id]].short, this.camp.specs.includes(id) ? C.white : C.gray, k > 0]));
     return spans;
   },
 
   // ---- Guns at the market ----------------------------------------------------------------
   gunPrice(id) { return GUN_PRICE[GUNS[id].rung]; },
+  specialPrice(id) { return GUN_PRICE[specialRung(id)]; },
+  // A special for sale: the hulls that buy it and start with it (owned in white), like a gun row.
+  specialRow(id) {
+    const S = SPECIALS[SPECIAL_IDX[id]], c = this.camp, txt = t => [t, C.aqua], ups = [], starts = [];
+    HULLS.forEach((h, i) => { if (h.sp[1] === id) ups.push(i); if (h.sp[0] === id) starts.push(i); });
+    const spans = [txt('SPECIAL.')], list = hs => hs.forEach((h, k) => { if (k) spans.push(txt('AND')); spans.push([HULLS[h].name.split(' ')[1], c.hulls.includes(h) ? C.white : C.gray]); });
+    spans.push(txt('BUY ON')); list(ups);
+    if (starts.length) { spans.push(txt(',')); spans.push(txt('START ON')); list(starts); }
+    spans.push(txt('.'));
+    const fits = c.hulls.some(h => HULLS[h].sp.includes(id));
+    spans.push(fits ? txt(S.desc.join(' ')) : ['FOR A HULL YOU DONT OWN.', C.orange]);
+    return { ...this.partRow(S.name, this.specialPrice(id), c.specs.includes(id), spans, () => this.buySpecial(id)), tag: 'SPC', tagCol: C.gold };
+  },
   // Price of a gun's level n (the level it goes to); MAVERICK pays 25% less.
   gunLevelPrice(id, n) {
     const base = GUNS[id].rung ? this.gunPrice(id) : 1000;
@@ -177,7 +193,7 @@ Object.assign(Game, {
     return (up[below] || 0) >= UPGRADES[below].max ? null : u.mk === 2 ? 'MK I' : 'MK II';
   },
 
-  marketShort(P) { return [...new Set(P.market.map(k => (k.startsWith('gun:') ? 'GUNS' : k.startsWith('mod:') ? 'MODS' : UPGRADES[k].short)))].join(' '); },
+  marketShort(P) { return [...new Set(P.market.map(k => (k.startsWith('gun:') ? 'GUNS' : k.startsWith('spec:') ? 'SPCL' : k.startsWith('mod:') ? 'MODS' : UPGRADES[k].short)))].join(' '); },
 
   basePage(page) {
     this.baseUI = { page, sel: 0 };
@@ -235,6 +251,17 @@ Object.assign(Game, {
     this.saveCampaign();
   },
 
+  buySpecial(id) {
+    const c = this.camp, S = SPECIALS[SPECIAL_IDX[id]], price = this.specialPrice(id);
+    if (c.specs.includes(id)) { Sound.sfx('denied'); this.toast('FIT IT IN THE HANGAR'); return; }
+    if (c.money < price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
+    c.money -= price;
+    c.specs.push(id);
+    Sound.sfx('cash');
+    this.toast(S.name + ' BOUGHT');
+    this.saveCampaign();
+  },
+
   buyGunLevel(id) {
     const c = this.camp, n = this.gunLevel(id) + 1, price = n <= 5 ? this.gunLevelPrice(id, n) : 0, gate = n <= 5 && this.gunLevelGate(n);
     if (n > 5) { Sound.sfx('denied'); return; }
@@ -278,6 +305,7 @@ Object.assign(Game, {
       c.money -= h.price;
       c.hulls.push(i);
       for (const g of this.startGuns(i)) if (!c.guns.includes(g)) c.guns.push(g);   // a hull comes with its three start guns
+      if (!c.specs.includes(h.sp[0])) c.specs.push(h.sp[0]);                      // and its start special
       Sound.sfx('cash');
     }
     c.hull = i;
@@ -505,7 +533,7 @@ Object.assign(Game, {
       NES.text(ctx, F.short, 10 + f * 80, 199, H.form[f] > 1 ? C.lime : H.form[f] < 1 ? C.orange : C.white);
       NES.text(ctx, GUNS[this.fittedGun(f)].short, 36 + f * 80, 199, C.aqua);
     });
-    NES.text(ctx, c.learned.length + ' SPECIALS  ' + c.passives.length + ' PASSIVES', 10, 211, C.gold);
+    NES.text(ctx, c.specs.length + ' SPECIALS  ' + c.passives.length + ' PASSIVES', 10, 211, C.gold);
     if ((this.t >> 4) & 1) NES.text(ctx, 'B: BACK', 246, 224, C.gray, { align: 'right' });
   },
 });

@@ -20,39 +20,45 @@ const STAT_CAP = { weapons: 8, shields: 8, special: 5 };   // pilot + hull + hul
 // Ship hulls. The pilot flies one hull at a time. Its modifiers add to the pilot's stats, and speed
 // scales every form. fit = each form's two guns, [start, upgrade] (weapons.js: GUNS; the CHIMERA has no
 // upgrades); rung = its step on the gun ladder (FUTURE.md, M4): each hull starts with the guns the one
-// below it buys as upgrades. form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID. bays = the special
-// families it can use (specials.js); its `special` stat adds uses per leg.
+// below it buys as upgrades. form = damage multiplier in FIGHTER, GUARDIAN and BATTLOID. sp = its two
+// specials (specials.js), [start, bought]: it comes with the first, markets sell the second, and it can
+// fly no others; its `special` stat adds uses per leg.
 // Planet markets sell them (P.hulls in world.js). Keep the order: saves store the index, and HULL_ART
 // (sprites.js) follows it, so the BEHEMOTH (rung 6) and SPHINX (rung 8) come after the PHOENIX (rung 7).
 const HULLS = [
   { name: 'VX-3 CHIMERA', rung: 0, weapons: 0, shields: 0, special: 0, speed: 1, price: 0, form: [1, 1, 1],
-    fit: [['twin', null], ['spread', null], ['laser', null]], bays: ['ATTACK', 'DEFENSE', 'SUPPORT'],
+    fit: [['twin', null], ['spread', null], ['laser', null]], sp: ['cluster', 'shield'],
     desc: 'THE ORIGINAL. BALANCED.' },
   { name: 'VX-5 MANTICORE', rung: 1, weapons: 1, shields: 0, special: 1, speed: 1.1, price: 4000, form: [1.4, 1, 0.8],
-    fit: [['twin', 'vulcan'], ['spread', 'wave'], ['laser', 'grenade']], bays: ['ATTACK'],
+    fit: [['twin', 'vulcan'], ['spread', 'wave'], ['laser', 'grenade']], sp: ['laser', 'crush'],
     desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
   { name: 'VX-6 GRIFFIN', rung: 2, weapons: 0, shields: 2, special: 0, speed: 0.9, price: 5000, form: [0.9, 1, 1.4],
-    fit: [['vulcan', 'ripple'], ['wave', 'bomb'], ['grenade', 'charge']], bays: ['DEFENSE', 'ATTACK'],
+    fit: [['vulcan', 'ripple'], ['wave', 'bomb'], ['grenade', 'charge']], sp: ['shield', 'reflect'],
     desc: 'ARMOR. BEST AS A BATTLOID.' },
   { name: 'VX-9 HYDRA', rung: 3, weapons: 0, shields: 1, special: 0, speed: 1.1, price: 9000, form: [1.1, 1.1, 1.1],
-    fit: [['ripple', 'gunpod'], ['bomb', 'swivel'], ['charge', 'rail']], bays: ['ATTACK', 'DEFENSE', 'SUPPORT'],
+    fit: [['ripple', 'gunpod'], ['bomb', 'swivel'], ['charge', 'rail']], sp: ['tet', 'wingman'],
     desc: 'ALL-ROUNDER. GOOD AT EVERYTHING.' },
   { name: 'VX-7 WYVERN', rung: 4, weapons: 0, shields: 1, special: 1, speed: 1, price: 12000, form: [0.9, 1.4, 1],
-    fit: [['gunpod', 'tail'], ['swivel', 'flak'], ['rail', 'hyper']], bays: ['SUPPORT', 'DEFENSE'],
+    fit: [['gunpod', 'tail'], ['swivel', 'flak'], ['rail', 'hyper']], sp: ['chrono', 'pod'],
     desc: 'GUARDIAN. BEST AS A GUARDIAN.' },
   { name: 'VX-8 BASILISK', rung: 5, weapons: 2, shields: -1, special: 2, speed: 1.15, price: 18000, form: [1.2, 1.2, 1],
-    fit: [['tail', 'needle'], ['flak', 'diagonal'], ['hyper', 'sword']], bays: ['ATTACK'],
+    fit: [['tail', 'needle'], ['flak', 'diagonal'], ['hyper', 'sword']], sp: ['crush', 'gravity'],
     desc: 'PIERCING. HITS HARD, BREAKS EASY.' },
   { name: 'VX-12 PHOENIX', rung: 7, weapons: 1, shields: 1, special: 1, speed: 1.15, price: 30000, form: [1.3, 1.3, 1.3],
-    fit: [['rocket', 'burner'], ['mortar', 'ring'], ['canister', 'homing']], bays: ['ATTACK', 'DEFENSE', 'SUPPORT'],
+    fit: [['rocket', 'burner'], ['mortar', 'ring'], ['canister', 'homing']], sp: ['hyper', 'barrage'],
     desc: 'TOP OF THE LINE. FIRE AND HOMING.' },
   { name: 'VX-10 BEHEMOTH', rung: 6, weapons: 1, shields: 2, special: 0, speed: 0.85, price: 25000, form: [1.1, 1, 1.2],
-    fit: [['needle', 'rocket'], ['diagonal', 'mortar'], ['sword', 'canister']], bays: ['ATTACK', 'DEFENSE'],
+    fit: [['needle', 'rocket'], ['diagonal', 'mortar'], ['sword', 'canister']], sp: ['cluster', 'emp'],
     desc: 'GROUND ATTACK. HEAVY AND SLOW.' },
   { name: 'VX-11 SPHINX', rung: 8, weapons: 1, shields: 0, special: 0, speed: 1.2, price: 60000, form: [1.2, 1.1, 1],
-    fit: [['burner', 'freeway'], ['ring', 'chain'], ['homing', 'lock']], bays: ['ATTACK', 'SUPPORT'],
+    fit: [['burner', 'freeway'], ['ring', 'chain'], ['homing', 'lock']], sp: ['wingman', 'barrage'],
     desc: 'MISSILE CARRIER. LOCKS ON.' },
 ];
+
+// Specials markets sell: every hull's bought special. Each costs and is sold like the guns of the lowest
+// rung that buys it (starbase.js: specialPrice).
+const SPECIAL_SHOP = [...new Set(HULLS.map(h => h.sp[1]))];
+const specialRung = id => Math.min(...HULLS.filter(h => h.sp[1] === id).map(h => h.rung));
 
 Object.assign(Game, {
   pilot: 0, pilotSel: 0,

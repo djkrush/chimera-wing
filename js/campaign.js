@@ -8,7 +8,7 @@
 // The ship takes off from the carrier before each leg and lands on it after (carrier.js).
 
 // XP needed to reach each level (index 0 = level 1). Every level-up trains a stat, then teaches a
-// special (even levels) or a passive skill (odd levels); see skills.js.
+// passive skill (odd levels), with a stat point or an extra passive every third level; see skills.js.
 const LEVELS = Array.from({ length: 30 }, (_, i) => Math.round((100 * i + 45 * i * i) / 10) * 10);
 const round10 = v => Math.round(v / 10) * 10;
 
@@ -65,8 +65,8 @@ Object.assign(Game, {
 
   // ---- Campaign start, save and load --------------------------------------------------
   newCamp(pilot) {
-    return { v: 5, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
-      level: 1, learned: [], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0,
+    return { v: 6, pilot, hull: 0, hulls: [0], up: {}, train: { weapons: 0, shields: 0, special: 0 }, money: 0, xp: 0,
+      level: 1, specs: [HULLS[0].sp[0]], passives: [], pending: ['starter'], cleared: {}, at: 'earth', loop: 0, beats: [], seen: [], score: 0,
       guns: this.startGuns(0), fit: {}, gunLv: {}, // guns owned, fit[hull] = [gun0, gun1, gun2], levels bought per gun
       ord: {}, ordLast: null, mods: [], mod: null };  // ordnance stock, last one fitted, modules owned and fitted (arsenal.js)
   },
@@ -85,7 +85,7 @@ Object.assign(Game, {
     this.hintsSeen = new Set();
     this.player = this.newPlayer();
     this.special = null;
-    this.lastSpecial = this.camp.learned[0] || 0;
+    this.lastSpecial = SPECIAL_IDX[HULLS[this.camp.hull].sp[0]];
   },
 
   hasSave() {
@@ -106,7 +106,8 @@ Object.assign(Game, {
     if (c && c.v === 2) c = this.migrateV2(c);
     if (c && c.v === 3) c = this.migrateV3(c);
     if (c && c.v === 4) c = this.migrateV4(c);
-    if (!c || c.v !== 5 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
+    if (c && c.v === 5) c = this.migrateV5(c);
+    if (!c || c.v !== 6 || !PILOTS[c.pilot] || !PLANET_BY_ID[c.at] || !HULLS[c.hull]) {
       Sound.sfx('denied');
       this.toast('SAVE DATA UNREADABLE');
       return;
@@ -189,6 +190,16 @@ Object.assign(Game, {
     return c;
   },
 
+  // Version 5 saves (specials learned at level-ups): those are dropped. Specials now come with hulls and
+  // markets, so every owned hull's start special is owned and pending special choices go.
+  migrateV5(c) {
+    c.specs = [...new Set(c.hulls.map(h => HULLS[h].sp[0]))];
+    c.pending = (c.pending || []).filter(k => k !== 'special');
+    delete c.learned;
+    c.v = 6;
+    return c;
+  },
+
   // Dev shortcut (?stage=N): planet ceil(N/2) in map order (PLANETS), its stronghold; odd N = first
   // leg, even N = the boss leg. ?passives=drone,rear, ?hull=N, ?fit=charge,swivel,rail, ?mod=barrier2 and
   // ?ord=missile2 set up the test ship (a test campaign owns every gun and module, and 6 of each ordnance).
@@ -197,7 +208,7 @@ Object.assign(Game, {
     this.pilot = 0;
     this.camp = this.newCamp(0);
     const passives = (q.get('passives') || '').split(',').filter(id => PASSIVES.some(s => s.id === id));
-    Object.assign(this.camp, { test: true, at: P.id, learned: SPECIALS.map((s, i) => i), passives, pending: [],
+    Object.assign(this.camp, { test: true, at: P.id, specs: SPECIALS.map(s => s.id), passives, pending: [],
       hull: clamp(parseInt(q.get('hull'), 10) || 0, 0, HULLS.length - 1) });
     this.camp.hulls = [this.camp.hull];
     this.camp.guns = GUN_IDS.slice();   // every gun at LV1
@@ -210,7 +221,7 @@ Object.assign(Game, {
     this.resetRun(0);
     this.mission = this.makeMission(P, P.missions.length - 1);
     const ord = ORD_BY_ID[q.get('ord')] ? q.get('ord') : null;
-    this.special = ord ? { ord, ammo: ORD_BY_ID[ord].carry, cd: 0 } : { idx: 0, ammo: 0, cd: 0 };
+    this.special = ord ? { ord, ammo: ORD_BY_ID[ord].carry, cd: 0 } : { idx: SPECIAL_IDX[HULLS[this.camp.hull].sp[0]], ammo: 0, cd: 0 };
     this.startLeg(n % 2 ? 0 : this.mission.legs.length - 1);
   },
 

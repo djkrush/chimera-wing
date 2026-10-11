@@ -1,40 +1,41 @@
 'use strict';
-// Special weapons. The pilot learns one at every even level (skills.js) and equips one learned special
-// before each mission. Every takeoff rearms it with as many uses as the SPECIAL stat (pilots.js).
+// Special weapons. Each hull flies two (HULLS[h].sp, pilots.js): it comes with the first and markets sell
+// the second (spec:<id> in MARKET_POOL). Owned ones are in camp.specs; the hangar fits one before each
+// mission. Every takeoff rearms it with as many uses as the SPECIAL stat (pilots.js).
 // The later ones come from the classics: Macross's missile swarms (BARRAGE), R-Type's Force (FORCE
 // POD), DoDonPachi's hyper mode (HYPER), and the bullet-cancelling and time-slowing bombs of many
 // modern shooters.
-// family: ATTACK, DEFENSE or SUPPORT. A hull only uses specials its bays take (HULLS[h].bays), and hulls
-// limits one to those hulls (the missile barrage follows the homing gun: PHOENIX and SPHINX).
 
 const SPECIALS = [
-  { id: 'laser', name: 'THUNDER LASER', short: 'LSR', color: C.aqua, family: 'ATTACK',
+  { id: 'laser', name: 'THUNDER LASER', short: 'LSR', color: C.aqua,
     desc: ['A ONE-SECOND BEAM THAT', 'PIERCES EVERYTHING AHEAD.'] },
-  { id: 'cluster', name: 'CLUSTER BOMB', short: 'CLU', color: C.orange, family: 'ATTACK',
+  { id: 'cluster', name: 'CLUSTER BOMB', short: 'CLU', color: C.orange,
     desc: ['3 BOMBS. EACH BURSTS INTO', '8 FRAGMENTS ON IMPACT.'] },
-  { id: 'crush', name: 'MEGA CRUSH', short: 'MGC', color: C.white, family: 'ATTACK',
+  { id: 'crush', name: 'MEGA CRUSH', short: 'MGC', color: C.white,
     desc: ['HITS EVERY ENEMY ON SCREEN', 'AND ERASES ENEMY BULLETS.'] },
-  { id: 'shield', name: 'GENE SHIELD', short: 'SHD', color: C.lime, family: 'DEFENSE',
+  { id: 'shield', name: 'GENE SHIELD', short: 'SHD', color: C.lime,
     desc: ['5-SECOND BARRIER. BLOCKS', 'BULLETS AND METHYL BEAMS.'] },
-  { id: 'tet', name: 'TET BURST', short: 'TET', color: C.mint, family: 'SUPPORT',
+  { id: 'tet', name: 'TET BURST', short: 'TET', color: C.mint,
     desc: ['RESTORES EVERY SILENCED', 'FORM AND STOPS BEAMS.'] },
-  { id: 'wingman', name: 'WINGMAN', short: 'WNG', color: C.sky, family: 'SUPPORT',
+  { id: 'wingman', name: 'WINGMAN', short: 'WNG', color: C.sky,
     desc: ['A DRONE FLIES WITH YOU FOR', '10 SECONDS AND COPIES SHOTS.'] },
-  { id: 'barrage', name: 'MISSILE BARRAGE', short: 'BRG', color: C.lgray, family: 'ATTACK', hulls: [6, 8],
+  { id: 'barrage', name: 'MISSILE BARRAGE', short: 'BRG', color: C.lgray,
     desc: ['12 HOMING MISSILES FAN OUT', 'AND HUNT DOWN TARGETS.'] },
-  { id: 'chrono', name: 'CHRONO FIELD', short: 'CHR', color: C.periwinkle, family: 'DEFENSE',
+  { id: 'chrono', name: 'CHRONO FIELD', short: 'CHR', color: C.periwinkle,
     desc: ['FOR 5 SECONDS THE ENEMY', 'MOVES AT HALF SPEED.'] },
-  { id: 'emp', name: 'EMP BLAST', short: 'EMP', color: C.ice, family: 'DEFENSE',
+  { id: 'emp', name: 'EMP BLAST', short: 'EMP', color: C.ice,
     desc: ['ERASES BULLETS. NO ENEMY', 'GUN FIRES FOR 5 SECONDS.'] },
-  { id: 'reflect', name: 'REFLECT FIELD', short: 'RFL', color: C.white, family: 'DEFENSE',
+  { id: 'reflect', name: 'REFLECT FIELD', short: 'RFL', color: C.white,
     desc: ['4 SECONDS: BULLETS THAT', 'COME CLOSE BOUNCE BACK.'] },
-  { id: 'gravity', name: 'GRAVITY BOMB', short: 'GRV', color: C.violet, family: 'ATTACK',
+  { id: 'gravity', name: 'GRAVITY BOMB', short: 'GRV', color: C.violet,
     desc: ['A SMALL BLACK HOLE PULLS', 'IN PLANES AND BULLETS.'] },
-  { id: 'pod', name: 'FORCE POD', short: 'POD', color: C.orange, family: 'SUPPORT',
+  { id: 'pod', name: 'FORCE POD', short: 'POD', color: C.orange,
     desc: ['12 SECONDS: A POD AHEAD OF', 'YOU BLOCKS AND SHOOTS.'] },
-  { id: 'hyper', name: 'HYPER MODE', short: 'HYP', color: C.gold, family: 'SUPPORT',
+  { id: 'hyper', name: 'HYPER MODE', short: 'HYP', color: C.gold,
     desc: ['6 SECONDS: DOUBLE FIRE', 'RATE, +50% DAMAGE.'] },
 ];
+
+const SPECIAL_IDX = Object.fromEntries(SPECIALS.map((s, i) => [s.id, i]));
 
 Object.assign(Game, {
   hangarSel: 0, hangarRow: 0,
@@ -49,23 +50,16 @@ Object.assign(Game, {
   openHangar() {
     this.setState('hangar');
     this.hangarRow = 0;
-    const o = this.specialOptions(), last = this.camp.ordLast, ok = q => q.ord || !this.specialBlock(q.idx);
-    this.hangarSel = o.findIndex(q => ok(q) && (last ? q.ord === last : q.idx === this.lastSpecial));
-    if (this.hangarSel < 0) this.hangarSel = Math.max(0, o.findIndex(ok));
+    const o = this.specialOptions(), last = this.camp.ordLast;
+    this.hangarSel = Math.max(0, o.findIndex(q => (last ? q.ord === last : q.idx === this.lastSpecial)));
   },
 
-  // Why hull h can't use special idx, or null if it can.
-  specialBlock(idx, h = this.camp.hull) {
-    const S = SPECIALS[idx];
-    if (S.hulls && !S.hulls.includes(h)) return S.hulls.map(i => HULLS[i].name.split(' ')[1]).join(' AND ') + ' ONLY';
-    return HULLS[h].bays.includes(S.family) ? null : 'NO ' + S.family + ' BAY';
-  },
+  // The specials hull h can fly that you own (its start special comes with it).
+  hullSpecials(h = this.camp.hull) { return HULLS[h].sp.filter(id => this.camp.specs.includes(id)); },
 
-  // What the SPECIAL row offers: learned specials (the ones without a bay grayed out), then stocked
-  // ordnance this hull can carry.
+  // What the SPECIAL row offers: the hull's specials, then stocked ordnance it can carry.
   specialOptions() {
-    const c = this.camp;
-    return [...c.learned.map(idx => ({ idx })), ...ORDNANCE.filter(o => this.ordStock(o.id) > 0 && this.ordAllowed(o.id)).map(o => ({ ord: o.id }))];
+    return [...this.hullSpecials().map(id => ({ idx: SPECIAL_IDX[id] })), ...ORDNANCE.filter(o => this.ordStock(o.id) > 0 && this.ordAllowed(o.id)).map(o => ({ ord: o.id }))];
   },
   // What the MODULE row offers: nothing, or a module you own.
   moduleOptions() { return [null, ...MODULES.filter(m => (this.camp.mods || []).includes(m.id)).map(m => m.id)]; },
@@ -101,8 +95,8 @@ Object.assign(Game, {
   hangarChange(dir) {
     const c = this.camp, r = this.hangarRowIds()[this.hangarRow];
     if (r === 3) {
-      const n = this.specialOptions().length;
-      if (n < 2) { Sound.sfx('denied'); return; }
+      const n = this.specialOptions().length, up = HULLS[c.hull].sp[1];
+      if (n < 2) { Sound.sfx('denied'); this.toast(c.specs.includes(up) ? 'NOTHING ELSE TO FIT' : 'BUY ' + SPECIALS[SPECIAL_IDX[up]].name + ' AT A MARKET'); return; }
       this.hangarSel = (this.hangarSel + dir + n) % n;
     } else if (r === 4) {
       const list = this.moduleOptions(), i = list.indexOf(this.fittedModule() ? c.mod : null);
@@ -119,8 +113,7 @@ Object.assign(Game, {
 
   // Ordnance is loaded here: up to its carry limit comes out of stock, and it isn't rearmed between legs.
   launchHangar() {
-    const c = this.camp, sel = this.specialOptions()[this.hangarSel], block = sel && !sel.ord && this.specialBlock(sel.idx);
-    if (block) { Sound.sfx('denied'); this.toast(block); this.hangarRow = this.hangarRowIds().indexOf(3); return; }
+    const c = this.camp, sel = this.specialOptions()[this.hangarSel];
     if (!sel) this.special = null;
     else if (sel.ord) {
       const n = Math.min(this.ordStock(sel.ord), this.ordCarry(sel.ord));
@@ -442,10 +435,10 @@ Object.assign(Game, {
           NES.draw(ctx, SPR.ordIcons[o.family], 104, y + 12);
           NES.text(ctx, 'X' + Math.min(st, this.ordCarry(o.id)) + '/' + st, 240, y + 9, C.orange, { align: 'right' });
         } else {
-          const S = SPECIALS[pick.idx], block = this.specialBlock(pick.idx);
-          NES.text(ctx, S.name, 100, y, block ? C.gray : sel ? C.white : C.lgray);
+          const S = SPECIALS[pick.idx];
+          NES.text(ctx, S.name, 100, y, sel ? C.white : C.lgray);
           NES.draw(ctx, SPR.specialIcons[pick.idx], 104, y + 12);
-          NES.text(ctx, block ? S.family : 'X' + this.specialAmmo(), 240, y + 9, block ? C.gray : S.color, { align: 'right' });
+          NES.text(ctx, 'X' + this.specialAmmo(), 240, y + 9, S.color, { align: 'right' });
         }
       } else {
         NES.text(ctx, 'MODULE', 22, y, C.white);
@@ -461,9 +454,9 @@ Object.assign(Game, {
     } else if (row === 3 && pick.ord) {
       lines = NES.wrap(ORD_BY_ID[pick.ord].desc, 26).slice(0, 2); extra = 'UNUSED ONES COME BACK';
     } else if (row === 3) {
-      const block = this.specialBlock(pick.idx);
-      lines = SPECIALS[pick.idx].desc; extra = block ? block + ': PICK ANOTHER' : 'FIRE IT WITH: C KEY / PAD B';
-      if (block) col = C.orange;
+      const up = HULLS[this.camp.hull].sp[1], buy = !this.camp.specs.includes(up);
+      lines = SPECIALS[pick.idx].desc; extra = buy ? 'BUY ' + SPECIALS[SPECIAL_IDX[up]].name + ' AT MARKETS' : 'FIRE IT WITH: C KEY / PAD B';
+      if (buy) col = C.gray;
     } else {
       lines = M ? NES.wrap(M.desc, 26).slice(0, 2) : ['NO MODULE FITTED.']; extra = 'BUY MODULES AT MARKETS';
     }

@@ -1,9 +1,9 @@
 'use strict';
-// Pilot skills. Every level-up the pilot trains one stat (+1 WEAPONS, SHIELDS or SPECIAL), then learns
-// a special attack (even levels, specials.js) or a passive skill (odd levels). Passive skills are
-// always on once learned. A new pilot picks one of three starter passives. Choices wait in
-// camp.pending ('starter', 'stat', 'special', 'passive') until the LEARN screen takes them, so a
-// quit in the middle loses nothing.
+// Pilot skills. Odd levels teach a passive skill; every third level adds a stat point (+1 WEAPONS,
+// SHIELDS or SPECIAL) or an extra passive, in turn. Specials come with hulls and markets, never with
+// levels (specials.js). Passive skills are always on once learned. A new pilot picks one of three
+// starter passives. Choices wait in camp.pending ('starter', 'stat', 'passive') until the LEARN screen
+// takes them, so a quit in the middle loses nothing.
 // Ideas borrowed from the classics: Gradius's Options (DRONE ESCORT), air-to-ground Missile (GROUND
 // MISSILES) and Double (TAIL GUN), and the shield-cell and repair pickups of many a shooter.
 
@@ -36,7 +36,7 @@ Object.assign(Game, {
     while (c.level < LEVELS.length && c.xp >= LEVELS[c.level]) {
       c.level++;
       levels.push(c.level);
-      c.pending.push(c.level % 2 ? 'passive' : 'special');
+      if (c.level % 2) c.pending.push('passive');
       if (c.level % 3 === 0) c.pending.push((c.level / 3) % 2 ? 'stat' : 'passive');   // every third level: a stat point, then an extra passive, in turn
     }
     return levels;
@@ -46,28 +46,14 @@ Object.assign(Game, {
     const c = this.camp, shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
     if (kind === 'stat') return STAT_ROWS.map(r => r[0]).filter(k => this.statOf(k) < STAT_CAP[k]);
     if (kind === 'starter') return STARTER_PASSIVES.filter(id => !c.passives.includes(id));
-    if (kind === 'special') {   // specials one of your hulls has a bay for come up three times as often
-      const open = i => c.hulls.some(h => !this.specialBlock(i, h)), pool = SPECIALS.map((s, i) => i).filter(i => !c.learned.includes(i)), out = [];
-      while (out.length < 3 && pool.length) {
-        let r = Math.random() * pool.reduce((n, i) => n + (open(i) ? 3 : 1), 0), k = 0;
-        while ((r -= open(pool[k]) ? 3 : 1) > 0) k++;
-        out.push(pool.splice(k, 1)[0]);
-      }
-      return out;
-    }
     return shuffle(PASSIVES.map(s => s.id).filter(id => !c.passives.includes(id))).slice(0, 3);
   },
 
-  // Opens the next pending choice. A special with none left to learn becomes a passive (and back);
-  // with nothing at all left it is skipped.
+  // Opens the next pending choice; one with nothing left to learn is skipped.
   openLearn() {
     const c = this.camp;
     while (c.pending.length) {
-      let kind = c.pending[0], opts = this.learnOptions(kind);
-      if (!opts.length && (kind === 'special' || kind === 'passive')) {
-        kind = kind === 'special' ? 'passive' : 'special';
-        opts = this.learnOptions(kind);
-      }
+      const kind = c.pending[0], opts = this.learnOptions(kind);
       if (opts.length) {
         this.learnUI = { kind, opts, sel: 0 };
         this.setState('learn');
@@ -90,7 +76,6 @@ Object.assign(Game, {
   pickLearn() {
     const c = this.camp, L = this.learnUI, v = L.opts[L.sel];
     if (L.kind === 'stat') { c.train[v] = (c.train[v] || 0) + 1; this.toast(v.toUpperCase() + ' +1'); }
-    else if (L.kind === 'special') { c.learned.push(v); this.lastSpecial = v; this.toast(SPECIALS[v].name + ' LEARNED'); }
     else { c.passives.push(v); this.toast(PASSIVE_BY_ID[v].name + ' LEARNED'); }
     c.pending.shift();
     Sound.sfx('restore');
@@ -111,7 +96,7 @@ Object.assign(Game, {
     const head = { starter: 'FIRST SKILL', stat: 'LEVEL ' + c.level + '!' }[L.kind] || 'LEVEL ' + c.level + '!';
     NES.text(ctx, head, 128, 16, C.lime, { align: 'center', scale: 2, shadow: C.dgreen });
     const sub = { starter: ['CHOOSE A STARTING PASSIVE.', 'IT IS ALWAYS ON.'], stat: ['TRAIN ONE STAT: +1.', 'YOU KEEP IT FOR GOOD.'],
-      special: ['LEARN A NEW SPECIAL ATTACK.', 'EQUIP IT IN THE HANGAR.'], passive: ['LEARN A PASSIVE SKILL.', 'IT IS ALWAYS ON.'] }[L.kind];
+      passive: ['LEARN A PASSIVE SKILL.', 'IT IS ALWAYS ON.'] }[L.kind];
     sub.forEach((l, i) => NES.text(ctx, l, 128, 42 + i * 10, i ? C.lgray : C.white, center));
     let desc = [];
     L.opts.forEach((v, i) => {
@@ -123,11 +108,6 @@ Object.assign(Game, {
         const row = STAT_ROWS.find(r => r[0] === v), now = this.statOf(v);
         [name, col, right] = [row[1], row[2], now + ' > ' + (now + 1)];
         if (sel) desc = [row[3]];
-      } else if (L.kind === 'special') {
-        const s = SPECIALS[v];
-        NES.draw(ctx, SPR.specialIcons[v], 38, y + 3);
-        [name, col] = [s.name, s.color];
-        if (sel) desc = s.desc;
       } else {
         const s = PASSIVE_BY_ID[v];
         [name, col] = [s.name, s.col];

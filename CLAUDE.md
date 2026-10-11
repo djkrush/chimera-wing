@@ -12,7 +12,7 @@ change how the game plays. `FUTURE.md` lists planned improvements; add ideas the
   2 = Earth's base, 4 = the Mars capital-ship flyover, 168 = the finale. `&hull=N`,
   `&passives=drone,rear`, `&fit=charge,swivel,rail` (one gun per form), `&mod=barrier2` (a module) and
   `&ord=missile2` (carry that ordnance) set up the ship. Test campaigns (`camp.test`) never save, all
-  specials are learned, every gun and module is owned, 6 of each ordnance is stocked, and every mission
+  specials are owned, every gun and module is owned, 6 of each ordnance is stocked, and every mission
   on earlier planets counts as cleared.
 - `index.html?touch` turns on the touch controls on a desktop; clicks act as taps.
 - Serve the folder over HTTP (e.g. `python -m http.server`) for browser automation: extensions can't
@@ -88,7 +88,8 @@ base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT M
 - **Star map** (`starmap.js`): `mapUI = { level: 0 universe | 1 galaxy | 2 system, gal, sys, sel, zoom }`.
   `mapItems(level)` lists what can be picked; `tapMap` handles clicks and taps; travel plays on the
   smallest map level that shows both ends.
-- **Level-ups** (`skills.js`): `gainLevels()` pushes `'special'`/`'passive'` (and `'stat'` every third level) into
+- **Level-ups** (`skills.js`): `gainLevels()` pushes `'passive'` on odd levels and, every third level, `'stat'` or
+  `'passive'` in turn (never a special) into
   `camp.pending`; `openLearn()` shows them one by one (three random offers each) and ends in
   `leaveDebrief()`.
 
@@ -213,12 +214,12 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   from `enemyHp(base)` (`hpMul()` times `ENEMY_HP`, the one tuning knob, in half points). A new enemy type needs an entry
   here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`; each is baked `normal`, `acetyl`, `red`, `dmg` and `white`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
-- `SPECIALS` (in `specials.js`): special weapons, learned at even levels. Each has a `family` (ATTACK,
-  DEFENSE, SUPPORT) and a hull can only fly the families in `HULLS[h].bays` (`specialBlock(idx, h)` says
-  why not; a `hulls` list limits MISSILE BARRAGE to the PHOENIX and SPHINX). The hangar grays blocked ones
-  and won't launch with one; `learnOptions('special')` weights open ones 3:1. The hangar (`hangarRowIds()`:
+- `SPECIALS` (in `specials.js`, `SPECIAL_IDX` maps id to index): special weapons, tied to hulls like guns.
+  `HULLS[h].sp` = `[start, bought]`: buying a hull adds its start special to `camp.specs`, markets sell the
+  bought ones (`spec:<id>`, `SPECIAL_SHOP` and `specialRung` in `pilots.js`, `specialRow`/`buySpecial` in
+  `starbase.js`), and `hullSpecials()` is what the hull can fly. Levels never teach specials. The hangar (`hangarRowIds()`:
   0-2 guns, 3 SPECIAL, 4 MODULE; `hangarRow` indexes that list, `hangarChange(dir)`, `tapHangar`) opens
-  before every sortie. The SPECIAL row (`specialOptions()`) lists `camp.learned`, then stocked ordnance;
+  before every sortie. The SPECIAL row (`specialOptions()`) lists the hull's owned specials, then stocked ordnance;
   it and the MODULE row hide while empty. `this.special` is `{ idx, ammo, cd }` or `{ ord, ammo, cd }`.
   A special's ammo = `specialAmmo()`, refilled at every takeoff; ordnance isn't. Lasting ones keep timers
   (`chronoT`, `empT`, `reflectT`, `podT`, `hyperT`, `grav`) reset by `clearSpecialFx()`;
@@ -249,15 +250,16 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   `upLevel(key)` adds them to Mk I. `marketGal(key)` (`world.js`) says which galaxy first sells a
   market entry (guns, modules, Mk tiers). Guns cost `GUN_PRICE[rung]`; levels cost `GUN_LV_MUL[n]` times
   that (rung 0 from 1,000) and LV4 / LV5 need the galaxy in `GUN_LV_GAL` (`gunLevelGate`).
-- `Game.camp` is the whole saved campaign (`v: 5`: pilot, hull, owned hulls, `up`, `train`, money, xp,
-  level, `learned` specials, `passives`, `pending` choices, `cleared` missions, `at` planet, `seen`
+- `Game.camp` is the whole saved campaign (`v: 6`: pilot, hull, owned hulls, `up`, `train`, money, xp,
+  level, `specs` (specials owned), `passives`, `pending` choices, `cleared` missions, `at` planet, `seen`
   galaxies, loop, story beats, score, `guns` owned, `fit[hull]`, `gunLv[id]`, `ord` (ordnance stock),
   `ordLast` (last ordnance fitted), `mods` and `mod` (modules owned and fitted), and `opened` systems
   for converted saves). It is saved as JSON in `localStorage['chimera.save']` by
   `saveCampaign()` whenever the carrier docks, you buy something or you launch from the hangar.
   `continueCampaign()` migrates step by step: `migrateSave()` (v1 → v2), `migrateV2()` (v2 → v3),
   `migrateV3()` (v3 → v4), then `migrateV4()` (v4 → v5: earned gun XP becomes bought levels at the old
-  thresholds, owned hulls' start guns are added, and fits the ladder doesn't allow go back to the start gun).
+  thresholds, owned hulls' start guns are added, and fits the ladder doesn't allow go back to the start gun),
+  then `migrateV5()` (v5 → v6: specials learned at level-ups are dropped; owned hulls' start specials are owned).
 - Pickups (`tet.js`): `this.pickups` entries have a `kind`. `tet`: acetylated kills may drop one (`dropTet`); collecting
   it restores a silenced form. `cell`: the red squadron's shield cell (`dropCell`, `collectCell`).
 
@@ -296,8 +298,8 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - **New instrument:** synthesize it in `buildSamples()` and `add(name, data, f0, loop, env)`; looped
   samples need whole-number Hz over their length so the loop is seamless.
 - **New special weapon:** add it to `SPECIALS`, handle its `id` in `useSpecial()` (plus `updateSpecial`/
-  `drawSpecialFx`/`specialCollide`/`clearSpecialFx` if it lasts over time), and add an icon to
-  `SPR.specialIcons` at the same index.
+  `drawSpecialFx`/`specialCollide`/`clearSpecialFx` if it lasts over time), add an icon to
+  `SPR.specialIcons` at the same index, and put it in a hull's `sp` (as the bought one to sell it).
 - **New passive skill:** add it to `PASSIVES` (`skills.js`) and check `hasPassive('id')` where it acts.
 - **New gun:** add it to `GUNS` (`weapons.js`: `form`, `rung` (its price and galaxy follow from it), two
   `desc` lines, four `lv` effects of 18 characters or fewer), put it in a hull's `fit`, and add a `case`
@@ -338,7 +340,7 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   intro), plus a layout to `BASE_LAYOUTS`, a hull to `BASE_STYLES` or a rule to `updateBossShields` if needed.
 - **New capital ship:** add an entry to `CAPITALS` (name, `style`, size, palette, target counts, `launch`
   type, intro). A new `CAP_STYLES` hull must return at least as many slots as the ship mounts.
-- **New hull:** add it to `HULLS` at the end (`pilots.js`, with `rung`, `fit`, `bays` and `form`; saves store
+- **New hull:** add it to `HULLS` at the end (`pilots.js`, with `rung`, `fit`, `sp` and `form`; saves store
   the index), a Fighter (top-down and side rows) and a `HULL_PARTS` entry (head, shoulder, pack) in
   `sprites.js` with a `HULL_ART` row at the same index, and put its index in a planet's `hulls` (or
   `EXTRA_HULLS` in `world.js`) to sell it. Its Guardian and Battloid come from `hullParts()`, which

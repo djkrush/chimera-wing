@@ -48,13 +48,16 @@ const MISSION_KINDS = {
 };
 
 // Shop stock every market can draw from (prices and effects in starbase.js). gun:<id> sells a gun
-// part (weapons.js), mod:<id> a module (arsenal.js), <key>2 and <key>3 the Mk II and Mk III tiers of an
+// part (weapons.js), spec:<id> a hull's bought special (pilots.js: SPECIAL_SHOP), mod:<id> a module
+// (arsenal.js), <key>2 and <key>3 the Mk II and Mk III tiers of an
 // upgrade. A market only draws what its galaxy sells (marketGal).
 const MK_KEYS = ['engine', 'ftr', 'grd', 'btl', 'cooler', 'broker'];
 const MARKET_POOL = ['weapons', 'shields', 'special', 'engine', 'ftr', 'grd', 'btl', 'cooler', 'armor', 'scanner', 'broker',
-  ...GUN_IDS.map(id => 'gun:' + id), ...MODULES.map(m => 'mod:' + m.id), ...MK_KEYS.flatMap(k => [k + '2', k + '3'])];
+  ...GUN_IDS.map(id => 'gun:' + id), ...SPECIAL_SHOP.map(id => 'spec:' + id), ...MODULES.map(m => 'mod:' + m.id), ...MK_KEYS.flatMap(k => [k + '2', k + '3'])];
 // First galaxy (index) whose markets sell a MARKET_POOL entry: Mk II from the Magellanic Cloud, Mk III from Andromeda.
-const marketGal = k => (k.startsWith('gun:') ? GUNS[k.slice(4)].gal : k.startsWith('mod:') ? MODULE_BY_ID[k.slice(4)].gal
+const rungGal = r => (r <= 3 ? 0 : r <= 6 ? 1 : 2);
+const marketGal = k => (k.startsWith('gun:') ? GUNS[k.slice(4)].gal : k.startsWith('spec:') ? rungGal(specialRung(k.slice(5)))
+  : k.startsWith('mod:') ? MODULE_BY_ID[k.slice(4)].gal
   : /[23]$/.test(k) ? +k.slice(-1) - 1 : 0);
 
 // Galaxies hold systems; systems keep the old sector fields (see CLAUDE.md): boss/capital ids, enemy

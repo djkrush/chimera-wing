@@ -62,8 +62,8 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 - Every mission pays **credits** (mission pay plus combat pay from your score) and **XP**.
   Replaying a cleared mission pays half (supply raids pay in full). Clearing a planet, securing a system
   and liberating a system each pay a bonus.
-- **Every level-up** (up to level 30) lets you learn a **special attack** (even levels) or a **passive
-  skill** (odd levels), picked from three offers. **Every third level** adds a bonus, taking turns: a stat
+- **Every odd level** (up to level 30) teaches a **passive skill**, picked from three offers; even levels
+  give nothing by themselves. Specials never come from levels: they come with hulls and markets. **Every third level** adds a bonus, taking turns: a stat
   point (+1 WEAPONS, SHIELDS or SPECIAL) at levels 3, 9, 15..., and an extra passive at 6, 12, 18....
   A new pilot also picks a starting passive: DRONE ESCORT, REINFORCED HULL or GROUND MISSILES.
 - **Every planet's market stocks different things**, from this list (prices rise with each purchase):
@@ -86,19 +86,19 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 
 - Some planets have a **shipyard** that sells a hull. Each hull has its own strengths, two guns per
   form (the **start** gun it comes with and an **upgrade** sold at markets, shown `start > upgrade`) and
-  **special bays** (A = ATTACK, D = DEFENSE, S = SUPPORT; see Special weapons):
+  two **specials** the same way (see Special weapons):
 
-| Hull | Fighter | Guardian | Battloid | Bays | Strength | Stats | Speed | Price | Sold at |
+| Hull | Fighter | Guardian | Battloid | Specials | Strength | Stats | Speed | Price | Sold at |
 |---|---|---|---|---|---|---|---|---|---|
-| VX-3 CHIMERA | Twin | Spread | Laser | A D S | Balanced | – | 100% | – | (starting ship) |
-| VX-5 MANTICORE | Twin > Vulcan | Spread > Wave | Laser > Grenade | A | Fighter ×1.4 | WPN+1 SPC+1 | 110% | 4,000 | Proxima B |
-| VX-6 GRIFFIN | Vulcan > Ripple | Wave > Bomb | Grenade > Charge | D A | Battloid ×1.4 | SHD+2 | 90% | 5,000 | Barnard B |
-| VX-9 HYDRA | Ripple > Gun pod | Bomb > Swivel | Charge > Rail | A D S | All ×1.1 | SHD+1 | 110% | 9,000 | Calico (Sirius), Neutrino (SN 1987A) |
-| VX-7 WYVERN | Gun pod > Tail vulcan | Swivel > Flak field | Rail > Hyper beam | S D | Guardian ×1.4 | SHD+1 SPC+1 | 100% | 12,000 | Imprint (Tarantula), Rosewater (M32) |
-| VX-8 BASILISK | Tail vulcan > Needle | Flak field > Diagonal | Hyper beam > Thunder sword | A | Fighter/Guardian ×1.2 | WPN+2 SHD−1 SPC+2 | 115% | 18,000 | Lumina (S Doradus) |
-| VX-10 BEHEMOTH | Needle > Rocket salvo | Diagonal > Mortar | Thunder sword > Canister | A D | Fighter ×1.1, Battloid ×1.2 | WPN+1 SHD+2 | 85% | 25,000 | Blister (N44 Bubble) |
-| VX-12 PHOENIX | Rocket salvo > Afterburner | Mortar > Orbit ring | Canister > Homing | A D S | All ×1.3 | +1 each | 115% | 30,000 | Relic (Mayall II), Aegir (M31 Nucleus) |
-| VX-11 SPHINX | Afterburner > Free Way | Orbit ring > Chain arc | Homing > Lightning lock | A S | Fighter ×1.2, Guardian ×1.1 | WPN+1 | 120% | 60,000 | Azure (NGC 206) |
+| VX-3 CHIMERA | Twin | Spread | Laser | Cluster bomb > Gene shield | Balanced | – | 100% | – | (starting ship) |
+| VX-5 MANTICORE | Twin > Vulcan | Spread > Wave | Laser > Grenade | Thunder laser > Mega crush | Fighter ×1.4 | WPN+1 SPC+1 | 110% | 4,000 | Proxima B |
+| VX-6 GRIFFIN | Vulcan > Ripple | Wave > Bomb | Grenade > Charge | Gene shield > Reflect field | Battloid ×1.4 | SHD+2 | 90% | 5,000 | Barnard B |
+| VX-9 HYDRA | Ripple > Gun pod | Bomb > Swivel | Charge > Rail | TET burst > Wingman | All ×1.1 | SHD+1 | 110% | 9,000 | Calico (Sirius), Neutrino (SN 1987A) |
+| VX-7 WYVERN | Gun pod > Tail vulcan | Swivel > Flak field | Rail > Hyper beam | Chrono field > Force pod | Guardian ×1.4 | SHD+1 SPC+1 | 100% | 12,000 | Imprint (Tarantula), Rosewater (M32) |
+| VX-8 BASILISK | Tail vulcan > Needle | Flak field > Diagonal | Hyper beam > Thunder sword | Mega crush > Gravity bomb | Fighter/Guardian ×1.2 | WPN+2 SHD−1 SPC+2 | 115% | 18,000 | Lumina (S Doradus) |
+| VX-10 BEHEMOTH | Needle > Rocket salvo | Diagonal > Mortar | Thunder sword > Canister | Cluster bomb > EMP blast | Fighter ×1.1, Battloid ×1.2 | WPN+1 SHD+2 | 85% | 25,000 | Blister (N44 Bubble) |
+| VX-12 PHOENIX | Rocket salvo > Afterburner | Mortar > Orbit ring | Canister > Homing | Hyper mode > Missile barrage | All ×1.3 | +1 each | 115% | 30,000 | Relic (Mayall II), Aegir (M31 Nucleus) |
+| VX-11 SPHINX | Afterburner > Free Way | Orbit ring > Chain arc | Homing > Lightning lock | Wingman > Missile barrage | Fighter ×1.2, Guardian ×1.1 | WPN+1 | 120% | 60,000 | Azure (NGC 206) |
 
 ### Guns
 
@@ -152,7 +152,7 @@ The rung sets where a gun is sold: rungs 0 to 3 in the Milky Way, 4 to 6 from th
 ### Ordnance
 
 Ordnance is bought by the rack at any market's ORDNANCE page and fired with the special button. In the
-hangar it sits in the SPECIAL row after your learned specials (`X<loaded>/<in stock>`). At launch the
+hangar it sits in the SPECIAL row after your hull's specials (`X<loaded>/<in stock>`). At launch the
 ship loads up to the ordnance's **carry** limit from stock; it isn't rearmed between legs. Whatever you
 don't fire comes back after a completed mission (`ORDNANCE BACK` in the debrief). **Fail or abort the
 mission and what you carried is lost**, as in U.N. Squadron; the rest of your stock is safe.
@@ -327,15 +327,12 @@ or tap) to go on. Held fire doesn't skip it.
 
 ## Special weapons
 
-You learn a special at every even level. After every briefing, the **hangar** screen fits your guns
+Every hull flies two specials (see the hull table): it comes with the first, and markets sell the second
+(a `SPC` row, priced like that hull's upgrade guns). A special you own works on any hull that lists it;
+THUNDER LASER, TET BURST, CHRONO FIELD, HYPER MODE and CLUSTER BOMB only come with a hull. After every
+briefing, the **hangar** screen fits your guns
 (one row per form), the special you'll carry (or ordnance), and the module you've fitted. Fire it with **C** (keyboard) or **B** (controller). Every takeoff rearms it
 with as many uses as your **Special** stat.
-
-Specials come in three **families**, and each hull has **bays** for some of them (see the hull table):
-ATTACK (Thunder laser, Cluster bomb, Mega crush, Gravity bomb, Missile barrage), DEFENSE (Gene shield,
-Reflect field, EMP blast, Chrono field) and SUPPORT (TET burst, Wingman, Force pod, Hyper mode). The
-hangar grays out a learned special your hull has no bay for, and level-ups offer specials your hulls can
-use three times as often. MISSILE BARRAGE flies only on the PHOENIX and the SPHINX, like the homing gun.
 
 | Weapon        | Effect |
 |---------------|--------|

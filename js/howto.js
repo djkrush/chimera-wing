@@ -134,17 +134,17 @@ Object.assign(Game, {
     list('WHICH GUNS ARE THERE?', GUN_IDS.map(id => { const G = GUNS[id]; return [G.name, FORMS[G.form].name + ', ' + (G.rung ? this.gunPrice(id) + ' CR. ' : 'ON THE CHIMERA. ') + G.desc.join(' '), C.aqua]; }),
       (ctx, x, y, hi, items) => this.howArtGun(ctx, GUN_IDS.find(id => GUNS[id].name === items[hi][0]), x, y + 60));
     list('WHAT CAN EACH HULL CARRY?', HULLS.map(h => [h.name, h.fit.map((f, i) => FORMS[i].short + ' ' + f.filter(g => g).map(g => GUNS[g].short).join('>')).join('. ') +
-      '. BAYS: ' + h.bays.join(' ') + '.', C.aqua]),
+      '. SPECIAL ' + h.sp.map(id => SPECIALS[SPECIAL_IDX[id]].short).join('>') + '.', C.aqua]),
       (ctx, x, y, hi, items) => {
         const h = HULLS.findIndex(q => q.name === items[hi][0]);
         for (let f = 0; f < 3; f++) this.drawShip(ctx, f, x - 44 + f * 44, y - 30, 0, true, false, h);
-        NES.text(ctx, 'SPECIAL BAYS', x, y + 2, C.gray, { align: 'center' });
-        HULLS[h].bays.forEach((F, k) => NES.text(ctx, F, x, y + 14 + k * 10, C.lime, { align: 'center' }));
+        NES.text(ctx, 'SPECIALS', x, y + 2, C.gray, { align: 'center' });
+        HULLS[h].sp.forEach((id, k) => { const S = SPECIALS[SPECIAL_IDX[id]]; NES.text(ctx, S.name, x, y + 14 + k * 10, k ? C.lime : S.color, { align: 'center' }); });
       });
 
     topic('SPECIAL WEAPONS');
     page('WHAT ARE SPECIAL WEAPONS?', [
-      'BIG ONE-SHOT ATTACKS. YOU LEARN ONE AT EVERY EVEN LEVEL AND CARRY ONE PER MISSION, PICKED IN THE HANGAR.',
+      'BIG ONE-SHOT ATTACKS. EACH HULL FLIES TWO: ONE COMES WITH IT, MARKETS SELL THE OTHER. PICK ONE IN THE HANGAR.',
       'FIRE IT WITH B (OR C). YOUR SPECIAL STAT IS HOW MANY USES YOU GET, REFILLED AT EVERY TAKEOFF.'],
     (ctx, x, y) => {
       const k = (this.t / 30 | 0) % SPECIALS.length;
@@ -153,16 +153,10 @@ Object.assign(Game, {
       NES.draw(ctx, SPR.specialIcons[k], x - 48 + (k % 4) * 32, y - 60 + (k >> 2) * 26);
       NES.text(ctx, SPECIALS[k].name, x, y + 60, SPECIALS[k].color, { align: 'center' });
     });
-    page('WHAT ARE SPECIAL BAYS?', [
-      'SPECIALS COME IN THREE FAMILIES: ATTACK, DEFENSE AND SUPPORT. EACH HULL HAS BAYS FOR SOME OF THEM.',
-      'THE HANGAR GRAYS OUT A SPECIAL YOUR HULL HAS NO BAY FOR. LEVEL-UPS OFFER THE ONES YOUR HULLS CAN USE MORE OFTEN.',
-      'MISSILE BARRAGE FLIES ONLY ON THE PHOENIX AND THE SPHINX.'],
-    (ctx, x, y) => ['ATTACK', 'DEFENSE', 'SUPPORT'].forEach((F, r) => {
-      NES.text(ctx, F, x, y - 74 + r * 46, C.white, { align: 'center' });
-      const ids = SPECIALS.map((s, i) => i).filter(i => SPECIALS[i].family === F);
-      ids.forEach((i, k) => NES.draw(ctx, SPR.specialIcons[i], x - (ids.length - 1) * 13 + k * 26, y - 54 + r * 46));
-    }));
-    list('WHICH SPECIALS ARE THERE?', SPECIALS.map(s => [s.name, s.family + '. ' + s.desc.join(' '), s.color]),
+    list('WHICH SPECIALS ARE THERE?', SPECIALS.map(s => {
+      const on = k => HULLS.filter(h => h.sp[k] === s.id).map(h => h.name.split(' ')[1]).join(', ');
+      return [s.name, s.desc.join(' ') + ' START: ' + (on(0) || 'NONE') + '.' + (on(1) ? ' BUY: ' + on(1) + '.' : ''), s.color];
+    }),
       (ctx, x, y, hi, items) => this.howArtIcon(ctx, SPECIALS.findIndex(s => s.name === items[hi][0]), x, y));
 
     topic('PASSIVE SKILLS');
@@ -263,7 +257,7 @@ Object.assign(Game, {
 
     topic('LEVELS AND CREDITS');
     page('HOW DO I LEVEL UP?', [
-      'MISSIONS PAY XP. EVERY LEVEL, UP TO ' + LEVELS.length + ', TEACHES A SPECIAL (EVEN LEVELS) OR A PASSIVE SKILL (ODD LEVELS).',
+      'MISSIONS PAY XP. EVERY ODD LEVEL, UP TO ' + LEVELS.length + ', TEACHES A PASSIVE SKILL. SPECIALS COME WITH HULLS AND MARKETS.',
       'EVERY THIRD LEVEL ADDS A BONUS: A STAT POINT, THEN AN EXTRA PASSIVE, TAKING TURNS. EACH TIME YOU PICK ONE OF THREE OFFERS.'],
     (ctx, x, y) => {
       const f = (this.t % 180) / 150;
