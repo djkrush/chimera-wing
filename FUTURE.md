@@ -566,6 +566,10 @@ Candidates only: each needs an interview before it is planned (see the M5 spec).
     ground fortresses. Update CLAUDE.md, the README and the `bosses.js` header with it.
   - Proposed as M5's first step: multi-section and part-reactive bosses fit a fortress well (walls that
     crumble as their guns fall). Confirm in the M5 interview.
+  - The side bosses should also be very long and require multiple passes like the vertical bosses. This
+    is consistent with ground bosses in UN Squadron.
+  - It is ok for vertical and side bosses to take several passes to complete. Three passes should be an
+    easy boss.
 
 - **Parts that change the fight (Darius Twin, Strikers 1945).** Darius Twin's squid shows its weak point
   when one tentacle is destroyed, but turns frantic if both are; its lobster stops firing while its claws
