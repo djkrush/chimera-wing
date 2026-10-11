@@ -74,7 +74,7 @@ Object.assign(Game, {
     this.carrier = side
       ? { side, left: 120 - CAR.touchX + v * lead, top: 116 - CAR.deck, d: 0, v, lift: 1, ship: false, touched: false }
       : { side, left: CX - (CAR.tw >> 1), top: 150 - CAR.touchY - v * lead, d: 0, v, lift: 1, ship: false, touched: false };
-    this.eBul = []; this.laser = null; this.wingT = 0;
+    this.eBul = []; this.enemies = []; this.laser = null; this.wingT = 0;
     p.morphT = 0; p.invuln = 0; p.shieldT = 0;
     this.landedT = 0;
     this.setState('landing');

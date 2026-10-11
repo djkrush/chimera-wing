@@ -240,6 +240,8 @@ const Game = {
     this.waveI = 0;
     this.squad = 0;                                        // squadrons flown so far in a vertical stage
     this.squads = this.stage < 4 ? 2 : this.stage < 10 ? 3 : 4;
+    this.traffic = type === 'normal' ? this.buildTraffic(this.stage, this.squads) : null;   // traffic.js
+    this.inter = null;
     this.challengeTotal = this.waves.reduce((n, w) => n + w.list.length, 0);
     this.formationReady = false;
     this.formation = { t: 0, ox: 0, spread: 1, bt: 0 };
@@ -525,7 +527,7 @@ const Game = {
     if (!slow) {
       this.updateFormation();
       this.updateSpawns();
-      if (this.isSide) this.updateSide();
+      if (this.isSide) this.updateSide(); else this.trafficTick();   // traffic.js
     }
     this.updatePlayer(true);
     this.updatePassives();   // skills.js
@@ -547,6 +549,7 @@ const Game = {
     this.stateT++;
     this.updatePlayer(true);
     this.updateModule();
+    this.updateEnemies();   // leftover traffic breaks off and flies home
     this.updateBullets();
     this.updateSpecial();
     this.updatePickups();
@@ -578,8 +581,17 @@ const Game = {
       this.setState('clear');
       return;
     }
-    if (this.waveI < this.waves.length || this.enemies.length) return;
-    if (this.stageType === 'normal' && ++this.squad < this.squads) { this.nextSquadron(); return; }
+    if (this.waveI < this.waves.length || this.enemies.some(e => !e.transit)) return;   // traffic doesn't hold a leg up
+    if (this.stageType === 'normal' && this.squad + 1 < this.squads) {
+      // Intermission: traffic keeps coming (and a heavy, if one arrived) before the next squadron.
+      if (!this.inter) this.startIntermission();
+      if (this.inter.t > 0) this.inter.t--;
+      if (this.inter.t > 0 || this.enemies.some(e => e.type === 'heavy')) return;
+      this.inter = null;
+      this.squad++;
+      this.nextSquadron();
+      return;
+    }
     this.nextAdapt = this.computeAdapt();
     if (this.stageType === 'challenge') {
       const perfect = this.stageHits >= this.challengeTotal;
@@ -598,7 +610,7 @@ const Game = {
   // form scored most of the kills, the new squadron resists it.
   nextSquadron() {
     this.waves = buildNormalWaves(this.squad);
-    this.waves[0].wait = 100;
+    this.waves[0].wait = 30;   // the intermission was the pause
     this.waveI = 0;
     this.formationReady = false;
     this.formation = { t: 0, ox: 0, spread: 1, bt: 0 };
@@ -737,6 +749,7 @@ const Game = {
         case 'beamgo': this.updateBeamGo(e); break;
         case 'beam': this.updateBeam(e); break;
         case 'side': this.updateSideEnemy(e); break;
+        case 'traffic': this.updateTraffic(e); break;   // traffic.js
       }
       const moving = Math.abs(e.vx) + Math.abs(e.vy) > 0.05;
       const target = e.face !== undefined ? e.face
@@ -853,9 +866,9 @@ const Game = {
     this.formationFire();
     if (this.stageType !== 'normal' || !this.formationReady || !this.player.alive) return;
     if (--this.attackCd > 0) return;
-    const pool = this.enemies.filter(e => e.state === 'form');
-    const active = this.enemies.length - pool.length;
-    const few = this.enemies.length <= 6;
+    const pool = this.enemies.filter(e => e.state === 'form'), squad = this.enemies.filter(e => !e.transit);
+    const active = squad.length - pool.length;   // divers out now (traffic doesn't count)
+    const few = squad.length <= 6;
     this.attackCd = few ? randi(20, 40)
       : randi(Math.max(35, 110 - this.stage * 6), Math.max(70, 170 - this.stage * 8));
     const maxDivers = few ? 6 : Math.min(2 + (this.stage >> 1), 7);
@@ -883,7 +896,7 @@ const Game = {
   // A plane's shot: bombers drop theirs straight back, everything else aims at you. Each bullet spends ammo.
   enemyFire(e, k = e.type === 'bomber' ? 'drop' : 'aim', n = e.acetyl ? 2 : 1, gap = 0.3) {
     const p = this.player;
-    if (!p.alive || this.empT > 0 || e.cargo) return;   // convoy cargo tanks are unarmed
+    if (!p.alive || this.empT > 0 || e.cargo || this.state !== 'play') return;   // convoy cargo tanks are unarmed; nobody fires once a leg is over
     if (!this.eBulRoom(k) || !(e.ammo === undefined || e.ammo > 0)) return;
     const sp = Math.min(2 + this.stage * 0.08, 3.4);
     let a = Math.atan2(p.y - e.y, p.x - e.x);
