@@ -1,6 +1,6 @@
 'use strict';
-// Special weapons. Each hull flies two (HULLS[h].sp, pilots.js): it comes with the first and markets sell
-// the second (spec:<id> in MARKET_POOL). Owned ones are in camp.specs; the hangar fits one before each
+// Special weapons. Each hull flies two (HULLS[h].sp, pilots.js): it comes with the first and every
+// starbase sells the second (the market's SPECIALS page, starbase.js). Owned ones are in camp.specs; the hangar fits one before each
 // mission. Every takeoff rearms it with as many uses as the SPECIAL stat (pilots.js).
 // The later ones come from the classics: Macross's missile swarms (BARRAGE), R-Type's Force (FORCE
 // POD), DoDonPachi's hyper mode (HYPER), and the bullet-cancelling and time-slowing bombs of many
@@ -96,7 +96,7 @@ Object.assign(Game, {
     const c = this.camp, r = this.hangarRowIds()[this.hangarRow];
     if (r === 3) {
       const n = this.specialOptions().length, up = HULLS[c.hull].sp[1];
-      if (n < 2) { Sound.sfx('denied'); this.toast(c.specs.includes(up) ? 'NOTHING ELSE TO FIT' : 'BUY ' + SPECIALS[SPECIAL_IDX[up]].name + ' AT A MARKET'); return; }
+      if (n < 2) { Sound.sfx('denied'); this.toast(c.specs.includes(up) ? 'NOTHING ELSE TO FIT' : 'BUY ' + SPECIALS[SPECIAL_IDX[up]].name + ' AT A STARBASE'); return; }
       this.hangarSel = (this.hangarSel + dir + n) % n;
     } else if (r === 4) {
       const list = this.moduleOptions(), i = list.indexOf(this.fittedModule() ? c.mod : null);
@@ -455,7 +455,7 @@ Object.assign(Game, {
       lines = NES.wrap(ORD_BY_ID[pick.ord].desc, 26).slice(0, 2); extra = 'UNUSED ONES COME BACK';
     } else if (row === 3) {
       const up = HULLS[this.camp.hull].sp[1], buy = !this.camp.specs.includes(up);
-      lines = SPECIALS[pick.idx].desc; extra = buy ? 'BUY ' + SPECIALS[SPECIAL_IDX[up]].name + ' AT MARKETS' : 'FIRE IT WITH: C KEY / PAD B';
+      lines = SPECIALS[pick.idx].desc; extra = buy ? 'BUY ' + SPECIALS[SPECIAL_IDX[up]].name + ' AT A STARBASE' : 'FIRE IT WITH: C KEY / PAD B';
       if (buy) col = C.gray;
     } else {
       lines = M ? NES.wrap(M.desc, 26).slice(0, 2) : ['NO MODULE FITTED.']; extra = 'BUY MODULES AT MARKETS';

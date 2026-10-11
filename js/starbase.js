@@ -79,6 +79,7 @@ Object.assign(Game, {
           info: 'OWN ' + this.ordStock(o.id) + ', CARRY ' + this.ordCarry(o.id) + '. ' + o.uses + ' PER RACK. ' + (ok ? o.desc : 'NOT FOR THIS HULL.') };
       }), { label: 'BACK', act: () => this.basePage('shop') }];
     }
+    if (U.page === 'specials') return [...SPECIAL_SHOP.map(id => this.specialRow(id)), { label: 'BACK', act: () => this.basePage('shop') }];
     if (U.page === 'levels') {   // every gun you own, by form and rung
       const own = GUN_IDS.filter(id => c.guns.includes(id)).sort((a, b) => GUNS[a].form - GUNS[b].form || GUNS[a].rung - GUNS[b].rung);
       return [...own.map(id => this.gunLevelRow(id)), { label: 'BACK', act: () => this.basePage('shop') }];
@@ -86,9 +87,9 @@ Object.assign(Game, {
     if (U.page === 'shop') {
       const rows = [{ label: 'ORDNANCE', right: '>', col: C.orange, act: () => this.basePage('ord'), info: 'MISSILES, BOMBS AND SHIELD CELLS, BY THE RACK.' },
         { label: 'GUN LEVELS', right: '>', col: C.orange, act: () => this.basePage('levels'), info: 'LEVEL UP THE GUNS YOU OWN. EVERY STARBASE SELLS LEVELS.' },
+        { label: 'SPECIALS', right: '>', col: C.orange, act: () => this.basePage('specials'), info: 'EACH HULL CAN BUY A SECOND SPECIAL. EVERY STARBASE SELLS THEM.' },
         ...P.market.map(key => {
           if (key.startsWith('gun:')) return this.gunRow(key.slice(4));
-          if (key.startsWith('spec:')) return this.specialRow(key.slice(5));
           if (key.startsWith('mod:')) return this.moduleRow(key.slice(4));
           const u = UPGRADES[key], n = c.up[this.upKey(key)] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
           const max = n >= u.max || (u.hull && this.statOf(key) >= STAT_CAP[key]);
@@ -129,6 +130,8 @@ Object.assign(Game, {
   // ---- Guns at the market ----------------------------------------------------------------
   gunPrice(id) { return GUN_PRICE[GUNS[id].rung]; },
   specialPrice(id) { return GUN_PRICE[specialRung(id)]; },
+  // The galaxy a special is first sold in (like guns: rungs 0-3, 4-6, 7-8), or null once you're there.
+  specialGate(id) { const r = specialRung(id), g = r <= 3 ? 0 : r <= 6 ? 1 : 2; return this.galaxyDef().index >= g ? null : GALAXIES[g].name.split(' ')[0]; },
   // A special for sale: the hulls that buy it and start with it (owned in white), like a gun row.
   specialRow(id) {
     const S = SPECIALS[SPECIAL_IDX[id]], c = this.camp, txt = t => [t, C.aqua], ups = [], starts = [];
@@ -139,7 +142,8 @@ Object.assign(Game, {
     spans.push(txt('.'));
     const fits = c.hulls.some(h => HULLS[h].sp.includes(id));
     spans.push(fits ? txt(S.desc.join(' ')) : ['FOR A HULL YOU DONT OWN.', C.orange]);
-    return { ...this.partRow(S.name, this.specialPrice(id), c.specs.includes(id), spans, () => this.buySpecial(id)), tag: 'SPC', tagCol: C.gold };
+    const row = { ...this.partRow(S.name, this.specialPrice(id), c.specs.includes(id), spans, () => this.buySpecial(id)), tag: 'SPC', tagCol: C.gold }, gate = this.specialGate(id);
+    return gate && !c.specs.includes(id) ? { ...row, right: 'NEEDS ' + gate, col: C.gray } : row;
   },
   // Price of a gun's level n (the level it goes to); MAVERICK pays 25% less.
   gunLevelPrice(id, n) {
@@ -193,7 +197,7 @@ Object.assign(Game, {
     return (up[below] || 0) >= UPGRADES[below].max ? null : u.mk === 2 ? 'MK I' : 'MK II';
   },
 
-  marketShort(P) { return [...new Set(P.market.map(k => (k.startsWith('gun:') ? 'GUNS' : k.startsWith('spec:') ? 'SPCL' : k.startsWith('mod:') ? 'MODS' : UPGRADES[k].short)))].join(' '); },
+  marketShort(P) { return [...new Set(P.market.map(k => (k.startsWith('gun:') ? 'GUNS' : k.startsWith('mod:') ? 'MODS' : UPGRADES[k].short)))].join(' '); },
 
   basePage(page) {
     this.baseUI = { page, sel: 0 };
@@ -206,7 +210,7 @@ Object.assign(Game, {
     if (Input.just('up')) { U.sel = (U.sel + n - 1) % n; Sound.sfx('move'); }
     if (Input.just('down')) { U.sel = (U.sel + 1) % n; Sound.sfx('move'); }
     U.sel = Math.min(U.sel, n - 1);
-    if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage(U.page === 'ord' || U.page === 'levels' ? 'shop' : 'main'); return; }
+    if (U.page !== 'main' && (Input.just('back') || Input.just('special'))) { this.basePage(['ord', 'levels', 'specials'].includes(U.page) ? 'shop' : 'main'); return; }
     if (this.stateT > 10 && Input.just('fire')) this.baseAct();
   },
 
@@ -254,6 +258,7 @@ Object.assign(Game, {
   buySpecial(id) {
     const c = this.camp, S = SPECIALS[SPECIAL_IDX[id]], price = this.specialPrice(id);
     if (c.specs.includes(id)) { Sound.sfx('denied'); this.toast('FIT IT IN THE HANGAR'); return; }
+    if (this.specialGate(id)) { Sound.sfx('denied'); this.toast('SOLD FROM ' + this.specialGate(id) + ' ON'); return; }
     if (c.money < price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
     c.money -= price;
     c.specs.push(id);
@@ -480,7 +485,7 @@ Object.assign(Game, {
     NES.text(ctx, PILOTS[c.pilot].name, 246, 117, PILOTS[c.pilot].col, { align: 'right' });
     ctx.fillStyle = SNES.mix(S.col, C.black, 0.5); ctx.fillRect(7, 126, 242, 1);
     if (U.page === 'status') { this.drawStatus(ctx); return; }
-    const title = { main: S.base, missions: 'MISSIONS', shop: 'MARKET', ord: 'ORDNANCE', levels: 'GUN LEVELS', skills: 'SKILLS' }[U.page];
+    const title = { main: S.base, missions: 'MISSIONS', shop: 'MARKET', ord: 'ORDNANCE', levels: 'GUN LEVELS', specials: 'SPECIALS', skills: 'SKILLS' }[U.page];
     NES.text(ctx, title, 128, 130, C.gold, { align: 'center' });
     const top = this.listTop(items.length, U.sel, MENU_ROWS);
     items.slice(top, top + MENU_ROWS).forEach((it, j) => {

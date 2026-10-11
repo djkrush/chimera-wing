@@ -180,7 +180,8 @@ pods only on the PHOENIX and SPHINX, and a hull coming with its three start guns
 - **Level-ups:** odd levels teach a passive and even levels give nothing; the bonus every third level
   alternates a stat point (3, 9, 15...) and an extra passive (6, 12, 18...).
 - **Specials are tied to hulls, like guns** (replacing the special bays built in step 6). Each hull has a
-  start special and one bought at markets (priced like that hull's upgrade guns); levels never teach
+  start special and one bought on every starbase's SPECIALS page (priced and gated by galaxy like that
+  hull's upgrade guns); levels never teach
   them. Old saves drop the specials they had learned and keep their hulls' start specials. Pairs:
   CHIMERA cluster > gene shield, MANTICORE thunder laser > mega crush, GRIFFIN gene shield > reflect,
   HYDRA TET burst > wingman, WYVERN chrono > force pod, BASILISK mega crush > gravity bomb, BEHEMOTH

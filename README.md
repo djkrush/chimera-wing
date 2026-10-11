@@ -328,7 +328,8 @@ or tap) to go on. Held fire doesn't skip it.
 ## Special weapons
 
 Every hull flies two specials (see the hull table): it comes with the first, and markets sell the second
-(a `SPC` row, priced like that hull's upgrade guns). A special you own works on any hull that lists it;
+(every starbase's MARKET has a SPECIALS page; each costs like that hull's upgrade guns and, like them, is
+sold from the Milky Way, the Magellanic Cloud or Andromeda on). A special you own works on any hull that lists it;
 THUNDER LASER, TET BURST, CHRONO FIELD, HYPER MODE and CLUSTER BOMB only come with a hull. After every
 briefing, the **hangar** screen fits your guns
 (one row per form), the special you'll carry (or ordnance), and the module you've fitted. Fire it with **C** (keyboard) or **B** (controller). Every takeoff rearms it

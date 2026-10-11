@@ -216,7 +216,7 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
 - `SPECIALS` (in `specials.js`, `SPECIAL_IDX` maps id to index): special weapons, tied to hulls like guns.
   `HULLS[h].sp` = `[start, bought]`: buying a hull adds its start special to `camp.specs`, markets sell the
-  bought ones (`spec:<id>`, `SPECIAL_SHOP` and `specialRung` in `pilots.js`, `specialRow`/`buySpecial` in
+  bought ones on every market's SPECIALS page (`SPECIAL_SHOP` and `specialRung` in `pilots.js`, `specialRow`/`specialGate`/`buySpecial` in
   `starbase.js`), and `hullSpecials()` is what the hull can fly. Levels never teach specials. The hangar (`hangarRowIds()`:
   0-2 guns, 3 SPECIAL, 4 MODULE; `hangarRow` indexes that list, `hangarChange(dir)`, `tapHangar`) opens
   before every sortie. The SPECIAL row (`specialOptions()`) lists the hull's owned specials, then stocked ordnance;

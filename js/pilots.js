@@ -55,10 +55,10 @@ const HULLS = [
     desc: 'MISSILE CARRIER. LOCKS ON.' },
 ];
 
-// Specials markets sell: every hull's bought special. Each costs and is sold like the guns of the lowest
-// rung that buys it (starbase.js: specialPrice).
-const SPECIAL_SHOP = [...new Set(HULLS.map(h => h.sp[1]))];
+// Specials every starbase sells (its market's SPECIALS page): every hull's bought special, by rung. Each
+// costs like the guns of the lowest rung that buys it and needs that rung's galaxy (starbase.js).
 const specialRung = id => Math.min(...HULLS.filter(h => h.sp[1] === id).map(h => h.rung));
+const SPECIAL_SHOP = [...new Set(HULLS.map(h => h.sp[1]))].sort((a, b) => specialRung(a) - specialRung(b));
 
 Object.assign(Game, {
   pilot: 0, pilotSel: 0,
