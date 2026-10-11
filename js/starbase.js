@@ -163,7 +163,6 @@ Object.assign(Game, {
   },
   gunRow(id) {
     const G = GUNS[id], tag = { tag: FORMS[G.form].short, tagCol: FORM_TAG_COL[G.form] };
-    if (G.wip) return { label: G.name, right: 'SOON', col: C.gray, ...tag, info: this.gunInfo(id, 'COMING SOON.') };
     return { ...this.partRow(G.name, this.gunPrice(id), this.camp.guns.includes(id), this.gunInfo(id), () => this.buyGun(id)), ...tag };
   },
   moduleRow(id) {
@@ -228,7 +227,6 @@ Object.assign(Game, {
   buyGun(id) {
     const c = this.camp, G = GUNS[id];
     if (c.guns.includes(id)) { Sound.sfx('denied'); this.toast('FIT IT IN THE HANGAR'); return; }
-    if (G.wip) { Sound.sfx('denied'); return; }
     if (c.money < this.gunPrice(id)) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
     c.money -= this.gunPrice(id);
     c.guns.push(id);

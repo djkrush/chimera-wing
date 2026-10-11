@@ -80,10 +80,10 @@ Object.assign(Game, {
 
   // Guns form f can take: the hull's start gun and its upgrade, once owned (weapons.js: hullGuns).
   hangarGuns(f) { return this.hullGuns(this.camp.hull, f); },
-  // Why form f's gun can't change: no upgrade on this hull, not built yet, or not bought.
+  // Why form f's gun can't change: no upgrade on this hull, or it isn't bought yet.
   hangarLocked(f) {
     const up = HULLS[this.camp.hull].fit[f][1];
-    return !up ? 'THE CHIMERA HAS ONE GUN PER FORM' : GUNS[up].wip ? GUNS[up].short + ' IS COMING SOON' : 'BUY THE ' + GUNS[up].short + ' AT A MARKET';
+    return !up ? 'THE CHIMERA HAS ONE GUN PER FORM' : 'BUY THE ' + GUNS[up].short + ' AT A MARKET';
   },
 
   // Step the picked row's gun (or the special) by dir.
@@ -418,7 +418,7 @@ Object.assign(Game, {
         NES.text(ctx, G.name, 100, y, sel ? C.white : C.lgray);
         NES.text(ctx, g === st ? 'START' : 'UPGRADE', 22, y + 9, C.gray);
         const alt = !other ? ['NO UPGRADE', C.gray] : this.hangarGuns(r).includes(other) ? ['OR ' + GUNS[other].short, C.lime]
-          : [GUNS[other].wip ? GUNS[other].short + ' SOON' : 'BUY ' + GUNS[other].short, C.gray];
+          : ['BUY ' + GUNS[other].short, C.gray];
         NES.text(ctx, alt[0], 100, y + 9, alt[1]);
         NES.text(ctx, 'LV' + lv, 240, y + 9, lv >= 5 ? C.gold : C.aqua, { align: 'right' });
       } else if (r === 3) {   // a special (uses per leg) or ordnance (loaded now / in stock)
@@ -444,8 +444,8 @@ Object.assign(Game, {
     let lines, extra, col = C.lgray;
     if (row < 3) {
       const g = this.fittedGun(row), G = GUNS[g], lv = this.gunLevel(g);
-      lines = G.desc; extra = G.wip ? 'NOT BUILT YET: FIRES AS ' + GUNS[this.gunAct(g)].short : lv >= 5 ? 'MAX LEVEL' : 'LV' + (lv + 1) + ' AT MARKETS: ' + G.lv[lv - 1];
-      col = G.wip ? C.orange : lv >= 5 ? C.gold : C.lime;
+      lines = G.desc; extra = lv >= 5 ? 'MAX LEVEL' : 'LV' + (lv + 1) + ' AT MARKETS: ' + G.lv[lv - 1];
+      col = lv >= 5 ? C.gold : C.lime;
     } else if (row === 3 && pick.ord) {
       lines = NES.wrap(ORD_BY_ID[pick.ord].desc, 26).slice(0, 2); extra = 'UNUSED ONES COME BACK';
     } else if (row === 3) {

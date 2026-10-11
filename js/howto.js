@@ -122,7 +122,7 @@ Object.assign(Game, {
     page('HOW DO GUNS WORK?', [
       'EACH FORM OF A HULL TAKES TWO GUNS: THE ONE IT STARTS WITH AND AN UPGRADE SOLD AT MARKETS. A NEW HULL COMES WITH ITS START GUNS.',
       'THE HANGAR OPENS BEFORE EVERY MISSION: PICK ONE OF THE TWO FOR EACH FORM.'],
-    (ctx, x, y) => { const ids = GUN_IDS.filter(id => !GUNS[id].wip); this.howArtGun(ctx, ids[(this.t / 150 | 0) % ids.length], x, y + 60); });
+    (ctx, x, y) => this.howArtGun(ctx, GUN_IDS[(this.t / 150 | 0) % GUN_IDS.length], x, y + 60));
     page('HOW DO GUNS LEVEL UP?', [
       'GUN LEVELS ARE BOUGHT AT STARBASE MARKETS, UP TO LV5. A LEVEL COUNTS ON EVERY HULL THAT CARRIES THE GUN.',
       'EVERY LEVEL CHANGES THE SHOT. THE HANGAR SHOWS WHAT THE NEXT ONE DOES.'],

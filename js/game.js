@@ -1128,11 +1128,11 @@ const Game = {
     const b = { x: p.x + dx, y: p.y + dy, vx: bvx, vy: bvy, ...extra };
     if (b.hd !== undefined && this.isSide) b.hd += Math.PI / 2;
     this.pBul.push(b);
-    if (this.wingT > 0 && extra.form >= 0) {   // WINGMAN special: the drone copies every shot
+    if (this.wingT > 0 && extra.form >= 0 && !extra.noCopy) {   // WINGMAN special: the drone copies every shot
       const [wx, wy] = this.wingOffset();
       this.pBul.push({ ...b, x: b.x + wx, y: b.y + wy, hit: b.hit && [], copy: true });
     }
-    if (extra.form >= 0 && !extra.copy) this.moduleCopy(b);   // arsenal.js: option trail
+    if (extra.form >= 0 && !extra.copy && !extra.noCopy) this.moduleCopy(b);   // arsenal.js: option trail
     return b;
   },
 
@@ -1241,7 +1241,7 @@ const Game = {
   collide() {
     const p = this.player;
     for (const b of this.pBul) {
-      if (b.dead) continue;
+      if (b.dead || b.noHit) continue;   // lobbed shells, clouds, fires and blades hit in their own way (weapons.js)
       for (const e of this.enemies) {
         if (e.dead) continue;
         const hr = ENEMY[e.type].hit + (b.rad || 0);
@@ -1353,6 +1353,7 @@ const Game = {
     this.drawPickups(ctx);
     this.drawSpecialFx(ctx, 'under');
     for (const b of this.pBul) this.drawPlayerBullet(ctx, b);   // weapons.js
+    this.drawGunFx(ctx);
     this.drawEnemyBullets(ctx);
     // Invulnerable: see-through for the first two thirds, then blinking, so you can tell when it ends.
     if (p.alive && !p.hidden) {
