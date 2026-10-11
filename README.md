@@ -62,14 +62,15 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 - Every mission pays **credits** (mission pay plus combat pay from your score) and **XP**.
   Replaying a cleared mission pays half (supply raids pay in full). Clearing a planet, securing a system
   and liberating a system each pay a bonus.
-- **Every level-up** (up to level 30) lets you **train one stat** (+1 WEAPONS, SHIELDS or SPECIAL), then
-  learn a **special attack** (even levels) or a **passive skill** (odd levels), picked from three offers.
+- **Every level-up** (up to level 30) lets you learn a **special attack** (even levels) or a **passive
+  skill** (odd levels), picked from three offers. **Every third level** also trains one stat (+1 WEAPONS,
+  SHIELDS or SPECIAL).
   A new pilot also picks a starting passive: DRONE ESCORT, REINFORCED HULL or GROUND MISSILES.
 - **Every planet's market stocks different things**, from this list (prices rise with each purchase):
 
 | Upgrade | Effect |
 |---|---|
-| WEAPONS / SHIELDS / SPECIAL +1 | Raises the stat (max 16 counting everything) |
+| HULL WEAPONS / SHIELDS / SPECIAL +1 | Raises the stat on the hull you fly, 1,500 then 3,000 credits. Two of each per hull; another hull needs its own |
 | ENGINE TUNE | +5% speed in every form (4 levels) |
 | FIGHTER / GUARDIAN / BATTLOID GUNS | +20% damage in that form (3 levels each) |
 | GUN COOLERS | Every gun fires 10% faster (3 levels) |
@@ -89,12 +90,12 @@ Centauri, drone swarms at Barnard's Star, armored planes and tanks further out).
 | Hull | Fighter | Guardian | Battloid | Mounts | Strength | Stats | Speed | Sold at |
 |---|---|---|---|---|---|---|---|---|
 | VX-3 CHIMERA | Twin cannon | 3-way spread | Homing missiles | L L H | Balanced | – | 100% | (starting ship) |
-| VX-5 MANTICORE | Vulcan | 3-way spread | Homing missiles | L L L | Fighter ×1.4 | WPN+1 SHD−1 | 110% | Proxima B |
-| VX-6 GRIFFIN | Piercing laser | Bomb shot | Vulcan | H H H | Battloid ×1.4 | SHD+3 SPC−1 | 90% | Barnard B |
-| VX-9 HYDRA | Helix wave | Ripple laser | Homing missiles | L H H | All ×1.1 | +1 each | 110% | Calico (Sirius), Neutrino (SN 1987A) |
+| VX-5 MANTICORE | Vulcan | 3-way spread | Homing missiles | L L L | Fighter ×1.4 | WPN+1 SPC+1 | 110% | Proxima B |
+| VX-6 GRIFFIN | Piercing laser | Bomb shot | Vulcan | H H H | Battloid ×1.4 | SHD+2 | 90% | Barnard B |
+| VX-9 HYDRA | Helix wave | Ripple laser | Homing missiles | L H H | All ×1.1 | SHD+1 | 110% | Calico (Sirius), Neutrino (SN 1987A) |
 | VX-7 WYVERN | Twin cannon | Ripple laser | Bomb shot | L H H | Guardian ×1.4 | SHD+1 SPC+1 | 100% | Imprint (Tarantula), Rosewater (M32) |
-| VX-8 BASILISK | Piercing laser | Helix wave | Homing missiles | H L H | Fighter/Guardian ×1.2 | WPN+3 SHD−2 | 115% | Lumina (S Doradus), Azure (NGC 206) |
-| VX-12 PHOENIX | Piercing laser | Ripple laser | Homing missiles | H H H | All ×1.3 | +2 each | 115% | Relic (Mayall II), Aegir (M31 Nucleus) |
+| VX-8 BASILISK | Piercing laser | Helix wave | Homing missiles | H L H | Fighter/Guardian ×1.2 | WPN+2 SHD−1 SPC+2 | 115% | Lumina (S Doradus), Azure (NGC 206) |
+| VX-12 PHOENIX | Piercing laser | Ripple laser | Homing missiles | H H H | All ×1.3 | +1 each | 115% | Relic (Mayall II), Aegir (M31 Nucleus) |
 
 ### Guns
 
@@ -212,10 +213,11 @@ until you press one of its buttons, so press one after plugging it in.
 
 ## Pilots
 
-A new game starts by picking who flies the Chimera. Each pilot has three stats (hulls, market
-upgrades and level-up training add to them, up to 16):
+A new game starts by picking who flies the Chimera. Each pilot has three stats. Your hull, its market
+upgrades and a trained point every third level add to them, up to 8 weapons, 8 shields and 5 special:
 
-- **Weapons** sets how hard your shots hit (4 = normal damage, 8 = double, 16 = four times).
+- **Weapons** sets how hard your shots hit: (1 + weapons) / 4 of a gun's damage, so 1 = half, 3 = full,
+  8 = 2.25 times. At weapons 1 a MiG takes two hits.
 - **Shields** is how many hits the ship can take. When they run out the HUD flashes
   **DANGER**, and one more hit destroys the ship and fails the mission. Shields are repaired at
   every takeoff, and score bonuses (20,000, then every 70,000) repair one.
@@ -223,9 +225,9 @@ upgrades and level-up training add to them, up to 16):
 
 | Pilot    |               | Weapons | Shields | Special |
 |----------|---------------|---------|---------|---------|
-| MAVERICK | Hotshot ace   | 8       | 4       | 3       |
-| TURTLE   | Iron wall     | 4       | 8       | 3       |
-| DRAC     | Alien tactician | 4     | 4       | 6       |
+| MAVERICK | Hotshot ace   | 2       | 2       | 1       |
+| TURTLE   | Iron wall     | 1       | 3       | 1       |
+| DRAC     | Alien tactician | 1     | 2       | 2       |
 
 ## The three forms
 

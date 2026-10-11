@@ -1,19 +1,19 @@
 'use strict';
-// Pilots and ship hulls. The player picks a pilot for a new campaign. Each pilot has three stats (max 8):
-//   weapons: shot strength. 4 is normal damage and 8 is double.
+// Pilots and ship hulls. The player picks a pilot for a new campaign. Each pilot has three stats:
+//   weapons: shot strength, (1 + weapons) / 4 times a gun's damage: 1 is half, 3 is the guns' own damage.
 //   shields: hits the ship can take. With none left, the next hit destroys it and ends the game.
-//   special: uses of the hangar's special weapon in each mission.
+//   special: uses of the hangar's special weapon in each leg.
 
 const PILOTS = [
-  { name: 'MAVERICK', tag: 'HOTSHOT ACE', col: C.red, weapons: 8, shields: 4, special: 3,
-    perk: 'SHOTS HIT TWICE AS HARD.' },
-  { name: 'TURTLE', tag: 'IRON WALL', col: C.lime, weapons: 4, shields: 8, special: 3,
-    perk: '8 HITS BEFORE DANGER.' },
-  { name: 'DRAC', tag: 'ALIEN TACTICIAN', col: C.magenta, weapons: 4, shields: 4, special: 6,
-    perk: 'DOUBLE SPECIAL AMMO.' },
+  { name: 'MAVERICK', tag: 'HOTSHOT ACE', col: C.red, weapons: 2, shields: 2, special: 1,
+    perk: 'SHOTS HIT HARDEST.' },
+  { name: 'TURTLE', tag: 'IRON WALL', col: C.lime, weapons: 1, shields: 3, special: 1,
+    perk: 'TAKES THE MOST HITS.' },
+  { name: 'DRAC', tag: 'ALIEN TACTICIAN', col: C.magenta, weapons: 1, shields: 2, special: 2,
+    perk: 'TWO SPECIALS EACH LEG.' },
 ];
-const STAT_MAX = 8;
-const STAT_CAP = 16;   // pilot + hull + starbase upgrades + level-up training never go past this
+const STAT_MAX = 4;   // pips on the pilot cards
+const STAT_CAP = { weapons: 8, shields: 8, special: 5 };   // pilot + hull + hull upgrades + training never go past these
 
 // Ship hulls. The pilot flies one hull at a time. Its modifiers add to the pilot's stats, and speed
 // scales every form. guns = the hull's default fit, one gun per form (weapons.js: GUNS); mounts = the
@@ -23,17 +23,17 @@ const STAT_CAP = 16;   // pilot + hull + starbase upgrades + level-up training n
 const HULLS = [
   { name: 'VX-3 CHIMERA', weapons: 0, shields: 0, special: 0, speed: 1, price: 0,
     guns: ['twin', 'spread', 'homing'], form: [1, 1, 1], mounts: ['light', 'light', 'heavy'], desc: 'THE ORIGINAL. BALANCED.' },
-  { name: 'VX-5 MANTICORE', weapons: 1, shields: -1, special: 0, speed: 1.1, price: 4000,
+  { name: 'VX-5 MANTICORE', weapons: 1, shields: 0, special: 1, speed: 1.1, price: 4000,
     guns: ['vulcan', 'spread', 'homing'], form: [1.4, 1, 0.8], mounts: ['light', 'light', 'light'], desc: 'STRIKER. DEADLIEST AS A FIGHTER.' },
-  { name: 'VX-6 GRIFFIN', weapons: 0, shields: 3, special: -1, speed: 0.9, price: 5000,
+  { name: 'VX-6 GRIFFIN', weapons: 0, shields: 2, special: 0, speed: 0.9, price: 5000,
     guns: ['laser', 'bomb', 'vulcan'], form: [0.9, 1, 1.4], mounts: ['heavy', 'heavy', 'heavy'], desc: 'HEAVY ARMOR. BEST AS A BATTLOID.' },
-  { name: 'VX-9 HYDRA', weapons: 1, shields: 1, special: 1, speed: 1.1, price: 9000,
+  { name: 'VX-9 HYDRA', weapons: 0, shields: 1, special: 0, speed: 1.1, price: 9000,
     guns: ['wave', 'ripple', 'homing'], form: [1.1, 1.1, 1.1], mounts: ['light', 'heavy', 'heavy'], desc: 'GOOD AT EVERYTHING.' },
   { name: 'VX-7 WYVERN', weapons: 0, shields: 1, special: 1, speed: 1, price: 12000,
     guns: ['twin', 'ripple', 'bomb'], form: [0.9, 1.4, 1], mounts: ['light', 'heavy', 'heavy'], desc: 'BEST AS A GUARDIAN.' },
-  { name: 'VX-8 BASILISK', weapons: 3, shields: -2, special: 0, speed: 1.15, price: 18000,
+  { name: 'VX-8 BASILISK', weapons: 2, shields: -1, special: 2, speed: 1.15, price: 18000,
     guns: ['laser', 'wave', 'homing'], form: [1.2, 1.2, 1], mounts: ['heavy', 'light', 'heavy'], desc: 'GLASS CANNON. HITS HARD, BREAKS EASY.' },
-  { name: 'VX-12 PHOENIX', weapons: 2, shields: 2, special: 2, speed: 1.15, price: 30000,
+  { name: 'VX-12 PHOENIX', weapons: 1, shields: 1, special: 1, speed: 1.15, price: 30000,
     guns: ['laser', 'ripple', 'homing'], form: [1.3, 1.3, 1.3], mounts: ['heavy', 'heavy', 'heavy'], desc: 'THE LAST WORD IN CHIMERAS.' },
 ];
 
@@ -42,17 +42,18 @@ Object.assign(Game, {
 
   pilotDef() { return PILOTS[this.pilot]; },
   hullDef() { return HULLS[this.camp ? this.camp.hull : 0]; },
-  // Effective stat: pilot + hull + upgrades bought at starbases + points trained at level-ups.
+  // Effective stat: pilot + hull + the hull's market upgrades (starbase.js: up['key@hull']) + points
+  // trained at level-ups.
   statOf(key) {
-    const c = this.camp, extra = c ? (c.up[key] || 0) + (c.train[key] || 0) : 0;
-    return clamp(this.pilotDef()[key] + this.hullDef()[key] + extra, 1, STAT_CAP);
+    const c = this.camp, extra = c ? (c.train[key] || 0) + (c.up[key + '@' + c.hull] || 0) : 0;
+    return clamp(this.pilotDef()[key] + this.hullDef()[key] + extra, 1, STAT_CAP[key]);
   },
   // Levels bought, Mk II and Mk III included (starbase.js), so every effect picks them up.
   upLevel(key) { const u = this.camp ? this.camp.up : {}; return (u[key] || 0) + (u[key + '2'] || 0) + (u[key + '3'] || 0); },
   hasPassive(id) { return !!this.camp && this.camp.passives.includes(id); },
   // Shot damage for a form: the weapons stat, the hull's strength in that form and the form's gun upgrade.
   gunPower(form = this.player.form) {
-    return this.statOf('weapons') / 4 * this.hullDef().form[form] * (1 + 0.2 * this.upLevel(['ftr', 'grd', 'btl'][form]));
+    return (1 + this.statOf('weapons')) / 4 * this.hullDef().form[form] * (1 + 0.2 * this.upLevel(['ftr', 'grd', 'btl'][form]));
   },
   speedMul() { return this.hullDef().speed * (1 + 0.05 * this.upLevel('engine')); },
   maxShields() { return this.statOf('shields') + (this.hasPassive('hull') ? 2 : 0); },

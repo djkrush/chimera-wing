@@ -36,14 +36,15 @@ Object.assign(Game, {
     while (c.level < LEVELS.length && c.xp >= LEVELS[c.level]) {
       c.level++;
       levels.push(c.level);
-      c.pending.push('stat', c.level % 2 ? 'passive' : 'special');
+      if (c.level % 3 === 0) c.pending.push('stat');   // a stat point every third level
+      c.pending.push(c.level % 2 ? 'passive' : 'special');
     }
     return levels;
   },
 
   learnOptions(kind) {
     const c = this.camp, shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
-    if (kind === 'stat') return STAT_ROWS.map(r => r[0]).filter(k => this.statOf(k) < STAT_CAP);
+    if (kind === 'stat') return STAT_ROWS.map(r => r[0]).filter(k => this.statOf(k) < STAT_CAP[k]);
     if (kind === 'starter') return STARTER_PASSIVES.filter(id => !c.passives.includes(id));
     if (kind === 'special') return shuffle(SPECIALS.map((s, i) => i).filter(i => !c.learned.includes(i))).slice(0, 3);
     return shuffle(PASSIVES.map(s => s.id).filter(id => !c.passives.includes(id))).slice(0, 3);

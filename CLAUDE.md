@@ -88,7 +88,7 @@ base: STAR MAP → map (zoom levels) → travel → base      gameover / ABORT M
 - **Star map** (`starmap.js`): `mapUI = { level: 0 universe | 1 galaxy | 2 system, gal, sys, sel, zoom }`.
   `mapItems(level)` lists what can be picked; `tapMap` handles clicks and taps; travel plays on the
   smallest map level that shows both ends.
-- **Level-ups** (`skills.js`): `gainLevels()` pushes `'stat'` and `'special'`/`'passive'` into
+- **Level-ups** (`skills.js`): `gainLevels()` pushes `'special'`/`'passive'` (and `'stat'` every third level) into
   `camp.pending`; `openLearn()` shows them one by one (three random offers each) and ends in
   `leaveDebrief()`.
 
@@ -200,7 +200,8 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
   `fireWeapon()`; it, `updateBullets()`, `steerBullet()` and `drawPlayerBullet()` live in `weapons.js`;
   `collide()` calls `bulletHits(b, e)` there (piercing shots carry `pierce` and a `hit` list; wide ones a
   `rad`; `bulletEnd(b)` bursts bombs, clusters and charge balls).
-- `ENEMY`: enemy types (hp, points `[formation, diving]` (gold doubles them), hit radius, `ammo`). A new enemy type needs an entry
+- `ENEMY`: enemy types (hp, points `[formation, diving]` (gold doubles them), hit radius, `ammo`). Planes get their hp
+  from `enemyHp(base)` (`hpMul()` times `ENEMY_HP`, the one tuning knob, in half points). A new enemy type needs an entry
   here, top-down **and** side-profile art in `ENEMY_DEFS` (`sprites.js`; each is baked `normal`, `acetyl`, `red`, `dmg` and `white`), and an hp in `spawnSideEnemy`.
 - `VOSS`: Dr. Voss's in-play radio lines. The briefings and stage titles are in `story.js`.
 - `SPECIALS` (in `specials.js`): special weapons, learned at even levels. The hangar (`hangarRowIds()`:
@@ -221,8 +222,9 @@ like open-world zones. `hpMul()` makes enemies and bosses tougher in later galax
 - `PASSIVES` (in `skills.js`): always-on skills, learned at odd levels (`hasPassive(id)`). In-flight
   ones run in `updatePassives()`; others hook in where they act (`takeHit`, `silenceForm`, `battMax`,
   `maxShields`, `specialAmmo`, rewards, `tet.js`). Per-leg flags reset in `resetPassives()`.
-- `PILOTS` and `HULLS` (in `pilots.js`): `statOf(key)` = pilot + hull + `camp.up` upgrades +
-  `camp.train` (level-up points), capped at `STAT_CAP` (16). `gunPower(form)` = `weapons / 4` times the
+- `PILOTS` and `HULLS` (in `pilots.js`): `statOf(key)` = pilot + hull + the hull's market upgrades
+  (`camp.up['key@hull']`, `upKey()` in `starbase.js`) + `camp.train` (a point every third level), capped per
+  stat at `STAT_CAP` (8 / 8 / 5). `gunPower(form)` = `(1 + weapons) / 4` times the
   hull's form multiplier and the form's gun upgrade; `speedMul()` = hull speed and engine upgrades.
   There are no lives: `Game.shields` soaks hits through `takeHit()`, one more hit at 0 fails the
   mission, and shields refill to `maxShields()` in `setupStage`.

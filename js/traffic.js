@@ -68,7 +68,7 @@ Object.assign(Game, {
   // A traffic plane: an ordinary enemy with transit set, its own beh and a fire budget.
   trafficPlane(type, x, y, beh, extra = {}) {
     type = extra.red ? type : this.mixType(type);   // a system's own machines stand in, as in the squadrons
-    const hp = Math.round((ENEMY[type].hp + (type === 'heavy' ? this.stage / 2 : 0)) * this.hpMul());
+    const hp = this.enemyHp(ENEMY[type].hp + (type === 'heavy' ? this.stage / 2 : 0));
     const acetyl = type !== 'heavy' && !extra.red && this.stage >= 2 && Math.random() < (type === 'gunship' && this.vband() >= 2 ? 0.4 : this.acetylChance());
     const e = { type, hp, maxHp: hp, x, y, vx: 0, vy: 0, ang: Math.PI, state: 'traffic', transit: true, beh, st: 0,
       slot: null, wave: -1, acetyl, holding: -1, flash: 0, fireYs: [], fireTs: [], t: randi(0, 60), dead: false, ...extra };

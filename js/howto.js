@@ -88,17 +88,16 @@ Object.assign(Game, {
         });
       });
     page('WHAT DO THE STATS DO?', [
-      'WEAPONS: HOW HARD SHOTS HIT. 4 IS NORMAL, 8 IS DOUBLE.',
+      'WEAPONS: HOW HARD SHOTS HIT. 1 IS HALF A GUNS POWER, 3 IS FULL, 8 IS 2.25 TIMES.',
       'SHIELDS: HITS YOU CAN TAKE. REPAIRED AT EVERY TAKEOFF.',
       'SPECIAL: USES OF YOUR SPECIAL WEAPON ON EACH LEG.',
-      'HULLS, MARKET UPGRADES AND LEVEL-UPS ADD TO THEM, UP TO ' + STAT_CAP + '.'],
+      'YOUR HULL, ITS MARKET UPGRADES AND A POINT EVERY THIRD LEVEL ADD TO THEM.'],
     (ctx, x, y) => {
-      const n = 4 + ((this.t >> 5) % 13);
-      [['WEAPONS', C.red], ['SHIELDS', C.sky], ['SPECIAL', C.gold]].forEach(([l, col], i) => {
-        NES.text(ctx, l, x - 64, y - 40 + i * 28, C.white);
-        this.drawStatPips(ctx, x - 64, y - 28 + i * 28, Math.min(8, Math.ceil(n / 2)), 8, col);
+      const n = 1 + ((this.t >> 5) % 8);
+      [['WEAPONS', 'weapons', C.red], ['SHIELDS', 'shields', C.sky], ['SPECIAL', 'special', C.gold]].forEach(([l, k, col], i) => {
+        NES.text(ctx, l + ' UP TO ' + STAT_CAP[k], x - 64, y - 40 + i * 28, C.white);
+        this.drawStatPips(ctx, x - 64, y - 28 + i * 28, Math.min(STAT_CAP[k], n), STAT_CAP[k], col);
       });
-      NES.text(ctx, 'UP TO ' + STAT_CAP, x, y + 50, C.lime, { align: 'center' });
     });
 
     topic('FORMS');
@@ -205,7 +204,7 @@ Object.assign(Game, {
     list('WHICH UPGRADES ARE THERE?', Object.keys(UPGRADES).map(k => {
       const u = UPGRADES[k];
       return [u.label, u.mk ? (u.mk === 2 ? 'MAGELLANIC CLOUD ON. NEEDS MK I MAXED.' : 'ANDROMEDA. NEEDS MK II.') + ' ONE MORE LEVEL.'
-        : u.desc + (u.max ? ' ' + u.max + ' LEVELS.' : ''), C.white];
+        : u.desc + (u.hull ? ' ' + u.max + ' PER HULL.' : u.max ? ' ' + u.max + ' LEVELS.' : ''), C.white];
     }), (ctx, x, y, hi, items) => {
       const k = Object.keys(UPGRADES).find(q => UPGRADES[q].label === items[hi][0]), u = UPGRADES[k];
       NES.box(ctx, x - 40, y - 30, 80, 44, '#203890', C.gold);

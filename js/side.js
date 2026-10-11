@@ -120,8 +120,8 @@ Object.assign(Game, {
 
   spawnSideEnemy(type, beh, x, y, extra = {}) {
     const s = this.stage;
-    const hp = Math.round({ fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2, splitter: 2, drone: 1,
-      armored: 6 + Math.floor(s / 5), tank: 3 + Math.floor(s / 6), gunship: 4, sniper: 3, heavy: 12 + s / 2 }[type] * this.hpMul());
+    const hp = this.enemyHp({ fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2, splitter: 2, drone: 1,
+      armored: 6 + Math.floor(s / 5), tank: 3 + Math.floor(s / 6), gunship: 4, sniper: 3, heavy: 12 + s / 2 }[type]);
     const acetyl = type !== 'sam' && type !== 'tank' && s >= 2 && Math.random() < this.acetylChance();
     const base = beh === 'rear' ? 2.8 : Math.min(1.8 + s * 0.05, 3);
     const e = {

@@ -4,12 +4,13 @@
 // pilot's status and skills, or open the star map to travel.
 // Menus follow the NES pad: D-pad to choose, A to pick, B to go back. Rows can also be tapped.
 
-// Everything a market can sell. stat: raises a pilot stat (capped at STAT_CAP). max: how many times
-// it can be bought. Prices rise with each purchase of the same thing.
+// Everything a market can sell. max: how many times it can be bought. Prices rise with each purchase of
+// the same thing. hull: a stat bonus fitted to the hull you fly (counted in camp.up['key@hull'], max per
+// hull, and still capped at STAT_CAP), so another hull needs its own.
 const UPGRADES = {
-  weapons: { label: 'WEAPONS +1', short: 'WPN', desc: 'SHOTS HIT HARDER.', stat: true, base: 600 },
-  shields: { label: 'SHIELDS +1', short: 'SHD', desc: 'TAKE ONE MORE HIT.', stat: true, base: 600 },
-  special: { label: 'SPECIAL +1', short: 'SPC', desc: 'ONE MORE SPECIAL PER LEG.', stat: true, base: 600 },
+  weapons: { label: 'HULL WEAPONS +1', short: 'WPN', desc: 'SHOTS HIT HARDER.', hull: true, max: 2, base: 1500 },
+  shields: { label: 'HULL SHIELDS +1', short: 'SHD', desc: 'TAKE ONE MORE HIT.', hull: true, max: 2, base: 1500 },
+  special: { label: 'HULL SPECIAL +1', short: 'SPC', desc: 'ONE MORE SPECIAL PER LEG.', hull: true, max: 2, base: 1500 },
   engine: { label: 'ENGINE TUNE', short: 'ENG', desc: '+5% SPEED IN EVERY FORM.', max: 4, base: 900 },
   ftr: { label: 'FIGHTER GUNS', short: 'FTR', desc: '+20% FIGHTER DAMAGE.', max: 3, base: 800 },
   grd: { label: 'GUARDIAN GUNS', short: 'GRD', desc: '+20% GUARDIAN DAMAGE.', max: 3, base: 800 },
@@ -76,9 +77,9 @@ Object.assign(Game, {
         ...P.market.map(key => {
           if (key.startsWith('gun:')) return this.gunRow(key.slice(4));
           if (key.startsWith('mod:')) return this.moduleRow(key.slice(4));
-          const u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
-          const max = u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max;
-          const now = u.stat ? ' NOW ' + this.statOf(key) + '.' : ' OWNED ' + n + '/' + u.max + '.';
+          const u = UPGRADES[key], n = c.up[this.upKey(key)] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
+          const max = n >= u.max || (u.hull && this.statOf(key) >= STAT_CAP[key]);
+          const now = u.hull ? ' THIS HULL ONLY, ' + n + '/' + u.max + ' FITTED.' : ' OWNED ' + n + '/' + u.max + '.';
           return { label: u.label, right: max ? 'MAX' : need ? 'NEEDS ' + need : price + ' CR', col: max || need ? C.gray : c.money >= price ? C.white : C.gray,
             info: u.desc + now, act: () => this.buyUpgrade(key) };
         })];
@@ -162,13 +163,16 @@ Object.assign(Game, {
     if (i === U.sel) this.baseAct(); else { U.sel = i; Sound.sfx('move'); }
   },
 
+  // Where a purchase is counted: hull stat bonuses per hull, everything else once.
+  upKey(key) { return UPGRADES[key].hull ? key + '@' + this.camp.hull : key; },
+
   buyUpgrade(key) {
-    const c = this.camp, u = UPGRADES[key], n = c.up[key] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
-    if (u.stat ? this.statOf(key) >= STAT_CAP : n >= u.max) { Sound.sfx('denied'); return; }
+    const c = this.camp, u = UPGRADES[key], n = c.up[this.upKey(key)] || 0, price = upgradePrice(key, n), need = this.mkNeeds(key);
+    if (n >= u.max || (u.hull && this.statOf(key) >= STAT_CAP[key])) { Sound.sfx('denied'); return; }
     if (need) { Sound.sfx('denied'); this.toast('MAX ' + need + ' FIRST'); return; }
     if (c.money < price) { Sound.sfx('denied'); this.toast('NOT ENOUGH CREDITS'); return; }
     c.money -= price;
-    c.up[key] = n + 1;
+    c.up[this.upKey(key)] = n + 1;
     Sound.sfx('cash');
     this.saveCampaign();
   },
@@ -416,7 +420,7 @@ Object.assign(Game, {
     stats.forEach(([label, key, col], k) => {
       const y = 164 + k * 10, v = this.statOf(key);
       NES.text(ctx, label, 74, y, C.white);
-      this.drawStatPips(ctx, 132, y, v / 2, STAT_CAP / 2, col);   // one pip per two points
+      this.drawStatPips(ctx, 132, y, v, STAT_CAP[key], col);
       NES.text(ctx, String(v), 242, y, C.white, { align: 'right' });
     });
     const H = this.hullDef();

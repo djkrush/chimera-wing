@@ -110,10 +110,24 @@ Object.assign(Game, {
       this.toast('SAVE DATA UNREADABLE');
       return;
     }
+    this.hullStatUpgrades(c);
     this.camp = c;
     this.pilot = c.pilot;
     this.resetRun(c.score || 0);
     this.startTravel(c.at, c.at);
+  },
+
+  // Stat upgrades used to raise the pilot's stats; now they're fitted to a hull (up['key@hull']). Old
+  // purchases move onto the hull in use, up to its limit, and the rest are refunded at what they cost.
+  hullStatUpgrades(c) {
+    for (const key of ['weapons', 'shields', 'special']) {
+      const n = c.up[key] || 0, u = UPGRADES[key], hk = key + '@' + c.hull;
+      if (!n) continue;
+      const keep = Math.min(n, u.max - (c.up[hk] || 0));
+      for (let i = keep; i < n; i++) c.money += 600 * (i + 1);   // the old price: 600 x (purchases + 1)
+      c.up[hk] = (c.up[hk] || 0) + keep;
+      delete c.up[key];
+    }
   },
 
   // Version 1 saves (six sectors, one mission per planet): cleared planets keep every mission cleared,

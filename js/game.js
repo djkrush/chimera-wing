@@ -42,6 +42,9 @@ const ENEMY = {
   sniper: { name: 'SNIPER', hp: 3, pts: [250, 250], hit: 10, ammo: 9 },     // parks, fires 3-round bursts until dry
   heavy: { name: 'HEAVY', hp: 12, pts: [2000, 2000], hit: 22, ammo: 40 },   // the mini-boss (hp grows with the stage)
 };
+// Every plane's hp is scaled by this (enemyHp): one knob for how long planes last. At 1 a WEAPONS 1 pilot
+// (half a gun's damage) needs two hits on a MiG; scripted runs put early legs at about 120 s with it.
+const ENEMY_HP = 1;
 // Enemy bullet kinds (Typhoon Force): the behavior belongs to the bullet, so a color always means the
 // same thing. aim (red) flies at where you were; drop (orange) falls straight back, a little slower.
 const EBUL_GLOW = { aim: ['#c01830', '#a01050'], drop: ['#c05008', '#a03010'], split: ['#a08808', '#806010'], seek: ['#6020c0', '#7018a0'] };
@@ -704,11 +707,14 @@ const Game = {
     }
   },
 
+  // A plane's hp: its base, the galaxy's hpMul and ENEMY_HP, rounded to half points.
+  enemyHp(base) { return Math.max(0.5, Math.round(base * this.hpMul() * ENEMY_HP * 2) / 2); },
+
   spawnEnemy(s, wave) {
     const path = PATHS[s.path];
     const chall = this.stageType === 'challenge';
     const type = this.mixType(s.type);
-    const hp = chall ? 1 : Math.round(ENEMY[type].hp * this.hpMul());
+    const hp = chall ? 0.5 : this.enemyHp(ENEMY[type].hp);   // challenge planes fall to one twin shot
     const e = {
       type, hp, maxHp: hp, x: path[0].x, y: path[0].y, vx: 0, vy: 1,
       ang: Math.atan2(path[4].y - path[0].y, path[4].x - path[0].x) + Math.PI / 2,

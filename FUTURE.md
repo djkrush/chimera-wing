@@ -25,7 +25,7 @@ Each milestone is a release the game can ship on its own. Items link to the cata
 | M2 | **Arsenal and economy** (shipped, see the README) | Ordnance, barrier and escort modules, Mk II / Mk III upgrades, a price table, supply raids, save v4 | Gives credits a use in every galaxy (see Economy) |
 | M3 | **Vertical stages** (shipped, see the README) | Traffic between squadrons, gunship mini-bosses, squadron bonus, rear attacks, fire budgets, shot-down %, bullet types by color, off-screen warnings, screen shake | The vertical stages repeat the same five waves; this makes them a 1942-style run |
 | M4 | **Hulls and the gun ladder** | Two guns per form (a start gun and a market upgrade), one form per gun, 16 new guns, gun levels bought at markets, special bays, two new hulls, pilot perks with a mechanic, unique hull art | Every hull becomes its own ship, and credits get a steady use in every galaxy |
-| M5 | **Bosses and rewards** | Part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
+| M5 | **Bosses and rewards** | Side bosses become ground fortresses, part-reactive and multi-section bosses, escape timers, readable turret patterns, boss %, chains, grazing, weapon challenges, secrets | Rewards for playing well, not just for playing longer |
 | M6 | **Stages** | Branching legs, new mission kinds, risk contracts, hazards, checkpoints, speed control, weapon-swap beam, planet briefings | Variety between missions late in the campaign |
 | — | **Later** | Carrier upgrades, card game, music, passive slots, planet reputation, more galaxies, touch polish, save slots, score attack | Worth doing, but they don't fix the long-campaign problem |
 
@@ -135,6 +135,33 @@ To revisit after real play:
   softer rule would count traffic only once it has fired or been hit.
 - **Gold planes and fire budgets.** Gold planes fire pairs, so their 1.5x ammo goes in fewer volleys.
   Try counting a pair as one round.
+
+### Stats patch (shipped)
+
+Pilots started with too many shields and almost every plane died to one hit. Pilot stats are now
+MAVERICK 2 / 2 / 1, TURTLE 1 / 3 / 1 and DRAC 1 / 2 / 2 (WPN / SHD / SPC); damage is
+`(1 + weapons) / 4` of a gun's, so WEAPONS 1 is half of the old normal; hull bonuses were roughly halved;
+caps are 8 / 8 / 5; a stat point comes every third level; and market stat upgrades became **hull**
+upgrades (`HULL WEAPONS +1` and so on, two of each per hull, 1,500 then 3,000 credits, counted in
+`camp.up['key@hull']`). Old saves move their pilot stat upgrades onto the hull in use and are refunded
+the rest. Plane hp stays as it was (`ENEMY_HP` = 1 in `enemyHp`), because the halved damage already
+doubles the hits a MiG takes.
+
+Scripted runs (the human-ish bot, median of three, a test campaign with no training):
+
+| Difficulty | Before (TURTLE / MAVERICK) | After (TURTLE / MAVERICK) |
+|---|---|---|
+| 1 | 89 s, 4 hits / 86 s, 3 hits | 119 s, 11 hits / 113 s, 6 hits |
+| 7 | 114 s, 13 hits / 83 s, 4 hits | 133 s, 16 hits / 116 s, 11 hits |
+| 13, trained late-game pilot | 126 s, 21 hits (WPN 16) | 146 s, 25 hits (WPN 8, 6 shields) |
+| 18, trained late-game pilot | 132 s, 34 hits | 162 s, 44 hits |
+
+The Mars capital ship went from one pass (23 s) to two passes (about 46 s); boss hp is unchanged. Plane
+hp scaled 1.25x or 1.5x pushed early legs past 140 s with three times the hits, so it was left at 1.
+Side legs weren't measured (the bot only steers across); check them by hand.
+
+To revisit: whether SHD 8 is still too many late on, and whether the Mars capital ship should keep
+two passes for a WEAPONS 1 pilot.
 
 ### M4: hulls and the gun ladder
 
@@ -256,8 +283,8 @@ FIGHTER GUN. UPGRADE ON MANTICORE, START ON GRIFFIN. RAPID NARROW STREAM.
 
 #### Special bays
 
-Specials split into three families. Each hull has bays for some of them, and a hull's `special` bonus
-sets its uses per leg. The hangar's SPECIAL row grays out learned specials the hull can't use, and
+Specials split into three families. Each hull has bays for some of them, and a hull's `special` stat
+bonus (set in the stats patch below) adds uses per leg. The hangar's SPECIAL row grays out learned specials the hull can't use, and
 level-up offers favor families your hulls have bays for.
 
 | Family | Specials |
@@ -266,12 +293,12 @@ level-up offers favor families your hulls have bays for.
 | DEFENSE | GENE SHIELD, REFLECT FIELD, EMP BLAST, CHRONO FIELD |
 | SUPPORT | TET BURST, WINGMAN, FORCE POD, HYPER MODE |
 
-| Hull | Bays | Uses |
+| Hull | Bays | Uses (hull SPC) |
 |---|---|---|
 | CHIMERA | ATTACK, DEFENSE, SUPPORT | +0 |
 | MANTICORE | ATTACK | +1 |
 | GRIFFIN | DEFENSE, ATTACK | +0 |
-| HYDRA | ATTACK, DEFENSE, SUPPORT | -1 |
+| HYDRA | ATTACK, DEFENSE, SUPPORT | +0 |
 | WYVERN | SUPPORT, DEFENSE | +1 |
 | BASILISK | ATTACK | +2 |
 | BEHEMOTH | ATTACK, DEFENSE | +0 |
@@ -286,10 +313,10 @@ Cloud. Bomb racks keep their hull list and add the BEHEMOTH.
 
 | Hull | WPN SHD SPC | Speed | Form multipliers | Price | Where |
 |---|---|---|---|---|---|
-| VX-10 BEHEMOTH | +1 +3 0 | 0.85 | 1.1 / 1.0 / 1.2 | 25,000 | N44 Bubble (Magellanic): `EXTRA_HULLS.n44 = 7` |
-| VX-11 SPHINX | +1 0 +2 | 1.2 | 1.2 / 1.1 / 1.0 | 60,000 | NGC 206 (Andromeda): `EXTRA_HULLS.ngc206 = 8`, replacing the Basilisk resale there |
+| VX-10 BEHEMOTH | +1 +2 0 | 0.85 | 1.1 / 1.0 / 1.2 | 25,000 | N44 Bubble (Magellanic): `EXTRA_HULLS.n44 = 7` |
+| VX-11 SPHINX | +1 0 0 | 1.2 | 1.2 / 1.1 / 1.0 | 60,000 | NGC 206 (Andromeda): `EXTRA_HULLS.ngc206 = 8`, replacing the Basilisk resale there |
 
-The other hulls keep their stats; their `desc` lines name their role (STRIKER, ARMOR, ALL-ROUNDER,
+The other hulls keep their stats from the stats patch; their `desc` lines name their role (STRIKER, ARMOR, ALL-ROUNDER,
 GUARDIAN, PIERCING, GROUND ATTACK, TOP OF THE LINE, MISSILE CARRIER).
 
 #### Pilot perks
@@ -462,6 +489,28 @@ warnings, screen shake by distance and the near-miss sound (SUPERCRUISE), readab
   screen. (M6)
 
 ### Bosses (M5)
+
+- **Ground fortresses instead of beached warships (Truxton, Thunder Force IV).** The side-mission bosses
+  (`bosses.js`) are painted as battleships, destroyers and carriers sitting on landing legs, which reads
+  as a ship run aground. Their names already say base (HISTONE BUNKER, IMPRINT KEEP, HP1 BASTION, DNMT3
+  FOUNDRY, HIVE NEST), so repaint them as fortresses and keep the targets, shield rules and fights:
+  - Three `BASE_STYLES` replace the hull styles and return the same target slots: **CITADEL** (was the
+    battleship: a keep on an earth berm, stepped concrete walls, corner towers for the turrets, roof silo
+    doors for the launchers, a radar mast, the core behind armored glass; HISTONE BUNKER, X-INACTIVATOR,
+    IMPRINT KEEP, HDAC FORTRESS, CTCF BARRIER, HP1 BASTION), **FOUNDRY** (was the destroyer: a long low
+    works of half-buried bunkers with gun slits, smokestacks and cooling towers, conveyor gantries, the
+    core in a reactor hall; DNMT1 COPIER, DNMT3 FOUNDRY, whose rebuilding turrets suit a factory) and
+    **NEST** (was the carrier: domed hangar mounds dug into a hillside, blast doors for the drone hangars,
+    launch rails, a buried reactor dome; HIVE NEST, THE REMODELER).
+  - Built into the ground: foundations below `SIDE_GROUND`, earth berms sloping up at both ends in the
+    planet's own terrain colors, no bow, keel, legs or shadow gap under it. Reinforced concrete and armor
+    plate with the boss palette as trim and lights, hazard stripes, scorch marks. It still scrolls in
+    with the ground.
+  - Destruction: towers topple and sections slump into smoke and dust on top of today's explosions.
+  - Art direction: capital ships (vertical) stay Yamato and Star Destroyer warships; side bosses become
+    ground fortresses. Update CLAUDE.md, the README and the `bosses.js` header with it.
+  - Do it first in M5: multi-section and part-reactive bosses fit a fortress well (walls that crumble as
+    their guns fall).
 
 - **Parts that change the fight (Darius Twin, Strikers 1945).** Darius Twin's squid shows its weak point
   when one tentacle is destroyed, but turns frantic if both are; its lobster stops firing while its claws
