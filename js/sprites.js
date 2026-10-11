@@ -509,6 +509,82 @@ const SPR = (() => {
     '...DD.....DD',
   ]);
 
+  // M3 traffic: a medium gunship, a park-and-snipe plane and the heavy mini-boss (Truxton machines).
+  const GUNSHIP = SNES.mirror([   // twin-nacelle gunship: nacelle cannons, chin gun, dorsal turret, straight wings, twin tails
+    '.............K',
+    '...K.........K',
+    '...K.......DLL',
+    '..DKD.....DLCC',
+    '..DLD.....DLCC',
+    '..DLD.....DLLC',
+    '..DLD.....DLLL',
+    '..DLD....DDLLL',
+    '.DDLDDDDDDLLLL',
+    'DLLLLLLLLLLLKL',
+    'DLLLLLLLLLLKKK',
+    'DRDDDDDDDLLKKK',
+    'ddddddddDDLLKL',
+    '..DLD....DLLLL',
+    '..DLD....DDLLL',
+    '..DED.....DLLL',
+    '...E.....DDDLD',
+    '........DLLDDD',
+    '.......DLLD.DE',
+    '.......dddd..E',
+  ]);
+  const SNIPER = SNES.mirror([   // long-barrel sniper: rail cannon nose, canards, narrow delta, one engine
+    '.........K',
+    '.........K',
+    '.........K',
+    '.........K',
+    '........DK',
+    '........DC',
+    '......K.DC',
+    '......DDDL',
+    '.......DLL',
+    '.......DLL',
+    '......DDLL',
+    '....DDDLLL',
+    '..DDLLLLLL',
+    'DDLLLLLRLL',
+    'ddddddDDLL',
+    '......DDLL',
+    '.....DLDDL',
+    '....DLLDDD',
+    '....ddd.EE',
+  ]);
+  const HEAVY = SNES.mirror([   // heavy gunship (mini-boss): armored nose, twin turrets, broad swept wing, four engines
+    '.....................KDL',
+    '.....................KDL',
+    '...................DDLLL',
+    '..................DLLCCL',
+    '..................DLLCCL',
+    '.................DDLLLLL',
+    '.................DLLKKKL',
+    '.................DLKKRKK',
+    '.................DLLKKKL',
+    '................DDLLLLLL',
+    '..............DDDLLLLLLL',
+    '............DDLLLDLLLLLL',
+    '..........DDLLLLLDLLLLLL',
+    '........DDLLLLLLLDLLKKKL',
+    '......DDLLLLLLLLLDLKKRKK',
+    '....DDLLLLLLLLLLLDLLKKKL',
+    '..DDLLLLLLLLLLLLLDLLLLLL',
+    'DDLLLRLLLLLLLLLLLDLLLLLL',
+    'DLLLLLLLLLLLLLLLLDLLLLLL',
+    'ddddDDDDdddDDDDddDDLLLLL',
+    '....DLLD...DLLD..DDLLLLL',
+    '....DLLD...DLLD...DLLLLL',
+    '....DKKD...DKKD...DDLLLL',
+    '....dEEd...dEEd....DLLLL',
+    '.....EE.....EE.....DDLLD',
+    '.....E.......E....DLLDDD',
+    '..................DLLDDE',
+    '.................DLLD.EE',
+    '.................dddd..E',
+  ]);
+
   // Side profiles for side-scrolling missions. These point LEFT (toward the player).
   const MIG_SIDE = [   // cannons forward (left), sensor dome, tail fin, thrusters
     '...................DD....',
@@ -578,6 +654,40 @@ const SPR = (() => {
     '.....KLKKK.....KLKKK..............',
   ];
 
+  const GUNSHIP_SIDE = [   // nacelle cannon forward, chin gun, dorsal turret, tail fin
+    '..........................DD...',
+    '.............KK..........DLD...',
+    '...........DDKKDD.......DLLD...',
+    '.....CCC..DLLLLLLLDDDDDDDLLLD..',
+    'KKKDDCCCDDLLLLLLLLLLLLLLLLLLLDE',
+    '..DLLLLLLLLLLLLLLLLLLLLLLLLLLDE',
+    '..DDDDLLLLLLLLLLLLLLLLLLLLLDDD.',
+    'KKKKKDDDDDDRDDDDDDDDDDDDDDDD...',
+    '......dddddddddddd.............',
+  ];
+  const SNIPER_SIDE = [   // long rail cannon, canard, slim body, fin
+    '.........................DD.',
+    '...................CC...DLD.',
+    'KKKKKKKKKDDDDDDDDDCCCDDDLLD.',
+    '.........DLLLLLLLLLLLLLLLLDE',
+    '..........DDDRDDDDDDDDDDDDDE',
+    '.............dddd....DD.....',
+  ];
+  const HEAVY_SIDE = [   // armored nose, two turrets, four engine pods under a broad hull
+    '....................KK..............KK.......DDD..',
+    '...................KKKK............KKKK.....DLLD..',
+    '..............CCC.DDKKDD..........DDKKDD...DLLLD..',
+    '..........CCCCCCCDDLLLLLDDDDDDDDDDDLLLLLDDDDLLLLD.',
+    'KKKKDDDDDDLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLDE',
+    '...DLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLDE',
+    '..RLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLDE',
+    '...DDDLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLDD.',
+    'KKKKKDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD...',
+    '..........dddddDLLLLLLLDDDDDDDDDDDLLLLLLLDddd.....',
+    '...............DKKKKKEE...........DKKKKKEE........',
+    '................ddddd..............ddddd..........',
+  ];
+
   const gold = { D: C.gold, L: C.cream };   // acetylated (aggressive) palette swap
   const ENEMY_DEFS = {
     fighter: { rows: MIG, side: MIG_SIDE, normal: { D: C.periwinkle, L: C.ice, R: C.red, C: C.gold } },
@@ -589,6 +699,9 @@ const SPR = (() => {
     drone: { rows: DRONE, side: DRONE_SIDE, normal: { D: C.olive, L: C.yellow, C: C.orange, R: C.red } },
     armored: { rows: ARMORED, side: ARMORED_SIDE, normal: { D: C.rust, L: C.cream, K: C.gray, C: C.sky, R: C.red } },
     tank: { rows: TANK, side: TANK_SIDE, normal: { D: C.olive, L: C.yellow, K: C.gray, R: C.red } },
+    gunship: { rows: GUNSHIP, side: GUNSHIP_SIDE, normal: { D: C.violet, L: C.lavender, C: C.aqua, K: C.gray, R: C.red } },
+    sniper: { rows: SNIPER, side: SNIPER_SIDE, normal: { D: C.darkred, L: C.lgray, C: C.aqua, K: C.gray, R: C.yellow } },
+    heavy: { rows: HEAVY, side: HEAVY_SIDE, normal: { D: C.gray, L: C.lgray, C: C.gold, K: C.brown, R: C.red } },
   };
   // Two frames each: engine exhaust alternates orange/yellow.
   const frames = (rows, pal) => [B(rows, { ...pal, E: C.orange }), B(rows, { ...pal, E: C.yellow })];

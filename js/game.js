@@ -38,6 +38,9 @@ const ENEMY = {
   drone: { name: 'DRONE', hp: 1, pts: [30, 60], hit: 6, ammo: 1 },
   armored: { name: 'ARMORED', hp: 5, pts: [250, 500], hit: 13, ammo: 6 },
   tank: { name: 'TANK', hp: 3, pts: [250, 250], hit: 11, ammo: 6 },
+  gunship: { name: 'GUNSHIP', hp: 4, pts: [300, 300], hit: 12, ammo: 6 },   // medium plane: crosses, fires aimed pairs
+  sniper: { name: 'SNIPER', hp: 3, pts: [250, 250], hit: 10, ammo: 9 },     // parks, fires 3-round bursts until dry
+  heavy: { name: 'HEAVY', hp: 12, pts: [2000, 2000], hit: 22, ammo: 40 },   // the mini-boss (hp grows with the stage)
 };
 // Enemy bullet kinds (Typhoon Force): the behavior belongs to the bullet, so a color always means the
 // same thing. aim (red) flies at where you were; drop (orange) falls straight back, a little slower.
@@ -878,7 +881,7 @@ const Game = {
   eBulRoom(k) { return this.eBul.length <= (k === 'drop' ? 14 : 10) + this.stage; },
 
   // A plane's shot: bombers drop theirs straight back, everything else aims at you. Each bullet spends ammo.
-  enemyFire(e, k = e.type === 'bomber' ? 'drop' : 'aim') {
+  enemyFire(e, k = e.type === 'bomber' ? 'drop' : 'aim', n = e.acetyl ? 2 : 1, gap = 0.3) {
     const p = this.player;
     if (!p.alive || this.empT > 0 || e.cargo) return;   // convoy cargo tanks are unarmed
     if (!this.eBulRoom(k) || !(e.ammo === undefined || e.ammo > 0)) return;
@@ -886,7 +889,7 @@ const Game = {
     let a = Math.atan2(p.y - e.y, p.x - e.x);
     if (k === 'drop') a = this.isSide ? Math.PI : Math.PI / 2;
     else if (!this.isSide) a = clamp(a, 0.35, Math.PI - 0.35);   // vertical stages: only shoot downward
-    const angles = e.acetyl ? [a - 0.15, a + 0.15] : [a], v = k === 'drop' ? sp * 0.8 : sp;
+    const angles = Array.from({ length: n }, (_, i) => a + (i - (n - 1) / 2) * gap), v = k === 'drop' ? sp * 0.8 : sp;
     this.spendAmmo(e, angles.length);
     const [ox, oy] = this.orient(0, 9);
     for (const aa of angles) this.eShot(e.x + ox, e.y + oy, Math.cos(aa) * v, Math.sin(aa) * v, k);

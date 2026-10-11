@@ -11,6 +11,8 @@ Object.assign(Game, {
     const s = this.stage;
     const kinds = ['migLine', 'migLine', 'migSwoop', 'migRear', 'bomber', 'sam', 'sam', ...this.systemSideKinds()];
     if (s >= 4) kinds.push('tankCol');
+    if (s >= 6) kinds.push('gunshipPair');   // M3 machines join the side stages later on
+    if (s >= 9) kinds.push('snipers');
     if (this.raid) kinds.push('tankCol', 'tankCol', 'tankCol', 'sam', 'sam', 'sam');
     let events = [{ t: 700, kind: 'methyl' }, { t: 1700, kind: 'methyl' }];
     // ~45-55 seconds before the boss; a side approach (no boss) is a bit shorter
@@ -73,6 +75,16 @@ Object.assign(Game, {
         for (let i = 0; i < 8; i++) this.spawnSideEnemy('drone', 'swarm', W + 10 + i * 14, y + ((i * 9) % 28) - 14);
         break;
       }
+      case 'gunshipPair': {   // two gunships crossing, firing aimed pairs at set points
+        const y = randi(40, 120);
+        for (let i = 0; i < 2; i++) this.spawnSideEnemy('gunship', 'gunship', W + 20 + i * 50, y + i * 40, { fireXs: [W * 0.75, W * 0.45, W * 0.2] });
+        break;
+      }
+      case 'snipers': {       // two or three slide in to staggered spots at the right edge and snipe
+        const n = randi(2, 3);
+        for (let i = 0; i < n; i++) this.spawnSideEnemy('sniper', 'park', W + 16 + i * 24, randi(30, 170), { px: W - 40 - i * 28 });
+        break;
+      }
       case 'armoredPair':
         for (let i = 0; i < 2; i++) this.spawnSideEnemy('armored', 'bomber', W + 20 + i * 70, randi(40, 150));
         break;
@@ -109,7 +121,7 @@ Object.assign(Game, {
   spawnSideEnemy(type, beh, x, y, extra = {}) {
     const s = this.stage;
     const hp = Math.round({ fighter: 1, bomber: 4 + Math.floor(s / 6), methyl: 3, sam: 2, splitter: 2, drone: 1,
-      armored: 6 + Math.floor(s / 5), tank: 3 + Math.floor(s / 6) }[type] * this.hpMul());
+      armored: 6 + Math.floor(s / 5), tank: 3 + Math.floor(s / 6), gunship: 4, sniper: 3, heavy: 12 + s / 2 }[type] * this.hpMul());
     const acetyl = type !== 'sam' && type !== 'tank' && s >= 2 && Math.random() < this.acetylChance();
     const base = beh === 'rear' ? 2.8 : Math.min(1.8 + s * 0.05, 3);
     const e = {
@@ -168,6 +180,16 @@ Object.assign(Game, {
         if (e.x < W - 8 && e.x > 20 && e.st % Math.max(60, 100 - this.stage * 3) === 30) this.enemyFire(e);
         if (this.scrollLock && e.x > W + 20) e.dead = true;
         break;
+      case 'gunship':   // steady crossing; an aimed pair each time it passes a fire point
+        e.vx = -e.spd * 0.7;
+        e.vy = Math.sin(e.st * 0.03) * 0.4;
+        if (e.fireXs.length && e.x < e.fireXs[0]) { e.fireXs.shift(); this.enemyFire(e, 'aim', 2, 0.14); }
+        break;
+      case 'park':      // slides in to its spot, snipes until it runs dry, then backs off (Typhoon Force)
+        if (e.phase === 'out') { e.vx = 1.2; e.vy = -0.4; break; }
+        e.vx = clamp((e.px - e.x) * 0.06, -2, 0); e.vy = 0;
+        if (e.vx > -0.1) this.parkFire(e);
+        break;
       case 'methyl':
         this.updateSideMethyl(e);
         return;
@@ -177,6 +199,14 @@ Object.assign(Game, {
     if (e.fireAt && e.st === e.fireAt && e.x < W - 10) this.enemyFire(e);
     const gone = (e.vx < 0 && e.x < -30) || (e.vx > 0 && e.x > W + 30) || e.y < -40 || e.y > H + 20;
     if (gone) e.dead = true;
+  },
+
+  // A parked sniper: an aimed 3-round burst (8 frames apart) every 80 frames; once dry it leaves.
+  parkFire(e) {
+    e.pt = (e.pt || 0) + 1;
+    const ph = e.pt % 80;
+    if (e.pt > 20 && (ph === 0 || ph === 8 || ph === 16)) this.enemyFire(e, e.seek ? 'seek' : 'aim', 1);
+    if (e.ammo <= 0 && ph === 40) e.phase = 'out';
   },
 
   // Methylator: parks at the right, lines up with the player and fires a leftward silencing beam.

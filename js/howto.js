@@ -265,11 +265,14 @@ Object.assign(Game, {
     });
 
     topic('THE ENEMY');
-    list('WHO AM I FIGHTING?', Object.keys(ENEMY).map(k => [ENEMY[k].name, ENEMY[k].pts[0] + ' POINTS' + (ENEMY[k].pts[1] !== ENEMY[k].pts[0] ? ', ' + ENEMY[k].pts[1] + ' DIVING OR GOLD.' : '.'), C.pink]),
+    const noGold = ['sam', 'tank', 'heavy'], [pa, pb] = [k => ENEMY[k].pts[0], k => ENEMY[k].pts[1]];
+    list('WHO AM I FIGHTING?', Object.keys(ENEMY).map(k => [ENEMY[k].name, pa(k) + ' POINTS' + (pb(k) !== pa(k) ? ', ' + pb(k) + ' DIVING OR GOLD.'
+      : noGold.includes(k) ? '.' : ', ' + 2 * pa(k) + ' GOLD.'), C.pink]),
       (ctx, x, y, hi, items) => {
         const k = Object.keys(ENEMY).find(q => ENEMY[q].name === items[hi][0]), set = SPR.enemy[k], f = (this.t >> 3) & 1;
-        this.howBig(ctx, set.normal[f], x, y - 44, Math.PI);
-        this.howBig(ctx, set.side.normal[f], x, y + 26, 0);
+        const big = img => (img.width > 32 ? 1 : 2);   // the heavy is big enough at 1x
+        this.howBig(ctx, set.normal[f], x, y - 44, Math.PI, big(set.normal[f]));
+        this.howBig(ctx, set.side.normal[f], x, y + 26, 0, big(set.side.normal[f]));
         NES.text(ctx, 'TOP', x, y - 12, C.gray, { align: 'center' });
         NES.text(ctx, 'SIDE', x, y + 52, C.gray, { align: 'center' });
       });
@@ -496,9 +499,9 @@ Object.assign(Game, {
   },
 
   // A sprite at twice its size (whole-pixel scaling, like the SNES's scaled sprites).
-  howBig(ctx, img, x, y, ang) {
+  howBig(ctx, img, x, y, ang, s = 2) {
     ctx.save();
-    ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(ang); ctx.scale(2, 2);
+    ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(ang); ctx.scale(s, s);
     ctx.drawImage(img, -(img.width >> 1), -(img.height >> 1));
     ctx.restore();
   },
